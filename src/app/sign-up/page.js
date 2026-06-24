@@ -204,7 +204,7 @@ function SignUpPageContent() {
     <AuthLayout>
       {/* Left - Form Section */}
       <div className="flex w-full min-h-0 flex-1 items-center bg-background px-5 py-4 sm:px-8 md:w-[48%] md:py-5 lg:px-12">
-        <div className="mx-auto w-full max-w-[24rem] space-y-3">
+        <div className="mx-auto w-full max-w-[24rem] space-y-3 md:max-h-full md:overflow-y-auto md:pr-1">
           <AuthHeader
             title="Create your Nesti account"
             subtitle="Set up your workspace in minutes. No card required."

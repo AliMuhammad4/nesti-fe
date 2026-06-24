@@ -529,8 +529,8 @@ export default function ProMessagesThreadPage() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
-      <div className="fixed left-0 right-0 top-[calc(4rem+env(safe-area-inset-top))] z-40 border-b border-border/70 bg-white/95 shadow-sm backdrop-blur lg:left-60">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+      <div className="sticky top-0 z-30 border-b border-border/70 bg-white/95 shadow-sm backdrop-blur">
         <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
           <button
             type="button"
@@ -596,7 +596,7 @@ export default function ProMessagesThreadPage() {
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto px-3 pb-44 pt-[136px] sm:px-6 sm:pb-52 sm:pt-[140px]"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4"
       >
         {threadQuery.isLoading || messagesQuery.isLoading ? (
           <p className="py-6 text-center text-xs text-text-muted">Loading messages…</p>
@@ -622,8 +622,8 @@ export default function ProMessagesThreadPage() {
         )}
       </div>
 
-      <div className="fixed left-0 right-0 z-40 px-3 sm:px-6 lg:left-60 bottom-[calc(1rem+env(safe-area-inset-bottom))]">
-        <div className="w-full rounded-2xl border border-border/70 bg-white/95 p-3 shadow-[0_12px_50px_rgba(15,23,42,0.10)] backdrop-blur sm:p-4">
+      <div className="shrink-0 border-t border-border/70 bg-white/95 px-3 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur sm:px-6 sm:py-4">
+        <div className="w-full rounded-2xl border border-border/70 bg-white/95 p-3 sm:p-4">
           {isGroup && !canReply ? (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-background-light/70 px-3 py-2">
               <div className="text-xs text-text-muted">
