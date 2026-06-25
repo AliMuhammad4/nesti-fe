@@ -11,9 +11,6 @@ import {
   registerCalendlyWebhook,
 } from "@/lib/calendarClient";
 import {
-  CALENDLY_BILLING_URL,
-  CALENDLY_PLAN_WEBHOOK_USER_MESSAGE,
-  getCalendlyWebhookStatusMessage,
   isCalendlyPlanWebhookBlock,
 } from "@/lib/calendlyErrors";
 import {
@@ -30,7 +27,6 @@ export function useCalendlyConnection() {
   const queryClient = useQueryClient();
   const [connecting, setConnecting] = useState(false);
   const autoWebhookAttemptedRef = useRef("");
-  const planRenewalToastKeyRef = useRef("");
 
   const statusQuery = useQuery({
     queryKey: ["calendar-status", token],
@@ -81,18 +77,6 @@ export function useCalendlyConnection() {
     cal?.account_email,
     registerWebhookMut,
   ]);
-
-  useEffect(() => {
-    if (!token || !connected || !planBlocked) return;
-    const key = `${String(token).slice(0, 12)}::${String(cal?.updatedAt || cal?.account_email || "")}`;
-    if (planRenewalToastKeyRef.current === key) return;
-    planRenewalToastKeyRef.current = key;
-    const statusMessage = getCalendlyWebhookStatusMessage(cal) || CALENDLY_PLAN_WEBHOOK_USER_MESSAGE;
-    toast.warn(
-      `${statusMessage} Manage billing in Calendly: ${CALENDLY_BILLING_URL}`,
-      { toastId: `${CALENDLY_INTEGRATION_TOAST_ID}-renewal` }
-    );
-  }, [token, connected, planBlocked, cal?.updatedAt, cal?.account_email]);
 
   const startCalendlyOAuth = useCallback(async () => {
     setConnecting(true);
