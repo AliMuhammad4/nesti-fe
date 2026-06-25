@@ -8,6 +8,27 @@ import { getSocketOrigin } from "@/lib/api";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { incrementUnread } from "@/store/proChatSlice";
 
+/** Short copy for socket toasts — full text stays in the notifications panel. */
+function toastBodyPreview(payload) {
+  const type = String(payload?.notification_type || "").trim();
+  const body = String(payload?.body || "").trim();
+  if (!body) return "";
+
+  if (type === "calendly_plan_blocked") {
+    return "Booking sync is paused until you upgrade Calendly and reconnect in Nesti.";
+  }
+  if (type === "calendly_sync_restored") {
+    return "Calendly webhooks are active. New bookings will sync to your calendar and leads.";
+  }
+  if (type.startsWith("billing_")) {
+    const sentence = body.split(/(?<=[.!?])\s+/)[0] || body;
+    return sentence.length > 140 ? `${sentence.slice(0, 137).trim()}…` : sentence;
+  }
+
+  const sentence = body.split(/(?<=[.!?])\s+/)[0] || body;
+  return sentence.length > 140 ? `${sentence.slice(0, 137).trim()}…` : sentence;
+}
+
 /**
  * Subscribes to workspace Socket.IO when `token` is set (agent / mortgage broker / lawyer dashboard).
  * Not used by the public embed chatbot — that flow is HTTPS POST `/api/chat` only.
@@ -138,34 +159,47 @@ export function useWorkspaceSocket(token, queryClient) {
         return;
       }
       if (title && typeof title === "string") {
+        const preview = toastBodyPreview(payload);
         if (!href) {
-          toast.info(title, { autoClose: 6000 });
+          toast.info(
+            preview ? (
+              <div className="text-left">
+                <p className="font-semibold leading-snug text-slate-900">{title}</p>
+                <p className="mt-1 text-[12px] font-normal leading-relaxed text-slate-600">{preview}</p>
+              </div>
+            ) : (
+              title
+            ),
+            { autoClose: 6000 },
+          );
           return;
         }
         toast.info(
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate font-semibold">{title}</div>
-              {payload?.body ? (
-                <div className="mt-0.5 line-clamp-2 text-[12px] opacity-80">{String(payload.body)}</div>
+          <div className="flex w-full flex-col gap-2.5 text-left">
+            <div>
+              <p className="text-[13px] font-semibold leading-snug text-slate-900">{title}</p>
+              {preview ? (
+                <p className="mt-1 text-[12px] font-normal leading-relaxed text-slate-600">{preview}</p>
               ) : null}
             </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-[12px] font-semibold text-white hover:bg-primary-dark"
-              onClick={() => {
-                toast.dismiss();
-                if (isExternalHref) {
-                  window.open(href, "_blank", "noopener,noreferrer");
-                  return;
-                }
-                router.push(href);
-              }}
-            >
-              {actionLabel(payload?.action)}
-            </button>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="rounded-md bg-primary px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-primary-dark"
+                onClick={() => {
+                  toast.dismiss();
+                  if (isExternalHref) {
+                    window.open(href, "_blank", "noopener,noreferrer");
+                    return;
+                  }
+                  router.push(href);
+                }}
+              >
+                {actionLabel(payload?.action)}
+              </button>
+            </div>
           </div>,
-          { autoClose: 9000, closeOnClick: false }
+          { autoClose: 9000, closeOnClick: false, className: "nesti-toast--rich" },
         );
       }
     };

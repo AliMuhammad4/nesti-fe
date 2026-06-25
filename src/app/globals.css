@@ -118,6 +118,12 @@ h6 {
   min-height: 0 !important;
 }
 
+.nesti-toast--rich {
+  width: min(92vw, 440px) !important;
+  max-width: min(92vw, 440px) !important;
+  padding: 0.85rem 1rem !important;
+}
+
 .nesti-toast-body {
   margin: 0 !important;
   padding: 0 !important;
@@ -125,6 +131,11 @@ h6 {
   line-height: 1.35rem !important;
   font-weight: 500 !important;
   word-break: break-word;
+}
+
+.nesti-toast--rich .nesti-toast-body {
+  width: 100% !important;
+  white-space: normal !important;
 }
 
 .nesti-phone-input {
