@@ -69,8 +69,12 @@ export default function ChatbotEmbed() {
         token,
       });
     },
-    onSuccess: () => {
-      toast.success("Embed link generated");
+    onSuccess: (resp) => {
+      if (resp?.reused) {
+        toast.info("Existing embed link reused. Delete it first if you need a new token.");
+      } else {
+        toast.success("Embed link generated");
+      }
       setNewName("");
       queryClient.invalidateQueries({ queryKey: ["embed-links"] });
     },
@@ -196,6 +200,11 @@ export default function ChatbotEmbed() {
             )}
           </button>
           </div>
+        </div>
+      ) : null}
+      {embeds.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+          One embed token is allowed per account. Delete your current token before generating a new one.
         </div>
       ) : null}
 
