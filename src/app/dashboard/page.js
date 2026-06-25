@@ -51,7 +51,6 @@ const WINDOW_OPTIONS = [
   { value: 90, label: "90d" },
 ];
 const DEFAULT_WINDOW_DAYS = 30;
-
 function normalizeProfilesPayload(data) {
   if (Array.isArray(data?.lead_profiles)) return data.lead_profiles;
   if (Array.isArray(data?.items)) return data.items;
@@ -116,6 +115,18 @@ export default function DashboardPage() {
 
   const userRole = activeUser?.role || "agent";
 
+  const professionalRole = useMemo(
+    () => String(businessInfo?.professionalType || userRole || "agent").trim().toLowerCase(),
+    [businessInfo?.professionalType, userRole],
+  );
+
+  const roleBadgeLabel = useMemo(() => {
+    if (professionalRole === "mortgage_broker") return "Mortgage Broker";
+    if (professionalRole === "lawyer") return "Real Estate Lawyer";
+    if (professionalRole === "admin") return "Admin";
+    return "Real Estate Agent";
+  }, [professionalRole]);
+
   const displayFullName = useMemo(() => {
     const fromBiz = businessInfo?.fullName && String(businessInfo.fullName).trim();
     if (fromBiz) return fromBiz;
@@ -131,12 +142,6 @@ export default function DashboardPage() {
       ""
     );
   }, [businessInfo?.fullName, personalInfo, activeUser]);
-
-  const roleBadgeText = useMemo(() => {
-    const raw = String(businessInfo?.professionalType || userRole || "").trim();
-    if (!raw) return "";
-    return raw.replace(/_/g, " ").toUpperCase();
-  }, [businessInfo?.professionalType, userRole]);
 
   const [isMounted, setIsMounted] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState("");
@@ -461,14 +466,14 @@ export default function DashboardPage() {
     <div className="relative z-[1] min-h-screen bg-slate-50/50">
       <div className="mx-auto w-full max-w-screen-2xl space-y-6 px-4 pb-12 pt-5 sm:px-6 sm:pt-6">
         <PlanLimitBanner />
-        {/* Hero */}
+        {/* Hero — LinkedIn-style profile header */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]"
+          className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm"
         >
-          <div className="relative w-full h-48 sm:h-60 md:h-72">
+          <div className="relative h-[176px] w-full overflow-hidden sm:h-[212px]">
             {hasCover ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -477,89 +482,54 @@ export default function DashboardPage() {
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover object-center"
                 />
-                <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25"
-                  aria-hidden
-                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/25" aria-hidden />
               </>
             ) : (
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark/95 to-emerald-700/90"
-                aria-hidden
-              />
-            )}
-            {!hasCover ? (
               <>
-                <div
-                  className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/15 blur-3xl motion-safe:animate-[pulse_5s_ease-in-out_infinite]"
-                  aria-hidden
-                />
-                <div
-                  className="pointer-events-none absolute -bottom-20 left-1/4 h-36 w-36 rounded-full bg-emerald-400/20 blur-3xl motion-safe:animate-[pulse_6s_ease-in-out_infinite_1s]"
-                  aria-hidden
-                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#8fa9ae] via-[#9eb3b8] to-[#7a959b]" aria-hidden />
+                <div className="pointer-events-none absolute -left-12 top-4 h-[200px] w-[200px] rounded-full border-[32px] border-white/20" aria-hidden />
+                <div className="pointer-events-none absolute -right-6 top-[-15%] h-[180px] w-[180px] rounded-full bg-white/10" aria-hidden />
               </>
-            ) : null}
+            )}
           </div>
 
-          <div className="relative px-5 pb-5 sm:px-8 sm:pb-6">
-            <div className="flex flex-col items-center sm:flex-row sm:items-start sm:gap-5">
-              <motion.div
-                className="relative z-[1] -mt-14 shrink-0"
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="relative h-28 w-28 overflow-hidden rounded-full border-[4px] border-white bg-slate-50 shadow-[0_4px_20px_rgba(15,23,42,0.12)] ring-1 ring-black/[0.03]">
-                  {profileImageUrl && !avatarBroken ? (
-                    <Image
-                      src={profileImageUrl}
-                      alt={avatarAlt}
-                      width={224}
-                      height={224}
-                      className="h-full w-full object-cover object-center"
-                      sizes="112px"
-                      priority
-                      unoptimized={
-                        profileImageUrl.startsWith("data:") || profileImageUrl.startsWith("blob:")
-                      }
-                      onError={() => setAvatarBroken(true)}
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-primary-dark select-none" aria-hidden>
-                      {avatarInitials}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
+          <div className="relative px-5 pb-4 sm:px-6 sm:pb-5">
+            {/* Avatar — square, overlaps cover bottom edge (LinkedIn-style) */}
+            <div className="absolute left-5 top-0 z-[1] -translate-y-1/2 sm:left-6">
+              <div className="relative h-[96px] w-[96px] overflow-hidden rounded-lg border-[3px] border-white bg-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/60 sm:h-[128px] sm:w-[128px] sm:rounded-xl">
+                {profileImageUrl && !avatarBroken ? (
+                  <Image
+                    src={profileImageUrl}
+                    alt={avatarAlt}
+                    width={256}
+                    height={256}
+                    className="h-full w-full object-cover object-center"
+                    sizes="128px"
+                    priority
+                    unoptimized={
+                      profileImageUrl.startsWith("data:") || profileImageUrl.startsWith("blob:")
+                    }
+                    onError={() => setAvatarBroken(true)}
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-2xl font-semibold text-slate-500 select-none sm:text-3xl" aria-hidden>
+                    {avatarInitials}
+                  </span>
+                )}
+              </div>
+            </div>
 
-              <motion.div
-                className="mt-3 flex min-w-0 flex-1 flex-col items-center text-center sm:mt-3 sm:items-start sm:text-left"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
-                  <h1 className="text-lg font-bold tracking-tight text-text-heading sm:text-xl">
-                    {displayFullName || "Your workspace"}
-                  </h1>
-                  {roleBadgeText ? (
-                    <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.06] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary-dark sm:text-[10px]">
-                      {roleBadgeText}
-                    </span>
-                  ) : null}
-                </div>
-              </motion.div>
-
+            <div className="flex min-h-[3.25rem] flex-col gap-3 pt-12 sm:min-h-[4rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pl-[148px] sm:pt-0 lg:pl-[156px]">
+              <div className="flex min-w-0 flex-col items-center gap-1.5 sm:items-start">
+                <h1 className="text-center text-lg font-semibold leading-tight tracking-tight text-slate-900 sm:text-left sm:text-xl">
+                  {displayFullName || "Your workspace"}
+                </h1>
+                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary-dark sm:text-[11px]">
+                  {roleBadgeLabel}
+                </span>
+              </div>
               {canUseCalendarIntegration ? (
-                <motion.div
-                  className="mt-3 shrink-0 sm:mt-3"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.16, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <DashboardCalendlyButton surface="light" className="w-full sm:w-auto" />
-                </motion.div>
+                <DashboardCalendlyButton surface="light" compact className="mx-auto shrink-0 sm:mx-0" />
               ) : null}
             </div>
           </div>

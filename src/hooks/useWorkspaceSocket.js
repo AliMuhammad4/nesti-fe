@@ -81,6 +81,18 @@ export function useWorkspaceSocket(token, queryClient) {
         const href = String(action?.href || "").trim();
         return href || "/clients/follow-ups";
       }
+      if (type === "open_billing") {
+        const href = String(action?.href || "").trim();
+        return href || "/checkout";
+      }
+      if (type === "open_calendly_billing") {
+        const href = String(action?.href || "").trim();
+        return href || "https://calendly.com/app/admin/billing";
+      }
+      if (type === "open_calendar") {
+        const href = String(action?.href || "").trim();
+        return href || "/calendar";
+      }
       return null;
     };
 
@@ -90,12 +102,19 @@ export function useWorkspaceSocket(token, queryClient) {
       if (type === "open_lead") return "Open lead";
       if (type === "open_referral") return "Open referral";
       if (type === "open_bulk_followups") return "Review drafts";
+      if (type === "open_billing") return "View billing";
+      if (type === "open_calendly_billing") return "Calendly billing";
+      if (type === "open_calendar") return "Open calendar";
       return "Open";
     };
 
     const onNotify = (payload) => {
       refreshNotifications();
       const action = payload?.action || {};
+      const notificationType = String(payload?.notification_type || "").trim();
+      if (notificationType.startsWith("calendly_")) {
+        queryClient.invalidateQueries({ queryKey: ["calendar-status"] });
+      }
       if (String(action?.type || "").trim() === "open_prochat_thread") {
         const threadId = String(action?.thread_id || "").trim();
         queryClient.invalidateQueries({ queryKey: ["prochat-threads"] });
@@ -114,6 +133,7 @@ export function useWorkspaceSocket(token, queryClient) {
 
       const title = payload?.title;
       const href = actionHref(payload?.action);
+      const isExternalHref = Boolean(href && /^https?:\/\//i.test(href));
       if (href && pathname && href === pathname) {
         return;
       }
@@ -135,6 +155,10 @@ export function useWorkspaceSocket(token, queryClient) {
               className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-[12px] font-semibold text-white hover:bg-primary-dark"
               onClick={() => {
                 toast.dismiss();
+                if (isExternalHref) {
+                  window.open(href, "_blank", "noopener,noreferrer");
+                  return;
+                }
                 router.push(href);
               }}
             >

@@ -11,6 +11,7 @@ import {
   markNotificationReadRequest,
   resolveProChatRejoinRequestFromNotification,
 } from "@/lib/notificationsClient";
+import { CALENDLY_BILLING_URL } from "@/lib/calendlyErrors";
 
 function normalizeLeadId(value) {
   const raw = String(value || "").trim();
@@ -162,6 +163,18 @@ export default function NotificationDetailModal({ notification, onClose }) {
   const openBulkFollowupsHref =
     display?.action?.type === "open_bulk_followups"
       ? String(display?.action?.href || "").trim() || "/clients/follow-ups"
+      : null;
+  const openBillingHref =
+    display?.action?.type === "open_billing"
+      ? String(display?.action?.href || "").trim() || "/checkout"
+      : null;
+  const openCalendlyBillingHref =
+    display?.action?.type === "open_calendly_billing"
+      ? String(display?.action?.href || "").trim() || CALENDLY_BILLING_URL
+      : null;
+  const openCalendarHref =
+    display?.action?.type === "open_calendar"
+      ? String(display?.action?.href || "").trim() || "/calendar"
       : null;
   const rejoinMeta = rejoinActionMeta(display);
   const isPendingRejoinRequest = rejoinMeta?.status === "pending";
@@ -390,6 +403,42 @@ export default function NotificationDetailModal({ notification, onClose }) {
               className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
             >
               Review drafts
+            </button>
+          ) : null}
+          {openBillingHref && !isLoading && !isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push(openBillingHref);
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              View billing
+            </button>
+          ) : null}
+          {openCalendlyBillingHref && !isLoading && !isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                window.open(openCalendlyBillingHref, "_blank", "noopener,noreferrer");
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Calendly billing
+            </button>
+          ) : null}
+          {openCalendarHref && !isLoading && !isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push(openCalendarHref);
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Open calendar
             </button>
           ) : null}
           {isPendingRejoinRequest && !isLoading && !isError ? (

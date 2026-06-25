@@ -26,7 +26,8 @@ function isValidCalendlyUrl(value) {
   }
 }
 
-const MAX_PROFILE_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_PROFILE_IMAGE_BYTES = 16 * 1024 * 1024;
+const MAX_PROFILE_IMAGE_MB = 16;
 
 const validatePersonalInfo = (form) => {
   const errors = {};
@@ -134,7 +135,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       return;
     }
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
-      toast.error("Image must be under 4MB.");
+      toast.error(`Image must be under ${MAX_PROFILE_IMAGE_MB}MB.`);
       return;
     }
     try {
@@ -158,7 +159,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       return;
     }
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
-      toast.error("Image must be under 4MB.");
+      toast.error(`Image must be under ${MAX_PROFILE_IMAGE_MB}MB.`);
       return;
     }
     try {
