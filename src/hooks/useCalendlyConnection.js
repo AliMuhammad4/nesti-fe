@@ -13,6 +13,7 @@ import {
 import {
   CALENDLY_BILLING_URL,
   CALENDLY_PLAN_WEBHOOK_USER_MESSAGE,
+  getCalendlyWebhookStatusMessage,
   isCalendlyPlanWebhookBlock,
 } from "@/lib/calendlyErrors";
 import {
@@ -86,8 +87,9 @@ export function useCalendlyConnection() {
     const key = `${String(token).slice(0, 12)}::${String(cal?.updatedAt || cal?.account_email || "")}`;
     if (planRenewalToastKeyRef.current === key) return;
     planRenewalToastKeyRef.current = key;
+    const statusMessage = getCalendlyWebhookStatusMessage(cal) || CALENDLY_PLAN_WEBHOOK_USER_MESSAGE;
     toast.warn(
-      `${CALENDLY_PLAN_WEBHOOK_USER_MESSAGE} Renew or upgrade your Calendly subscription to resume booking sync. ${CALENDLY_BILLING_URL}`,
+      `${statusMessage} Manage billing in Calendly: ${CALENDLY_BILLING_URL}`,
       { toastId: `${CALENDLY_INTEGRATION_TOAST_ID}-renewal` }
     );
   }, [token, connected, planBlocked, cal?.updatedAt, cal?.account_email]);

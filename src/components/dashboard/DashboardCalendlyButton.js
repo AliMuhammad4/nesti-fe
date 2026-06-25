@@ -56,12 +56,11 @@ export default function DashboardCalendlyButton({ className = "", surface = "dar
   }
 
   if (connected) {
-    const webhookErrorMessage = String(cal?.calendly_webhook_register_error || "").trim();
     const planBlockedLabel = "Calendly Connected (sync limited)";
     const webhookErrorLabel = "Calendly Connected (sync needs attention)";
     const cleanStatusMessage = getCalendlyWebhookStatusMessage(cal);
     const statusDetail = planBlocked || webhookError
-      ? (cleanStatusMessage || webhookErrorMessage || "Calendly is connected, but booking sync needs attention.")
+      ? (cleanStatusMessage || "Calendly is connected, but booking sync needs attention.")
       : "";
     const label = allGood
       ? "Calendly Connected"
@@ -74,9 +73,9 @@ export default function DashboardCalendlyButton({ className = "", surface = "dar
     const title = allGood
       ? "Click to disconnect Calendly"
       : planBlocked
-        ? webhookErrorMessage || "Calendly is connected, but bookings can't sync because your plan doesn't allow webhooks. Upgrade to Standard/Teams to enable booking sync."
+        ? cleanStatusMessage || "Calendly is connected, but bookings can't sync because your plan doesn't allow webhooks. Upgrade to Standard/Teams to enable booking sync."
         : webhookError
-          ? webhookErrorMessage || "Calendly is connected, but webhooks couldn't be registered. Open Settings → Calendar to reconnect."
+          ? cleanStatusMessage || "Calendly is connected, but webhooks couldn't be registered. Open Settings → Calendar to reconnect."
           : "Calendly connected, but webhooks are still syncing — bookings may not update yet.";
 
     return (

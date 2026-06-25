@@ -4,8 +4,15 @@
  */
 export function isCalendlyPlanWebhookBlock(cal) {
   if (cal?.calendly_webhook_error_kind === "calendly_plan") return true;
-  const msg = String(cal?.calendly_webhook_register_error || "");
+  const msg = String(cal?.calendly_webhook_register_error || "").trim();
   if (!msg) return false;
+  const lowered = msg.toLowerCase();
+  const hasPlanSignal =
+    /standard|upgrade|trial|subscription|plan|billing|past due|payment failed/.test(lowered);
+  const hasWebhookSignal =
+    /webhook|webhooks|webhook_subscriptions|booking sync|booking webhooks/.test(lowered);
+  if (hasPlanSignal && hasWebhookSignal) return true;
+  if (/requires\s+(a\s+)?standard|standard\s*\(or higher\)|upgrade your calendly|plan does not support/.test(lowered)) return true;
   return (
     /\(403\)/.test(msg) &&
     /permission denied|upgrade|standard|trial|plan|calendly account/i.test(msg)
@@ -15,19 +22,19 @@ export function isCalendlyPlanWebhookBlock(cal) {
 /** Shown when webhooks are blocked by plan; keep in sync with node `userFacingCalendlyRegisterError` for calendly_plan. */
 /** Aligned with node `userFacingCalendlyRegisterError` for `calendly_plan`. */
 export const CALENDLY_PLAN_WEBHOOK_USER_MESSAGE =
-  "Calendly requires a Standard (or higher) plan to create booking webhooks. Your OAuth link still works, but new bookings will not be pushed to Nesti until your Calendly account is upgraded.";
+  "Calendly booking sync requires a Standard (or higher) Calendly plan.";
 
 export const CALENDLY_BILLING_URL = "https://calendly.com/app/admin/billing";
 
 export function getCalendlyWebhookStatusMessage(cal) {
   const raw = String(cal?.calendly_webhook_register_error || "").trim();
   if (!raw) return "";
+  const lowered = raw.toLowerCase();
 
   if (!isCalendlyPlanWebhookBlock(cal)) {
     return "Calendly is connected, but booking sync is temporarily unavailable. Please reconnect or try again later.";
   }
 
-  const lowered = raw.toLowerCase();
   const freeTrialExpired = /free trial|trial expired|trial ended|trial has ended/.test(lowered);
   const subscriptionExpired = /subscription expired|subscription has expired|billing issue|payment failed|past due/.test(lowered);
 
