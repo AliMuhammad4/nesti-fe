@@ -18,3 +18,24 @@ export const CALENDLY_PLAN_WEBHOOK_USER_MESSAGE =
   "Calendly requires a Standard (or higher) plan to create booking webhooks. Your OAuth link still works, but new bookings will not be pushed to Nesti until your Calendly account is upgraded.";
 
 export const CALENDLY_BILLING_URL = "https://calendly.com/app/admin/billing";
+
+export function getCalendlyWebhookStatusMessage(cal) {
+  const raw = String(cal?.calendly_webhook_register_error || "").trim();
+  if (!raw) return "";
+
+  if (!isCalendlyPlanWebhookBlock(cal)) {
+    return "Calendly is connected, but booking sync is temporarily unavailable. Please reconnect or try again later.";
+  }
+
+  const lowered = raw.toLowerCase();
+  const freeTrialExpired = /free trial|trial expired|trial ended|trial has ended/.test(lowered);
+  const subscriptionExpired = /subscription expired|subscription has expired|billing issue|payment failed|past due/.test(lowered);
+
+  if (freeTrialExpired) {
+    return "Calendly free trial is expired. Upgrade your Calendly plan to restore booking sync.";
+  }
+  if (subscriptionExpired) {
+    return "Calendly subscription is expired. Renew your Calendly subscription to restore booking sync.";
+  }
+  return "Calendly plan does not support booking webhooks. Upgrade to a Standard (or higher) Calendly plan to enable booking sync.";
+}

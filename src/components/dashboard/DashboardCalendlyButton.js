@@ -2,6 +2,7 @@
 
 import { Calendar } from "lucide-react";
 import { useCalendlyConnection } from "@/hooks/useCalendlyConnection";
+import { getCalendlyWebhookStatusMessage } from "@/lib/calendlyErrors";
 
 /**
  * Single control for the dashboard hero: shows Calendly connection status and toggles OAuth / disconnect.
@@ -11,6 +12,7 @@ export default function DashboardCalendlyButton({ className = "", surface = "dar
   const {
     token,
     statusQuery,
+    cal,
     connected,
     connecting,
     startCalendlyOAuth,
@@ -54,41 +56,59 @@ export default function DashboardCalendlyButton({ className = "", surface = "dar
   }
 
   if (connected) {
+    const webhookErrorMessage = String(cal?.calendly_webhook_register_error || "").trim();
+    const planBlockedLabel = "Calendly Connected (sync limited)";
+    const webhookErrorLabel = "Calendly Connected (sync needs attention)";
+    const cleanStatusMessage = getCalendlyWebhookStatusMessage(cal);
+    const statusDetail = planBlocked || webhookError
+      ? (cleanStatusMessage || webhookErrorMessage || "Calendly is connected, but booking sync needs attention.")
+      : "";
     const label = allGood
       ? "Calendly Connected"
       : planBlocked
-        ? "Calendly Connected"
+        ? planBlockedLabel
         : webhookError
-          ? "Calendly Connected (action needed to finish sync)"
+          ? webhookErrorLabel
           : "Calendly Connected (finishing setup)";
 
     const title = allGood
       ? "Click to disconnect Calendly"
       : planBlocked
-        ? "Calendly is connected, but bookings can't sync because your plan doesn't allow webhooks. Upgrade to Standard/Teams to enable booking sync."
+        ? webhookErrorMessage || "Calendly is connected, but bookings can't sync because your plan doesn't allow webhooks. Upgrade to Standard/Teams to enable booking sync."
         : webhookError
-          ? "Calendly is connected, but webhooks couldn't be registered. Open Settings → Calendar to reconnect."
+          ? webhookErrorMessage || "Calendly is connected, but webhooks couldn't be registered. Open Settings → Calendar to reconnect."
           : "Calendly connected, but webhooks are still syncing — bookings may not update yet.";
 
     return (
-      <button
-        type="button"
-        onClick={() => disconnectMut.mutate()}
-        disabled={busy}
-        className={`${base} ${
-          planBlocked || webhookError
-            ? light
-              ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100/90"
-              : "border-amber-200/50 bg-amber-500/25 text-white hover:bg-amber-500/35"
-            : light
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/90"
-              : "border-emerald-200/50 bg-emerald-500/25 text-white hover:bg-emerald-500/35"
-        } ${className}`}
-        title={title}
-      >
-        <Calendar size={18} className="opacity-95" aria-hidden />
-        {label}
-      </button>
+      <div className={`inline-flex max-w-full flex-col items-start gap-1 ${className}`}>
+        <button
+          type="button"
+          onClick={() => disconnectMut.mutate()}
+          disabled={busy}
+          className={`${base} ${
+            planBlocked || webhookError
+              ? light
+                ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100/90"
+                : "border-amber-200/50 bg-amber-500/25 text-white hover:bg-amber-500/35"
+              : light
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/90"
+                : "border-emerald-200/50 bg-emerald-500/25 text-white hover:bg-emerald-500/35"
+          }`}
+          title={title}
+        >
+          <Calendar size={18} className="opacity-95" aria-hidden />
+          {label}
+        </button>
+        {statusDetail ? (
+          <p
+            className={`max-w-[28rem] text-xs leading-relaxed ${
+              light ? "text-amber-800" : "text-white/90"
+            }`}
+          >
+            {statusDetail}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
