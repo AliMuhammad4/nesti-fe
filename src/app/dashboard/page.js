@@ -473,16 +473,16 @@ export default function DashboardPage() {
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm"
         >
-          <div className="relative h-[176px] w-full overflow-hidden sm:h-[212px]">
+          <div className="relative h-[220px] w-full overflow-hidden sm:h-[280px] lg:h-[320px]">
             {hasCover ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverImageUrl}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-center"
+                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.02] contrast-[0.98]"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/25" aria-hidden />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/15 via-slate-900/8 to-slate-900/30" aria-hidden />
               </>
             ) : (
               <>
