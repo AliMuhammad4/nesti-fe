@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Copy, Link2, Mail, MessageCircle, RefreshCw, Share2, X } from "lucide-react";
@@ -11,6 +12,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useProfileQuery } from "@/hooks/useAuthApi";
 import { useRecordLeadView } from "@/hooks/useRecordLeadView";
 import { motion, AnimatePresence } from "framer-motion";
+import { getDashboardRoute } from "@/lib/roleUtils";
 import {
   fetchChatAnalyticsSummary,
   fetchChatAnalyticsTimeseries,
@@ -59,6 +61,7 @@ function normalizeProfilesPayload(data) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user, token } = useAppSelector((state) => state.auth);
   const personalInfo = useAppSelector((state) => state.profile.personalInfo);
@@ -69,6 +72,13 @@ export default function DashboardPage() {
   const canUseReferralInviteLinks = hasFeature(FEATURES.REFERRALS_INVITES);
   const canUseCalendarIntegration = hasFeature(FEATURES.CALENDAR_INTEGRATION);
   const activeUser = profile?.user || profile?.data || user;
+
+  // Redirect clients to client dashboard
+  useEffect(() => {
+    if (activeUser?.role === 'client') {
+      router.replace('/client-dashboard');
+    }
+  }, [activeUser?.role, router]);
 
   const apiUser = profile?.user;
   const coverImageUrl = useMemo(() => {

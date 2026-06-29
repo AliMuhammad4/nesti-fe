@@ -1,4 +1,5 @@
 import HeroSection from "@/components/sections/HeroSection";
+import FeaturedProfessionalsSection from "@/components/sections/FeaturedProfessionalsSection";
 import AIAssistantsSection from "@/components/sections/AIAssistantsSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
@@ -12,6 +13,7 @@ export default function Home() {
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-white via-primary/[0.08] to-white">
       <HeroSection />
+      <FeaturedProfessionalsSection />
       <AIAssistantsSection />
       <FeaturesSection />
       <HowItWorksSection />

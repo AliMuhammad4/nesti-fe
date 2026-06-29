@@ -176,6 +176,12 @@ export const API_ENDPOINTS = {
     icp: withBaseUrl("/api/professionals/icp"),
     uploadImage: withBaseUrl("/api/professionals/upload-image"),
   },
+  client: {
+    profile: withBaseUrl("/api/client/profile"),
+    profileMe: withBaseUrl("/api/client/profile/me"),
+    settings: withBaseUrl("/api/client/settings"),
+    subscriptionMe: withBaseUrl("/api/client/subscription/me"),
+  },
   proChat: {
     threads: withBaseUrl("/api/pro-chat/threads"),
     groups: withBaseUrl("/api/pro-chat/groups"),

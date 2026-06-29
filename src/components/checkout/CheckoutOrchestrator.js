@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { setSelectedPlan } from "@/store/selectedPlanSlice";
@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 
 export default function CheckoutOrchestrator() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthGuard();
   const { user } = useAppSelector((state) => state.auth);
@@ -30,6 +31,7 @@ export default function CheckoutOrchestrator() {
   const checkoutMutation = useCreateCheckoutSession();
   const billingPlansQuery = useBillingPlans();
   const subscriptionMeQuery = useSubscriptionMe();
+  const isClient = String(user?.role || "").toLowerCase() === "client";
 
   const userStatus = String(user?.accountStatus || user?.account_status || "").toLowerCase();
   const subscriptionStatus = String(
@@ -71,6 +73,11 @@ export default function CheckoutOrchestrator() {
     }
   }, [planFromQuery, selectedPlan, sortedPlans.length]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !isClient) return;
+    router.replace("/client-dashboard/subscription");
+  }, [isAuthenticated, isClient, router]);
+
   const handleChoosePlan = (plan) => {
     if (!plan?.stripe_price_configured) {
       toast.error(`${plan?.name || "This plan"} is not available for checkout yet.`);
@@ -108,6 +115,14 @@ export default function CheckoutOrchestrator() {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  if (isClient) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (isSubscribed) {

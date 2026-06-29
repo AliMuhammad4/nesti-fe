@@ -13,6 +13,7 @@ import { getTrialRemainingMs } from "@/components/ui/TrialCountdownBadge";
 
 const ALLOWED_PREFIXES = [
   "/checkout",
+  "/client-dashboard/subscription",
   "/calendly-callback",
   "/log-in",
   "/sign-up",
@@ -52,6 +53,7 @@ export function useTrialExpiryRedirect(isMounted) {
   const effectiveUser = profileData?.user || user;
 
   const accountStatus = String(effectiveUser?.accountStatus || effectiveUser?.account_status || "").toLowerCase();
+  const isClient = String(effectiveUser?.role || "").toLowerCase() === "client";
   const trialEndsAt = effectiveUser?.trialEndsAt || effectiveUser?.trial_ends_at;
   const planLimits = effectiveUser?.planLimits || effectiveUser?.plan_limits || null;
   const usage = effectiveUser?.usage || null;
@@ -83,8 +85,14 @@ export function useTrialExpiryRedirect(isMounted) {
         toastId: quotaLocked ? "trial-quota-subscription-required" : "trial-expired-subscription-required",
       }
     );
-    router.replace(quotaLocked ? "/checkout?trial=quota" : "/checkout?trial=expired");
-  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, pathname, router]);
+    router.replace(
+      isClient
+        ? "/client-dashboard/subscription"
+        : quotaLocked
+          ? "/checkout?trial=quota"
+          : "/checkout?trial=expired"
+    );
+  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, pathname, router, isClient]);
 
   useEffect(() => {
     if (!isMounted || !token) return;

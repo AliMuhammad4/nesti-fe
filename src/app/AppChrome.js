@@ -13,6 +13,7 @@ import CustomToastContainer from "@/components/ui/ToastContainer";
 import TrialCountdownBadge from "@/components/ui/TrialCountdownBadge";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 import AppSidebar from "@/components/layout/AppSidebar";
+import ClientSidebar from "@/components/layout/ClientSidebar";
 import NotificationsBell from "@/components/notifications/NotificationsBell";
 import ConversationsBell from "@/components/prochat/ConversationsBell";
 import {
@@ -77,7 +78,12 @@ export default function AppChrome({ children }) {
   const publicProfileQuery = useQuery({
     queryKey: ["own-public-profile"],
     queryFn: () => getOwnPublicProfile(token),
-    enabled: Boolean(isMounted && token && showPublicProfile),
+    enabled: Boolean(
+      isMounted && 
+      token && 
+      showPublicProfile && 
+      user?.role !== 'client' // Skip for clients
+    ),
     staleTime: 60_000,
   });
 
@@ -483,6 +489,9 @@ export default function AppChrome({ children }) {
 
   // ── Mounted: pick layout based on auth state ──
   if (token && !isPublicAuthPage) {
+    const isClient = user?.role === 'client';
+    const SidebarComponent = isClient ? ClientSidebar : AppSidebar;
+    
     return (
       <>
         <BackgroundElements variant="default" />
@@ -491,7 +500,7 @@ export default function AppChrome({ children }) {
             isFullHeightWorkspaceRoute ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
           }`}
         >
-          <AppSidebar
+          <SidebarComponent
             isMobileOpen={isSidebarMobileOpen}
             onCloseMobile={() => setIsSidebarMobileOpen(false)}
           />
@@ -516,14 +525,18 @@ export default function AppChrome({ children }) {
                   <Menu size={16} />
                 </button>
                 <div className="hidden min-w-0 sm:block">
-                  <div className="truncate text-xs font-semibold text-text-heading sm:text-sm">Workspace</div>
-                  <div className="hidden text-[11px] text-text-muted sm:block">All tools in one place</div>
+                  <div className="truncate text-xs font-semibold text-text-heading sm:text-sm">
+                    {isClient ? "Client Portal" : "Workspace"}
+                  </div>
+                  <div className="hidden text-[11px] text-text-muted sm:block">
+                    {isClient ? "Your homeownership journey" : "All tools in one place"}
+                  </div>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <TrialCountdownBadge compact />
-                <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />
-                <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />
+                {!isClient && <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />}
+                {!isClient && <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />}
                 <div className="relative" ref={userMenuRef}>
                   <button
                     type="button"
@@ -559,23 +572,25 @@ export default function AppChrome({ children }) {
                       className="absolute right-0 top-full z-[100] mt-1.5 min-w-[13rem] overflow-hidden rounded-xl border border-border bg-white py-1 shadow-lg shadow-slate-900/10"
                     >
                       <Link
-                        href={dashboardOrWebsiteItem.href}
+                        href={isClient ? "/" : dashboardOrWebsiteItem.href}
                         role="menuitem"
                         className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
                         onClick={() => setUserMenuOpen(false)}
                       >
                         <DashboardOrWebsiteIcon size={16} className="text-text-muted" />
-                        {dashboardOrWebsiteItem.label}
+                        {isClient ? "Home" : dashboardOrWebsiteItem.label}
                       </Link>
-                      <Link
-                        href="/profile"
-                        role="menuitem"
-                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <User size={16} className="text-text-muted" />
-                        Profile
-                      </Link>
+                      {!isClient && (
+                        <Link
+                          href="/profile"
+                          role="menuitem"
+                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <User size={16} className="text-text-muted" />
+                          Profile
+                        </Link>
+                      )}
                       <Link
                         href="/settings"
                         role="menuitem"
@@ -585,7 +600,7 @@ export default function AppChrome({ children }) {
                         <Settings size={16} className="text-text-muted" />
                         Settings
                       </Link>
-                      {showPublicProfile ? (
+                      {showPublicProfile && !isClient ? (
                         <Link
                           href={publicProfileHref}
                           target="_blank"
@@ -598,7 +613,7 @@ export default function AppChrome({ children }) {
                           Web Page
                         </Link>
                       ) : null}
-                      {showCalendar ? (
+                      {showCalendar && !isClient ? (
                         <Link
                           href="/calendar"
                           role="menuitem"
