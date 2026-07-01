@@ -46,17 +46,12 @@ const PRIMARY_ITEMS = [
   { id: "conversations", label: "Conversations", href: "/conversations", icon: MessageSquare },
   { id: "referrals", label: "Referrals", href: "/referrals?direction=inbound", icon: Handshake },
   { id: "clients", label: "Clients", href: "/clients", icon: UserRound },
-  { id: "professionals", label: "Professionals", href: "/professionals?role=agent", icon: Building2 },
+  { id: "professionals", label: "Professionals", href: "/professionals", icon: Building2 },
   { id: "analytics", label: "Analytics", href: "/analytics", icon: BarChart3 },
   { id: "logs", label: "Logs", href: "/nurture-logs", icon: ClipboardList },
   { id: "billing", label: "Billing", href: "/checkout", icon: CreditCard },
 ];
 
-const PROFESSIONAL_ROLE_ITEMS = [
-  { id: "pro-agent", label: "Agents", href: "/professionals?role=agent", icon: UserRound },
-  { id: "pro-lawyer", label: "Lawyers", href: "/professionals?role=lawyer", icon: User },
-  { id: "pro-mortgage", label: "Mortgage Brokers", href: "/professionals?role=mortgage_broker", icon: Building2 },
-];
 
 const SETTINGS_ITEMS = [
   { id: "personal", label: "Personal Information", tab: "personal", icon: User },
@@ -154,12 +149,10 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pipelineNavOpen, setPipelineNavOpen] = useState(false);
-  const [professionalsOpen, setProfessionalsOpen] = useState(false);
   const [referralsOpen, setReferralsOpen] = useState(false);
 
   const isLeadsArea = pathname === "/leads" || pathname.startsWith("/leads/");
   const isCalendarRoute = pathname === "/calendar" || pathname.startsWith("/calendar/");
-  const isProfessionalsRoute = pathname === "/professionals" || pathname.startsWith("/professionals/");
   const isReferralsRoute = pathname === "/referrals" || pathname.startsWith("/referrals/");
 
   useEffect(() => {
@@ -171,7 +164,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
       "/leads",
       "/referrals?direction=inbound",
       "/clients",
-      "/professionals?role=agent",
+      "/professionals",
       "/analytics",
       "/nurture-logs",
       "/calendar",
@@ -190,11 +183,6 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
     if (isSettingsActive) setSettingsOpen(true);
     else setSettingsOpen(false);
   }, [isSettingsActive]);
-
-  useEffect(() => {
-    if (isProfessionalsRoute) setProfessionalsOpen(true);
-    else setProfessionalsOpen(false);
-  }, [isProfessionalsRoute]);
 
   useEffect(() => {
     if (isReferralsRoute) setReferralsOpen(true);
@@ -263,8 +251,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
     navigateToPublicHome(router, pathname, () => {
       setSettingsOpen(false);
       setPipelineNavOpen(false);
-      setProfessionalsOpen(false);
-      setReferralsOpen(false);
+setReferralsOpen(false);
       onCloseMobile?.();
     });
 
@@ -356,13 +343,12 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
             const leadsHere = leadsNavInWorkspace(item);
             return (
               <Fragment key={item.id}>
-                {item.id !== "professionals" && item.id !== "referrals" ? (
+                {item.id !== "referrals" ? (
                   <Link
                     href={item.href}
                     onClick={() => {
                       setSettingsOpen(false);
                       setPipelineNavOpen(false);
-                      setProfessionalsOpen(false);
                       setReferralsOpen(false);
                       onCloseMobile?.();
                     }}
@@ -400,8 +386,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
                         type="button"
                         onClick={() => {
                           setSettingsOpen(false);
-                          setProfessionalsOpen(false);
-                          setReferralsOpen(false);
+setReferralsOpen(false);
                           if (!isLeadsArea) {
                             setPipelineNavOpen(true);
                             navigateFast("/leads");
@@ -461,8 +446,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
                         onClick={() => {
                           setSettingsOpen(false);
                           setPipelineNavOpen(false);
-                          setProfessionalsOpen(false);
-                          setReferralsOpen(false);
+setReferralsOpen(false);
                           onCloseMobile?.();
                         }}
                         className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
@@ -491,7 +475,6 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
                       onClick={() => {
                         setSettingsOpen(false);
                         setPipelineNavOpen(false);
-                        setProfessionalsOpen(false);
                         if (!isReferralsRoute) {
                           setReferralsOpen(true);
                           navigateFast("/referrals?direction=inbound");
@@ -561,83 +544,6 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
                     </AnimatePresence>
                   </div>
                 ) : null}
-                {item.id === "professionals" ? (
-                  <div className="space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSettingsOpen(false);
-                        setPipelineNavOpen(false);
-                        setReferralsOpen(false);
-                        if (!isProfessionalsRoute) {
-                          setProfessionalsOpen(true);
-                          navigateFast("/professionals?role=agent");
-                          onCloseMobile?.();
-                          return;
-                        }
-                        setProfessionalsOpen((prev) => !prev);
-                      }}
-                      className={`group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
-                        professionalsOpen && isProfessionalsRoute
-                          ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                          : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
-                      }`}
-                      aria-expanded={professionalsOpen && isProfessionalsRoute}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <NavIconTile
-                          Icon={Building2}
-                          variant={professionalsOpen && isProfessionalsRoute ? "active" : "idle"}
-                        />
-                        <span className="truncate">Professionals</span>
-                      </span>
-                      <ChevronDown
-                        size={15}
-                        className={`shrink-0 text-text-muted transition-transform duration-200 ${
-                          professionalsOpen && isProfessionalsRoute ? "rotate-180 text-primary-dark" : ""
-                        }`}
-                      />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {professionalsOpen && isProfessionalsRoute ? (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.16 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="ml-2 mt-0.5 space-y-0.5 rounded-lg border border-border/60 bg-white/80 py-1.5 pl-2 pr-1">
-                            {PROFESSIONAL_ROLE_ITEMS.map((proItem) => {
-                              const active = isPrimaryNavActive(pathname, proItem.href, searchParams);
-                              const Icon = proItem.icon;
-                              return (
-                                <Link
-                                  key={proItem.id}
-                                  href={proItem.href}
-                                  onClick={() => onCloseMobile?.()}
-                                  onMouseEnter={() => {
-                                    if (!shouldPrefetch) return;
-                                    router.prefetch(proItem.href);
-                                  }}
-                                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-snug transition ${
-                                    active
-                                      ? "bg-primary/12 text-primary-dark ring-1 ring-primary/12"
-                                      : "text-text-body hover:bg-primary/5"
-                                  }`}
-                                  aria-current={active ? "page" : undefined}
-                                >
-                                  <SettingsSubIcon Icon={Icon} active={active} />
-                                  <span className="truncate">{proItem.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
-                  </div>
-                ) : null}
               </Fragment>
             );
           })}
@@ -653,8 +559,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
               onClick={() => {
                 setSettingsOpen((prev) => !prev);
                 setPipelineNavOpen(false);
-                setProfessionalsOpen(false);
-                setReferralsOpen(false);
+setReferralsOpen(false);
               }}
               className={`group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold transition-all duration-200 ${
                 settingsOpen
@@ -697,8 +602,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
                           href={href}
                           onClick={() => {
                             setPipelineNavOpen(false);
-                            setProfessionalsOpen(false);
-                            setReferralsOpen(false);
+setReferralsOpen(false);
                             onCloseMobile?.();
                           }}
                           onMouseEnter={() => {
@@ -736,8 +640,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
             href="/settings?tab=personal"
             onClick={() => {
               setPipelineNavOpen(false);
-              setProfessionalsOpen(false);
-              setReferralsOpen(false);
+setReferralsOpen(false);
               onCloseMobile?.();
             }}
             className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-primary via-primary to-primary-dark text-[11px] font-bold text-white shadow-[0_3px_12px_rgba(52,199,89,0.35)] ring-2 ring-white transition duration-200 hover:scale-[1.02]"

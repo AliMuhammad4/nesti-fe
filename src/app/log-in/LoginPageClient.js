@@ -26,16 +26,21 @@ import {
   getOrCreateInviteVisitorId,
   saveInviteAttribution,
 } from "@/lib/inviteAttributionStorage";
+import { getDashboardRoute } from "@/lib/roleUtils";
 
 export default function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useAppSelector((state) => state.auth.token);
+  const user = useAppSelector((state) => state.auth.user);
   const [inviteToken, setInviteToken] = useState("");
 
   useEffect(() => {
-    if (token) router.replace("/dashboard");
-  }, [token, router]);
+    if (token && user?.role) {
+      const dashboardRoute = getDashboardRoute(user.role);
+      router.replace(dashboardRoute);
+    }
+  }, [token, user, router]);
 
   useEffect(() => {
     const fromQuery =
@@ -94,7 +99,11 @@ export default function LoginPageClient() {
           invite_token: inviteToken || undefined,
         },
         {
-          onSuccess: () => router.push("/dashboard"),
+          onSuccess: (data) => {
+            const userRole = data?.user?.role || data?.role;
+            const dashboardRoute = getDashboardRoute(userRole);
+            router.push(dashboardRoute);
+          },
           onError: (error) => {
             const msg = String(error?.message || "").toLowerCase();
             if (error?.status === 404 || msg.includes("no google account found")) {
@@ -135,12 +144,14 @@ export default function LoginPageClient() {
 
     setIsLoggingIn(true);
     try {
-      await loginMutation.mutateAsync({
+      const data = await loginMutation.mutateAsync({
         email: form.email.trim(),
         password: form.password,
         invite_token: inviteToken || undefined,
       });
-      router.push("/dashboard");
+      const userRole = data?.user?.role || data?.role;
+      const dashboardRoute = getDashboardRoute(userRole);
+      router.push(dashboardRoute);
     } catch (err) {
       setIsLoggingIn(false);
       console.error("Login error:", err);

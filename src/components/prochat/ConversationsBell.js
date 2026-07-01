@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { fetchMyProChatThreads } from "@/lib/proChatClient";
 import { clearUnread, pruneUnread } from "@/store/proChatSlice";
+import { formatProChatMessagePreview } from "@/components/prochat/thread/proChatThreadUtils";
 
 function formatShortTime(iso) {
   if (!iso) return "";
@@ -93,6 +94,7 @@ export default function ConversationsBell({ enabled = true }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const token = useAppSelector((s) => s.auth.token);
+  const isClientUser = String(useAppSelector((s) => s.auth.user?.role || "")).toLowerCase() === "client";
   const unreadByThread = useAppSelector((s) => s.proChat?.unreadByThread || {});
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -110,9 +112,9 @@ export default function ConversationsBell({ enabled = true }) {
   }, []);
 
   const listQuery = useQuery({
-    queryKey: ["prochat-threads", token],
+    queryKey: ["prochat-threads", token, isClientUser],
     enabled: Boolean(token) && enabled,
-    queryFn: () => fetchMyProChatThreads({ token }),
+    queryFn: () => fetchMyProChatThreads({ token, client: isClientUser }),
     staleTime: 15_000,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -210,7 +212,7 @@ export default function ConversationsBell({ enabled = true }) {
                 const other = t.other_user || null;
                 const unread = Number(unreadByThread?.[tid] || 0);
                 const lastTime = t.last_message_at || t.updated_at;
-                const preview = String(t.last_message_text || "").trim();
+                const preview = formatProChatMessagePreview(t.last_message_text);
                 const title = isGroup ? (String(t.title || "").trim() || "Group chat") : displayName(other);
                 const subtitle = isGroup ? `${Number(t.member_count || 0)} members` : "";
                 return (

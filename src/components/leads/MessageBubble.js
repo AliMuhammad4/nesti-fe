@@ -22,10 +22,11 @@ const formatTime = (value) => {
 
 const parseSelectedPropertyFromText = (content) => {
   const text = String(content || "").trim();
-  const m = /^I selected this (property|comparable):\s*([\s\S]+?)\.\s*Please guide me on[\s\S]*$/i.exec(text);
+  const m = /^I selected this (property|comparable):\s*([\s\S]+?)\.\s*Please guide me on[\s\S]*?(?:\n\n([\s\S]+))?$/i.exec(text);
   if (!m) return null;
   const kind = m[1].toLowerCase();
   const summary = String(m[2] || "").trim();
+  const followup = String(m[3] || "").trim().replace(/^Client question:\s*/i, "");
   if (!summary) return null;
   const cleanPart = (raw) =>
     String(raw || "")
@@ -39,7 +40,7 @@ const parseSelectedPropertyFromText = (content) => {
     .filter(Boolean);
   if (!parts.length) return null;
   const [title, location, price] = parts;
-  return { kind, title: title || "Selected property", location: location || "", price: price || "" };
+  return { kind, title: title || "Selected property", location: location || "", price: price || "", followup };
 };
 
 const renderSelectedPropertyCard = (selected, isUser) => {
@@ -58,6 +59,11 @@ const renderSelectedPropertyCard = (selected, isUser) => {
       </div>
       {selected.location ? (
         <p className={`text-[10px] ${isUser ? "text-white/90" : "text-text-muted"}`}>{selected.location}</p>
+      ) : null}
+      {selected.followup ? (
+        <p className={`border-t pt-2 text-[11px] leading-relaxed ${isUser ? "border-white/15 text-white/95" : "border-primary/10 text-text-body"}`}>
+          {selected.followup}
+        </p>
       ) : null}
     </div>
   );

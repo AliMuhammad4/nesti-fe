@@ -176,7 +176,7 @@ export default function ThreadComposer({
           }}
           rows={1}
           placeholder="Type a message…"
-          className="min-h-[52px] w-full resize-none rounded-2xl border border-border bg-white py-[15px] pl-[6.25rem] pr-14 text-sm leading-[20px] text-text-heading shadow-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="min-h-[44px] w-full resize-none rounded-2xl border border-border bg-white py-[11px] pl-[5.5rem] pr-12 text-sm leading-[20px] text-text-heading shadow-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -184,10 +184,10 @@ export default function ThreadComposer({
             }
           }}
         />
-        <div className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+        <div className="pointer-events-none absolute left-3 top-[22px] flex -translate-y-1/2 items-center gap-1.5">
           <button
             type="button"
-            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-white text-text-muted shadow-sm transition hover:bg-background-light hover:text-text-heading"
+            className="pointer-events-auto grid h-7 w-7 place-items-center rounded-lg border border-border/70 bg-white text-text-muted shadow-sm transition hover:bg-background-light hover:text-text-heading"
             onClick={() => !disabled && fileInputRef.current?.click?.()}
             disabled={disabled}
             aria-label="Add attachment"
@@ -197,7 +197,7 @@ export default function ThreadComposer({
           <button
             ref={emojiButtonRef}
             type="button"
-            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-white text-text-muted shadow-sm transition hover:bg-background-light hover:text-text-heading disabled:opacity-60"
+            className="pointer-events-auto grid h-7 w-7 place-items-center rounded-lg border border-border/70 bg-white text-text-muted shadow-sm transition hover:bg-background-light hover:text-text-heading disabled:opacity-60"
             onClick={() => !disabled && setEmojiOpen((v) => !v)}
             disabled={disabled}
             aria-label="Add emoji"
@@ -220,13 +220,13 @@ export default function ThreadComposer({
             />
           </div>
         ) : null}
-        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+        <div className="pointer-events-none absolute right-3 top-[22px] -translate-y-1/2">
           <button
             type="button"
             onClick={() => void onSendMessage()}
             disabled={disabled || (!draft.trim() && draftAttachments.length < 1) || uploadingAttachments.length > 0}
             aria-label="Send message"
-            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl bg-primary text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className="pointer-events-auto grid h-7 w-7 place-items-center rounded-lg bg-primary text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send size={16} />
           </button>

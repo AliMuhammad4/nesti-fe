@@ -13,6 +13,7 @@ import useDynamicTablePageSize from "@/hooks/useDynamicTablePageSize";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
 import FeaturePageGate from "@/components/billing/FeaturePageGate";
+import { formatProChatMessagePreview } from "@/components/prochat/thread/proChatThreadUtils";
 
 function formatShortTime(iso) {
   if (!iso) return "";
@@ -112,7 +113,9 @@ export default function ConversationsPage() {
   const canUseProChat = hasFeature(FEATURES.PRO_CHAT_DM);
   const canCreateGroups = hasFeature(FEATURES.PRO_CHAT);
   const token = useAppSelector((s) => s.auth.token);
+  const isClientUser = String(useAppSelector((s) => s.auth.user?.role || "")).toLowerCase() === "client";
   const unreadByThread = useAppSelector((s) => s.proChat?.unreadByThread || {});
+  const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = useDynamicTablePageSize({
     minRows: 7,
@@ -121,10 +124,14 @@ export default function ConversationsPage() {
     reserveHeight: 235,
   });
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const listQuery = useQuery({
-    queryKey: ["prochat-threads", token, page, pageSize],
-    enabled: Boolean(token) && canUseProChat,
-    queryFn: () => fetchMyProChatThreads({ token, page, limit: pageSize }),
+    queryKey: ["prochat-threads", token, page, pageSize, isClientUser],
+    enabled: Boolean(token) && (canUseProChat || isClientUser),
+    queryFn: () => fetchMyProChatThreads({ token, page, limit: pageSize, client: isClientUser }),
     staleTime: 15_000,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -132,9 +139,9 @@ export default function ConversationsPage() {
 
   const items = useMemo(() => {
     const raw = Array.isArray(listQuery.data?.items) ? listQuery.data.items : [];
-    if (canCreateGroups) return raw;
+    if (canCreateGroups && !isClientUser) return raw;
     return raw.filter((t) => String(t.thread_type || "dm") !== "group");
-  }, [listQuery.data?.items, canCreateGroups]);
+  }, [listQuery.data?.items, canCreateGroups, isClientUser]);
 
   const unreadTotal = useMemo(
     () => Object.values(unreadByThread).reduce((sum, n) => sum + Number(n || 0), 0),
@@ -172,7 +179,7 @@ export default function ConversationsPage() {
 
   const profQuery = useQuery({
     queryKey: ["prochat-group-professionals", token, search],
-    enabled: Boolean(token) && createOpen,
+    enabled: Boolean(token) && createOpen && !isClientUser,
     queryFn: () => fetchProfessionals({ token, search, page: 1, limit: 12 }),
     staleTime: 10_000,
     refetchOnWindowFocus: false,
@@ -221,6 +228,19 @@ export default function ConversationsPage() {
       setSubmitting(false);
     }
   };
+
+  const useFlatLayout = mounted && isClientUser;
+
+  if (!mounted) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-transparent px-4 py-4 sm:px-6">
+        <div className="flex min-h-[200px] items-center justify-center text-sm text-text-muted">
+          <Loader2 size={22} className="mr-2 animate-spin text-primary" />
+          Loading conversations...
+        </div>
+      </div>
+    );
+  }
 
   const modal =
     createOpen && typeof document !== "undefined"
@@ -357,20 +377,23 @@ export default function ConversationsPage() {
         )
       : null;
 
-  return (
-    <FeaturePageGate feature={FEATURES.PRO_CHAT_DM}>
-    <div className="min-h-[calc(100vh-4rem)] bg-transparent px-4 py-4 sm:px-6">
+  const content = (
+    <div className={`${useFlatLayout ? "min-h-screen w-full" : "min-h-[calc(100vh-4rem)] bg-transparent"} px-4 py-4 sm:px-6`}>
       <div className="flex w-full max-w-none flex-col gap-3">
-        <div className="px-1 py-1">
+        <div className={useFlatLayout ? "mb-1" : "px-1 py-1"}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-text-heading">Conversations</h1>
+              <h1 className={`${useFlatLayout ? "text-lg sm:text-xl" : "text-xl"} font-bold text-text-heading`}>
+                Conversations
+              </h1>
               <p className="mt-0.5 text-xs text-text-muted">
-                View and continue all conversations with other professionals.
+                {useFlatLayout
+                  ? `${totalItems} conversation${totalItems === 1 ? "" : "s"} with professionals`
+                  : "View and continue all conversations with other professionals."}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {canCreateGroups ? (
+              {canCreateGroups && !isClientUser ? (
                 <button
                   type="button"
                   onClick={() => setCreateOpen(true)}
@@ -396,12 +419,12 @@ export default function ConversationsPage() {
 
         <div
           className={
-            isEmptyState
+            isEmptyState || useFlatLayout
               ? "overflow-hidden bg-transparent"
               : "overflow-hidden rounded-2xl border border-border/70 bg-white shadow-sm"
           }
         >
-          {!isEmptyState ? (
+          {!isEmptyState && !useFlatLayout ? (
             <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-2.5">
               <div>
                 <div className="text-sm font-semibold text-text-heading">All conversations</div>
@@ -415,11 +438,11 @@ export default function ConversationsPage() {
           ) : null}
 
           {listQuery.isLoading ? (
-            <div className="flex min-h-[18rem] items-center justify-center text-text-muted">
+            <div className={`flex ${useFlatLayout ? "min-h-[200px]" : "min-h-[18rem]"} items-center justify-center text-text-muted`}>
               <Loader2 size={24} className="animate-spin" />
             </div>
           ) : items.length === 0 ? (
-            <div className="flex min-h-[calc(100vh-14rem)] flex-col items-center justify-center px-4 pb-16 pt-8 text-center sm:pb-20 sm:pt-10">
+            <div className={`flex ${useFlatLayout ? "min-h-[280px]" : "min-h-[calc(100vh-14rem)]"} flex-col items-center justify-center px-4 pb-16 pt-8 text-center sm:pb-20 sm:pt-10`}>
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/[0.10] text-primary-dark">
                 <MessageSquare size={22} />
               </div>
@@ -430,25 +453,30 @@ export default function ConversationsPage() {
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-border/60">
+              <ul className={useFlatLayout ? "w-full" : "divide-y divide-border/60"}>
                 {items.map((t) => {
                   const tid = String(t.id || "").trim();
                   const isGroup = String(t.thread_type || "dm") === "group";
                   const other = t.other_user || null;
                   const unread = Number(unreadByThread?.[tid] || 0);
                   const lastTime = t.last_message_at || t.updated_at;
-                  const preview = String(t.last_message_text || "").trim();
+                  const preview = formatProChatMessagePreview(t.last_message_text);
                   const title = isGroup ? (String(t.title || "").trim() || "Group chat") : displayName(other);
                   const emailOrMeta = isGroup
                     ? `${Number(t.member_count || 0)} members`
                     : (other?.email || "No email");
                   const role = isGroup ? "Group" : displayRole(other);
                   return (
-                    <li key={tid}>
+                    <li
+                      key={tid}
+                      className={useFlatLayout ? "border-b border-gray-200/70 last:border-b-0" : undefined}
+                    >
                       <button
                         type="button"
                         onClick={() => openThread(tid)}
-                        className="group flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-primary/[0.04]"
+                        className={`group flex w-full items-center gap-3 px-0 py-2.5 text-left transition ${
+                          useFlatLayout ? "hover:bg-white/40" : "px-4 hover:bg-primary/[0.04]"
+                        }`}
                       >
                         {/* Fixed avatar lane; left-align so DM starts at the left */}
                         <div className="w-[56px] shrink-0 flex items-center justify-start">
@@ -486,9 +514,19 @@ export default function ConversationsPage() {
                             </span>
                           </div>
 
-                          <div className="min-w-0 truncate rounded-lg bg-background-light/70 px-2.5 py-1.5 text-xs text-text-body">
-                            <span className="font-semibold text-text-heading">Last message:</span>{" "}
-                            <span className="align-middle">{preview || "No messages yet"}</span>
+                          <div
+                            className={`min-w-0 truncate text-xs text-text-body ${
+                              useFlatLayout ? "" : "rounded-lg bg-background-light/70 px-2.5 py-1.5"
+                            }`}
+                          >
+                            {!useFlatLayout ? (
+                              <>
+                                <span className="font-semibold text-text-heading">Last message:</span>{" "}
+                              </>
+                            ) : null}
+                            <span className={`align-middle ${useFlatLayout ? "text-text-muted" : ""}`}>
+                              {preview || "No messages yet"}
+                            </span>
                           </div>
 
                           <div className="flex items-center justify-end gap-2 text-right">
@@ -513,7 +551,11 @@ export default function ConversationsPage() {
                   );
                 })}
               </ul>
-              <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-2.5">
+              <div
+                className={`flex items-center justify-between gap-3 py-2.5 ${
+                  useFlatLayout ? "" : "border-t border-border/70 px-4"
+                }`}
+              >
                 <div className="text-xs text-text-muted">
                   Page <span className="font-semibold text-text-heading">{page}</span> of{" "}
                   <span className="font-semibold text-text-heading">{totalPages}</span>
@@ -543,6 +585,13 @@ export default function ConversationsPage() {
       </div>
       {modal}
     </div>
+  );
+
+  if (isClientUser) return content;
+
+  return (
+    <FeaturePageGate feature={FEATURES.PRO_CHAT_DM}>
+      {content}
     </FeaturePageGate>
   );
 }

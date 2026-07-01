@@ -323,6 +323,14 @@ export default function NotificationsBell({ enabled = true }) {
                           >
                             View details →
                           </button>
+                        ) : n.action?.type === "open_property" ? (
+                          <button
+                            type="button"
+                            onClick={() => openItem(n)}
+                            className="mt-1 block text-[11px] font-semibold text-primary"
+                          >
+                            Open property →
+                          </button>
                         ) : n.action?.type === "open_referral" ? (
                           <button
                             type="button"

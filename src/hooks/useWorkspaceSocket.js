@@ -62,7 +62,7 @@ export function useWorkspaceSocket(token, queryClient) {
     const socket = io(origin, {
       path: "/socket.io",
       auth: { token: sessionToken },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       reconnectionAttempts: 10,
       reconnectionDelay: 1500,
     });
