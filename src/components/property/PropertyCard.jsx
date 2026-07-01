@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { MapPin, Bed, Bath, Maximize2, Calendar, Image as ImageIcon, Tag } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 function formatPrice(value) {
   const raw = String(value || "").trim();
@@ -18,6 +19,7 @@ function formatPrice(value) {
 }
 
 export default function PropertyCard({ property }) {
+  const router = useRouter();
   const mainImage = property.images?.[0]?.secure_url || property.images?.[0]?.url;
   const formattedDate = property.listedDate 
     ? new Date(property.listedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -27,6 +29,7 @@ export default function PropertyCard({ property }) {
     ? property.address
     : property.location || "Available Property";
   const hasStats = property.bedrooms || property.bathrooms || property.squareFootage;
+  const detailHref = `/client-dashboard/properties/${encodeURIComponent(String(property.id))}`;
 
   return (
     <motion.div
@@ -35,6 +38,7 @@ export default function PropertyCard({ property }) {
       whileHover={{ y: -4 }}
       transition={{ duration: 0.22 }}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-md"
+      onClick={() => router.push(detailHref)}
     >
       <div className="relative h-48 w-full overflow-hidden bg-slate-100">
         {mainImage ? (
@@ -124,7 +128,14 @@ export default function PropertyCard({ property }) {
             </div>
           )}
 
-          <button className="w-full rounded-xl bg-primary/8 px-4 py-2.5 text-sm font-bold text-primary transition group-hover:bg-primary group-hover:text-white">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              router.push(detailHref);
+            }}
+            className="w-full rounded-xl bg-primary/8 px-4 py-2.5 text-sm font-bold text-primary transition group-hover:bg-primary group-hover:text-white"
+          >
             View Details
           </button>
         </div>

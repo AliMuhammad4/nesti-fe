@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchProfessionals } from "@/lib/professionalsClient";
+import { fetchClientRecommendations, fetchProfessionals } from "@/lib/professionalsClient";
 import useDynamicTablePageSize from "@/hooks/useDynamicTablePageSize";
+import { ClientMatchExplanation, ClientMatchSummary } from "@/components/matching/MatchExplanation";
 
-const TABS = [
+const ROLE_TABS = [
   { id: "agent", label: "Agents" },
   { id: "lawyer", label: "Lawyers" },
   { id: "mortgage_broker", label: "Mortgage Brokers" },
 ];
+const RECOMMENDATION_ROLE_TABS = [{ id: "all", label: "All" }, ...ROLE_TABS];
 
 function displayName(row) {
   const full = String(row?.full_name || "").trim();
@@ -30,6 +32,12 @@ function initialsFor(row) {
     .join("") || "U";
 }
 
+function formatRole(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function DashboardProfessionalsTabs({
   token,
   initialRole = "agent",
@@ -37,9 +45,49 @@ export default function DashboardProfessionalsTabs({
   paginationOutside = false,
 }) {
   const router = useRouter();
-  const normalizedInitialRole = TABS.some((t) => t.id === initialRole) ? initialRole : "agent";
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const useRecommendations = searchParams?.get("recommended") === "1";
+  const availableTabs = useRecommendations ? RECOMMENDATION_ROLE_TABS : ROLE_TABS;
+  const normalizedInitialRole = availableTabs.some((t) => t.id === initialRole)
+    ? initialRole
+    : useRecommendations
+      ? "all"
+      : "agent";
   const [activeTab, setActiveTab] = useState(normalizedInitialRole);
   const [page, setPage] = useState(1);
+
+  const updateUrl = useCallback(
+    (nextParams) => {
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      nextParams(params);
+      const next = params.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const updateRoleInUrl = useCallback(
+    (tabId) => {
+      updateUrl((params) => {
+        if (useRecommendations && tabId === "all") {
+          params.delete("role");
+        } else {
+          params.set("role", tabId);
+        }
+      });
+    },
+    [updateUrl, useRecommendations],
+  );
+
+  const handleTabChange = useCallback(
+    (tabId) => {
+      setActiveTab(tabId);
+      setPage(1);
+      updateRoleInUrl(tabId);
+    },
+    [updateRoleInUrl],
+  );
   const pageSize = useDynamicTablePageSize({
     minRows: 10,
     maxRows: 24,
@@ -55,10 +103,14 @@ export default function DashboardProfessionalsTabs({
   useEffect(() => {
     setPage(1);
   }, [activeTab]);
+  const activeRole = activeTab === "all" ? "" : activeTab;
   const query = useQuery({
-    queryKey: ["dashboard-professionals", token, activeTab, page, effectivePageSize],
+    queryKey: ["dashboard-professionals", token, activeRole, page, effectivePageSize, useRecommendations],
     enabled: Boolean(token),
-    queryFn: () => fetchProfessionals({ token, role: activeTab, page, limit: effectivePageSize }),
+    queryFn: () =>
+      useRecommendations
+        ? fetchClientRecommendations({ token, role: activeRole, limit: effectivePageSize })
+        : fetchProfessionals({ token, role: activeRole, page, limit: effectivePageSize }),
     staleTime: 60_000,
     placeholderData: (prev) => prev,
   });
@@ -115,23 +167,28 @@ export default function DashboardProfessionalsTabs({
 
   return (
     <>
-      <section className="min-w-0 rounded-xl border border-border bg-white p-3 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-border bg-white shadow-sm">
+      <div className="shrink-0 border-b border-border/70 px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-text-heading">Professionals</h2>
+          <h2 className="text-sm font-semibold text-text-heading">
+            {useRecommendations ? "Recommended for you" : "Professionals"}
+          </h2>
           <p className="mt-0.5 text-xs text-text-muted">
-            Browse registered profiles by professional role.
+            {useRecommendations
+              ? "Ranked by your budget, location, timeline, and preferences."
+              : "Browse registered profiles by professional role."}
           </p>
         </div>
         {showTabs ? (
           <div className="inline-flex rounded-lg border border-border bg-background-light p-0.5">
-            {TABS.map((tab) => {
+            {availableTabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                     active ? "bg-white text-primary shadow-sm" : "text-text-muted hover:text-text-heading"
                   }`}
@@ -143,8 +200,85 @@ export default function DashboardProfessionalsTabs({
           </div>
         ) : null}
       </div>
+      </div>
 
-      <div className="mt-3 overflow-x-auto">
+      {useRecommendations ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {query.isLoading ? (
+            Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={`recommendation-skeleton-${index}`}
+                className="h-[168px] animate-pulse rounded-xl border border-border bg-slate-50"
+              />
+            ))
+          ) : query.isError ? (
+            <div className="col-span-full rounded-xl border border-red-100 bg-red-50 p-5 text-sm text-red-600">
+              {query.error?.message || "Failed to load recommendations."}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="col-span-full rounded-xl border border-dashed border-border bg-slate-50/70 p-8 text-center">
+              <p className="text-sm font-medium text-text-heading">No matches yet</p>
+              <p className="mt-1 text-xs text-text-muted">
+                Complete your profile preferences to unlock better recommendations.
+              </p>
+            </div>
+          ) : (
+            items.map((row) => {
+              return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => router.push(`/professionals/${encodeURIComponent(row.id)}`)}
+                className="group flex h-full flex-col rounded-xl border border-border bg-white p-3.5 text-left transition hover:border-primary/25 hover:shadow-md"
+              >
+                <div className="flex items-start gap-3.5">
+                  {row.profile_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={row.profile_image}
+                      alt={displayName(row)}
+                      className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-border/60"
+                    />
+                  ) : (
+                    <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/[0.08] text-sm font-bold text-primary ring-1 ring-primary/10">
+                      {initialsFor(row)}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-text-heading">{displayName(row)}</h3>
+                        <p className="mt-0.5 truncate text-xs text-text-muted">
+                          {row.company_name || formatRole(row.professional_type)}
+                        </p>
+                      </div>
+                      <ClientMatchSummary tier={row.ai_match_tier} score={row.ai_match_score} />
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                        {formatRole(row.professional_type || row.role || "Professional")}
+                      </span>
+                      <span className="truncate text-[11px] text-text-muted">
+                        {row.location || "Location not listed"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <ClientMatchExplanation
+                  score={row.ai_match_score}
+                  breakdown={row.ai_match_breakdown}
+                  tier={row.ai_match_tier}
+                  compact
+                />
+              </button>
+              );
+            })
+          )}
+        </div>
+        </div>
+      ) : (
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto px-3 py-3">
         <table className="w-full min-w-[680px] border-collapse text-left">
           <thead>
             <tr className="border-b border-border bg-primary/[0.03] text-[10px] uppercase tracking-wide text-text-muted">
@@ -252,9 +386,12 @@ export default function DashboardProfessionalsTabs({
           </tbody>
         </table>
       </div>
+      )}
       {!paginationOutside ? paginationStrip : null}
       </section>
-      {paginationOutside ? <div className="mt-3">{paginationStrip}</div> : null}
+      {paginationOutside ? (
+        <div className={`shrink-0 ${useRecommendations ? "mt-3" : "mt-3"}`}>{paginationStrip}</div>
+      ) : null}
     </>
   );
 }

@@ -50,18 +50,19 @@ export default function ProMessagesThreadPage() {
   const queryClient = useQueryClient();
   const { token, user: authUser } = useAppSelector((s) => s.auth);
   const myUserId = String(authUser?.id || authUser?._id || "").trim();
+  const isClientUser = String(authUser?.role || "").toLowerCase() === "client";
 
   const threadQuery = useQuery({
-    queryKey: ["prochat-thread", token, threadId],
+    queryKey: ["prochat-thread", token, threadId, isClientUser],
     enabled: Boolean(token && threadId),
-    queryFn: () => fetchProChatThreadById({ token, id: threadId }),
+    queryFn: () => fetchProChatThreadById({ token, id: threadId, client: isClientUser }),
     refetchOnWindowFocus: true,
   });
 
   const messagesQuery = useQuery({
-    queryKey: ["prochat-messages", token, threadId, 1],
+    queryKey: ["prochat-messages", token, threadId, 1, isClientUser],
     enabled: Boolean(token && threadId),
-    queryFn: () => fetchProChatThreadMessages({ token, id: threadId, page: 1, limit: 50 }),
+    queryFn: () => fetchProChatThreadMessages({ token, id: threadId, page: 1, limit: 50, client: isClientUser }),
   });
 
   const thread = threadQuery.data?.thread || null;
@@ -130,7 +131,7 @@ export default function ProMessagesThreadPage() {
 
   const profQuery = useQuery({
     queryKey: ["prochat-group-add-search", token, memberSearch],
-    enabled: Boolean(token) && settingsOpen && isGroup,
+    enabled: Boolean(token) && settingsOpen && isGroup && !isClientUser,
     queryFn: () => fetchProfessionals({ token, search: memberSearch, all: true }),
     staleTime: 10_000,
     refetchOnWindowFocus: false,
@@ -379,7 +380,7 @@ export default function ProMessagesThreadPage() {
     const socket = io(origin, {
       path: "/socket.io",
       auth: { token: sessionToken },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       reconnectionAttempts: 10,
       reconnectionDelay: 1500,
     });
@@ -529,9 +530,9 @@ export default function ProMessagesThreadPage() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+    <div className="flex h-[calc(100vh-4rem)] min-h-[calc(100vh-4rem)] min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">
       <div className="sticky top-0 z-30 border-b border-border/70 bg-white/95 shadow-sm backdrop-blur">
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
+        <div className="flex w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-5">
           <button
             type="button"
             onClick={() => router.back()}
@@ -596,34 +597,36 @@ export default function ProMessagesThreadPage() {
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5"
       >
-        {threadQuery.isLoading || messagesQuery.isLoading ? (
-          <p className="py-6 text-center text-xs text-text-muted">Loading messages…</p>
-        ) : threadQuery.isError ? (
-          <p className="py-6 text-center text-xs text-red-600">
-            {threadQuery.error?.message || "Could not load this chat."}
-          </p>
-        ) : messages.length === 0 ? (
-          <div className="py-6 text-center text-xs text-text-muted">
-            {!canReply && isGroup ? "You left this group. Request rejoin to send messages." : "No messages yet. Say hello."}
-          </div>
-        ) : (
-          <div className="flex w-full flex-col gap-3">
-            <ThreadMessagesList
-              messages={messages}
-              myUserId={myUserId}
-              isGroup={isGroup}
-              membersById={membersById}
-              otherUser={otherUser}
-            />
-            <div ref={bottomRef} />
-          </div>
-        )}
+        <div className="flex min-h-full w-full flex-col justify-end">
+          {threadQuery.isLoading || messagesQuery.isLoading ? (
+            <p className="py-6 text-center text-xs text-text-muted">Loading messages…</p>
+          ) : threadQuery.isError ? (
+            <p className="py-6 text-center text-xs text-red-600">
+              {threadQuery.error?.message || "Could not load this chat."}
+            </p>
+          ) : messages.length === 0 ? (
+            <div className="py-6 text-center text-xs text-text-muted">
+              {!canReply && isGroup ? "You left this group. Request rejoin to send messages." : "No messages yet. Say hello."}
+            </div>
+          ) : (
+            <div className="flex w-full flex-col gap-3">
+              <ThreadMessagesList
+                messages={messages}
+                myUserId={myUserId}
+                isGroup={isGroup}
+                membersById={membersById}
+                otherUser={otherUser}
+              />
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="shrink-0 border-t border-border/70 bg-white/95 px-3 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur sm:px-6 sm:py-4">
-        <div className="w-full rounded-2xl border border-border/70 bg-white/95 p-3 sm:p-4">
+      <div className="shrink-0 border-t border-primary/10 bg-primary/[0.035] px-3 py-3 backdrop-blur sm:px-5">
+        <div className="w-full rounded-2xl border border-white/60 bg-white/35 p-2.5 shadow-sm backdrop-blur-md sm:p-3">
           {isGroup && !canReply ? (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-background-light/70 px-3 py-2">
               <div className="text-xs text-text-muted">
@@ -666,7 +669,7 @@ export default function ProMessagesThreadPage() {
             setDraftAttachments={setDraftAttachments}
             uploadingAttachments={uploadingAttachments}
             setUploadingAttachments={setUploadingAttachments}
-            onUploadAttachment={uploadProChatThreadAttachment}
+            onUploadAttachment={(args) => uploadProChatThreadAttachment({ ...args, client: isClientUser })}
             onSendMessage={sendMessage}
             onEmitTyping={emitTyping}
             typingTimeoutRef={typingTimeoutRef}

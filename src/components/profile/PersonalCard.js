@@ -33,13 +33,11 @@ export default function PersonalCard({
       label: "Website",
       value: businessInfo?.website || personalInfo?.website,
       icon: Globe2,
-      colSpan: 2,
     },
     {
       label: "Calendly",
       value: personalInfo?.calendlyUrl || businessInfo?.calendlyLink,
       icon: Calendar,
-      colSpan: 2,
     },
   ];
 
@@ -57,13 +55,13 @@ export default function PersonalCard({
       label: "Website",
       value: businessInfo?.website || personalInfo?.website,
       icon: Globe2,
-      colSpan: 2,
+      colSpan: "half",
     },
     {
       label: "Calendly",
       value: personalInfo?.calendlyUrl || businessInfo?.calendlyLink,
       icon: Calendar,
-      colSpan: 3,
+      colSpan: "half",
     },
   ];
 

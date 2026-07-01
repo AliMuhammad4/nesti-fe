@@ -12,6 +12,7 @@ import { fetchProfessionalById } from "@/lib/professionalsClient";
 import { createOrGetProChatThread } from "@/lib/proChatClient";
 import PersonalCard from "@/components/profile/PersonalCard";
 import BusinessCard from "@/components/profile/BusinessCard";
+import { ClientMatchExplanation } from "@/components/matching/MatchExplanation";
 
 function humanizeToken(value) {
   return String(value || "")
@@ -78,6 +79,7 @@ export default function ProfessionalDetailPage() {
       const resp = await createOrGetProChatThread({
         token,
         other_user_id: String(pro.id),
+        client: String(authUser?.role || "").toLowerCase() === "client",
       });
       const threadId = resp?.thread?.id;
       if (threadId) {
@@ -231,6 +233,14 @@ export default function ProfessionalDetailPage() {
                   professionalLineLayout
                 />
               </section>
+
+              {pro?.ai_match_tier || pro?.ai_match_score || pro?.ai_match_breakdown?.length ? (
+                <ClientMatchExplanation
+                  score={pro.ai_match_score}
+                  breakdown={pro.ai_match_breakdown}
+                  tier={pro.ai_match_tier}
+                />
+              ) : null}
 
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.05] sm:p-6">
                 <SectionHeader icon={Briefcase} title="Business & expertise" />

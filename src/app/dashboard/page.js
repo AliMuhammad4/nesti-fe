@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Copy, Link2, Mail, MessageCircle, RefreshCw, Share2, X } from "lucide-react";
+import { Copy, Link2, Mail, MessageCircle, RefreshCw, Settings2, Share2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
@@ -30,6 +30,8 @@ import DashboardTopTables from "@/components/dashboard/DashboardTopTables";
 import DashboardCalendlyButton from "@/components/dashboard/DashboardCalendlyButton";
 import DashboardStartGuide from "@/components/dashboard/DashboardStartGuide";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
+import CoverImageEditor from "@/components/dashboard/CoverImageEditor";
+import { apiClient, API_ENDPOINTS } from "@/lib/api";
 
 const DashboardAnalyticsPanels = dynamic(
   () => import("@/components/dashboard/DashboardAnalyticsPanels"),
@@ -87,6 +89,20 @@ export default function DashboardPage() {
     const fromActive = activeUser?.cover_image && String(activeUser.cover_image).trim();
     return fromStore || fromApi || fromActive || "";
   }, [personalInfo?.coverImage, apiUser?.cover_image, activeUser?.cover_image]);
+
+  const coverImagePosition = useMemo(() => {
+    const pos = apiUser?.cover_image_position || activeUser?.cover_image_position || {};
+    return {
+      x: Math.min(100, Math.max(0, Number(pos.x) || 50)),
+      y: Math.min(100, Math.max(0, Number(pos.y) || 50)),
+    };
+  }, [apiUser?.cover_image_position, activeUser?.cover_image_position]);
+
+  const coverImageZoom = useMemo(() => {
+    const value = Number(apiUser?.cover_image_zoom || activeUser?.cover_image_zoom || 1);
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(3, Math.max(1, value));
+  }, [apiUser?.cover_image_zoom, activeUser?.cover_image_zoom]);
 
   const profileImageUrl = useMemo(() => {
     const fromStore = personalInfo?.profileImage && String(personalInfo.profileImage).trim();
@@ -159,6 +175,7 @@ export default function DashboardPage() {
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState("");
+  const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [guideDismissed, setGuideDismissed] = useState(false);
   const guideStorageKey = useMemo(() => {
     const id =
@@ -297,6 +314,23 @@ export default function DashboardPage() {
       }
     },
     onError: (err) => toast.error(err?.message || "Could not create invite link."),
+  });
+
+  const saveCoverAdjustmentsMutation = useMutation({
+    mutationFn: ({ zoom, position }) =>
+      apiClient({
+        url: API_ENDPOINTS.professionals.coverAdjustments,
+        method: "POST",
+        data: { zoom, position },
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Cover photo saved.");
+      setShowCoverEditor(false);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      profileQuery.refetch();
+    },
+    onError: (err) => toast.error(err?.message || "Could not save cover photo."),
   });
 
   const copyGeneratedInviteLink = async () => {
@@ -490,9 +524,22 @@ export default function DashboardPage() {
                 <img
                   src={coverImageUrl}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.02] contrast-[0.98]"
+                  className="absolute inset-0 h-full w-full object-cover brightness-[1.02] contrast-[0.98]"
+                  style={{
+                    objectPosition: `${coverImagePosition.x}% ${coverImagePosition.y}%`,
+                    transform: `scale(${coverImageZoom})`,
+                    transformOrigin: `${coverImagePosition.x}% ${coverImagePosition.y}%`,
+                  }}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/15 via-slate-900/8 to-slate-900/30" aria-hidden />
+                <button
+                  type="button"
+                  onClick={() => setShowCoverEditor(true)}
+                  className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-primary"
+                >
+                  <Settings2 size={13} />
+                  Adjust cover
+                </button>
               </>
             ) : (
               <>
@@ -790,6 +837,16 @@ export default function DashboardPage() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+      {showCoverEditor && coverImageUrl ? (
+        <CoverImageEditor
+          coverUrl={coverImageUrl}
+          initialZoom={coverImageZoom}
+          initialPosition={coverImagePosition}
+          saving={saveCoverAdjustmentsMutation.isPending}
+          onClose={() => setShowCoverEditor(false)}
+          onSave={(values) => saveCoverAdjustmentsMutation.mutate(values)}
+        />
+      ) : null}
     </div>
   );
 }

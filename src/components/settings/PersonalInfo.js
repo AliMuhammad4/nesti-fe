@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { User, Mail, Calendar, Pencil, ImageIcon, DollarSign, Home, Briefcase, MapPin } from "lucide-react";
+import { User, Mail, Calendar, Pencil, ImageIcon, MapPin, Sparkles, CheckCircle2 } from "lucide-react";
 import { toast } from "react-toastify";
 import FormField from "@/components/auth/FormField";
 import PhoneNumberField from "@/components/ui/PhoneNumberField";
@@ -44,30 +44,161 @@ const validatePersonalInfo = (form) => {
   return errors;
 };
 
-const EMPLOYMENT_OPTIONS = [
-  { value: "full_time", label: "Full-time employed" },
-  { value: "part_time", label: "Part-time employed" },
-  { value: "self_employed", label: "Self-employed" },
-  { value: "contract", label: "Contract / freelance" },
-  { value: "unemployed", label: "Currently unemployed" },
-  { value: "student", label: "Student" },
-  { value: "retired", label: "Retired" },
+const TIMELINE_OPTIONS = [
+  { value: "asap", label: "ASAP / within 1 month" },
+  { value: "1-3 months", label: "1 - 3 months" },
+  { value: "3-6 months", label: "3 - 6 months" },
+  { value: "6-12 months", label: "6 - 12 months" },
+  { value: "browsing", label: "Just browsing" },
+];
+
+const HOME_GOAL_OPTIONS = [
+  { value: "first_time_buyer", label: "First-time Home Buyer" },
+  { value: "first_time_investor", label: "First-time Investor" },
+  { value: "move_up_buyer", label: "Move-up Buyer" },
+  { value: "luxury_buyer", label: "Luxury Buyer" },
+  { value: "commercial_investor", label: "Commercial Investor" },
+  { value: "renting_leasing", label: "Renting / Leasing" },
+];
+
+const WORKING_STYLE_OPTIONS = [
+  { value: "explains_clearly", label: "Explains everything clearly" },
+  { value: "patient_supportive", label: "Patient & supportive" },
+  { value: "fast_efficient", label: "Fast & efficient" },
+  { value: "strong_negotiator", label: "Strong negotiator" },
+  { value: "investment_focused", label: "Investment focused" },
+  { value: "analytical", label: "Analytical" },
+  { value: "friendly_approachable", label: "Friendly & approachable" },
+  { value: "quick_responder", label: "Quick responder" },
+  { value: "straight_to_point", label: "Straight to the point" },
+];
+
+const PRIORITY_TAG_OPTIONS = [
+  { value: "best_deal", label: "Finding the best deal" },
+  { value: "closing_quickly", label: "Closing quickly" },
+  { value: "family_neighbourhoods", label: "Family-friendly neighbourhoods" },
+  { value: "great_schools", label: "Great schools" },
+  { value: "walkable_communities", label: "Walkable communities" },
+  { value: "parks_nature", label: "Parks & nature" },
+  { value: "transit_access", label: "Transit access" },
+  { value: "rental_income", label: "Rental income potential" },
+  { value: "long_term_investment", label: "Long-term investment" },
+  { value: "new_construction", label: "New construction" },
+  { value: "renovation_opportunities", label: "Renovation opportunities" },
+  { value: "luxury_lifestyle", label: "Luxury lifestyle" },
+  { value: "waterfront", label: "Waterfront properties" },
+  { value: "downtown_living", label: "Downtown living" },
+  { value: "pet_friendly", label: "Pet-friendly homes" },
+  { value: "eco_friendly", label: "Eco-friendly homes" },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: "english", label: "English" },
+  { value: "french", label: "French" },
+  { value: "punjabi", label: "Punjabi" },
+  { value: "mandarin", label: "Mandarin" },
+  { value: "arabic", label: "Arabic" },
   { value: "other", label: "Other" },
 ];
 
-const TIMELINE_OPTIONS = [
-  { value: "1_year", label: "Within 1 year" },
-  { value: "2_years", label: "1-2 years" },
-  { value: "3_years", label: "2-3 years" },
-  { value: "5_years", label: "3-5 years" },
-  { value: "exploring", label: "Just exploring" },
+const EXPERIENCE_PREFERENCE_OPTIONS = [
+  { value: "beginner_friendly", label: "Beginner-friendly" },
+  { value: "experienced", label: "Experienced" },
+  { value: "top_producer", label: "Top Producer" },
+  { value: "investor_specialist", label: "Investor Specialist" },
+  { value: "luxury_expert", label: "Luxury Expert" },
 ];
+
+const COMFORT_PREFERENCE_OPTIONS = [
+  { value: "female_led", label: "Female-led advisory style" },
+  { value: "multilingual", label: "Multilingual professionals" },
+  { value: "community_focused", label: "Community-focused" },
+  { value: "culturally_familiar", label: "Culturally familiar communication" },
+  { value: "no_preference", label: "No preference" },
+];
+
+const BUDGET_MIN = 200000;
+const BUDGET_MAX = 2500000;
+const BUDGET_STEP = 25000;
 
 const clientNumberOrNull = (value) => {
   if (value === "" || value === null || value === undefined) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
+
+const clientString = (value) => String(value || "").trim();
+
+function normalizeClientTimelineForLeadCapture(value) {
+  const current = String(value || "").trim();
+  const legacyMap = {
+    "1_year": "6-12 months",
+    "2_years": "browsing",
+    "3_years": "browsing",
+    "5_years": "browsing",
+    exploring: "browsing",
+  };
+  return legacyMap[current] || current;
+}
+
+function formatBudget(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n) || n <= 0) return "Select budget";
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1)}M`;
+  return `$${Math.round(n / 1000)}K`;
+}
+
+function SelectionCard({ selected, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative min-h-[2.55rem] overflow-hidden rounded-xl border px-3 py-2 text-left text-[11px] font-black transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        selected
+          ? "border-primary/45 bg-gradient-to-br from-primary/[0.14] to-emerald-50 text-primary-dark shadow-sm ring-1 ring-primary/15"
+          : "border-slate-200 bg-white/90 text-text-heading shadow-[0_8px_22px_rgba(15,23,42,0.035)] hover:border-primary/25 hover:bg-white"
+      }`}
+    >
+      <span className="relative z-[1] flex items-center justify-between gap-2">
+        <span>{label}</span>
+        {selected ? <CheckCircle2 size={15} className="shrink-0 text-primary" /> : null}
+      </span>
+      {selected ? <span className="absolute -right-7 -top-8 h-20 w-20 rounded-full bg-primary/10 blur-xl" /> : null}
+    </button>
+  );
+}
+
+function ChipButton({ selected, label, onClick, disabled = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled && !selected}
+      className={`rounded-full border px-3 py-1.5 text-[10px] font-black transition duration-200 ${
+        selected
+          ? "border-primary bg-gradient-to-r from-primary to-emerald-500 text-white shadow-[0_8px_18px_rgba(22,163,74,0.18)]"
+          : "border-slate-200 bg-white/90 text-text-body shadow-[0_6px_14px_rgba(15,23,42,0.035)] hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary hover:shadow-sm"
+      } ${disabled && !selected ? "cursor-not-allowed opacity-45" : ""}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function OnboardingSection({ title, helper, right, children, className = "" }) {
+  return (
+    <section className={`border-t border-slate-100 pt-3 first:border-t-0 first:pt-0 ${className}`}>
+      <div className="mb-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h4 className="text-[13px] font-black text-text-heading">{title}</h4>
+          {helper ? <p className="mt-0.5 text-[11px] leading-4 text-text-muted">{helper}</p> : null}
+        </div>
+        {right ? <div className="shrink-0">{right}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function PersonalInfo({ onSaveSuccess } = {}) {
   const storedPersonal = useAppSelector((state) => state.profile.personalInfo);
@@ -95,11 +226,29 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
     current_savings: "",
     monthly_savings: "",
     dream_home_price: "",
+    home_goal: "",
+    home_goals: [],
     preferred_location: "",
+    preferred_locations: [],
     purchase_timeline: "",
+    mortgage_status: "",
+    realtor_status: "",
+    viewing_readiness: "",
+    offer_readiness: "",
+    motivation_reason: "",
+    living_situation: "",
+    purchase_purpose: "",
+    preferred_contact_method: "",
+    best_time_to_contact: "",
+    working_styles: [],
+    priority_tags: [],
+    languages: [],
+    preferred_experience: "",
+    comfort_preferences: [],
   });
   const [clientLoading, setClientLoading] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
+  const clientAutosaveReadyRef = useRef(false);
   const savePersonalInfo = useSavePersonalInfo();
   const uploadMedia = useUploadProfileMedia();
   const authProvider = String(
@@ -148,9 +297,33 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
           current_savings: profile?.current_savings ?? "",
           monthly_savings: profile?.monthly_savings ?? "",
           dream_home_price: profile?.dream_home_price ?? "",
+          home_goal: profile?.home_goal || "",
+          home_goals: Array.isArray(profile?.home_goals)
+            ? profile.home_goals
+            : profile?.home_goal
+              ? [profile.home_goal]
+              : [],
           preferred_location: profile?.preferred_location || "",
-          purchase_timeline: profile?.purchase_timeline || "",
+          preferred_locations: Array.isArray(profile?.preferred_locations) ? profile.preferred_locations : [],
+          purchase_timeline: normalizeClientTimelineForLeadCapture(profile?.purchase_timeline),
+          mortgage_status: profile?.mortgage_status || "",
+          realtor_status: profile?.realtor_status || "",
+          viewing_readiness: profile?.viewing_readiness || "",
+          offer_readiness: profile?.offer_readiness || "",
+          motivation_reason: profile?.motivation_reason || "",
+          living_situation: profile?.living_situation || "",
+          purchase_purpose: profile?.purchase_purpose || "",
+          preferred_contact_method: profile?.preferred_contact_method || "",
+          best_time_to_contact: profile?.best_time_to_contact || "",
+          working_styles: Array.isArray(profile?.working_styles) ? profile.working_styles : [],
+          priority_tags: Array.isArray(profile?.priority_tags) ? profile.priority_tags : [],
+          languages: Array.isArray(profile?.languages) ? profile.languages : [],
+          preferred_experience: profile?.preferred_experience || "",
+          comfort_preferences: Array.isArray(profile?.comfort_preferences) ? profile.comfort_preferences : [],
         });
+        window.setTimeout(() => {
+          clientAutosaveReadyRef.current = true;
+        }, 0);
       } catch (error) {
         if (!cancelled) toast.error(error?.message || "Failed to load client details");
       } finally {
@@ -173,6 +346,82 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
     const { name, value } = e.target;
     setClientForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const setClientField = (name, value) => {
+    setClientForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const toggleClientArrayValue = (name, value, max = 12) => {
+    setClientForm((prev) => {
+      const current = Array.isArray(prev[name]) ? prev[name] : [];
+      const exists = current.includes(value);
+      const next = exists
+        ? current.filter((item) => item !== value)
+        : current.length >= max
+          ? current
+          : [...current, value];
+      return { ...prev, [name]: next };
+    });
+  };
+
+  const toggleHomeGoal = (value) => {
+    setClientForm((prev) => {
+      const current = Array.isArray(prev.home_goals)
+        ? prev.home_goals
+        : prev.home_goal
+          ? [prev.home_goal]
+          : [];
+      const next = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value];
+      return {
+        ...prev,
+        home_goals: next,
+        home_goal: next[0] || "",
+      };
+    });
+  };
+
+  useEffect(() => {
+    if (!isClient || !token || !clientAutosaveReadyRef.current) return;
+    const timer = window.setTimeout(() => {
+      const payload = {
+        annual_income: clientNumberOrNull(clientForm.annual_income),
+        employment_status: clientString(clientForm.employment_status),
+        current_savings: clientNumberOrNull(clientForm.current_savings),
+        monthly_savings: clientNumberOrNull(clientForm.monthly_savings),
+        dream_home_price: clientNumberOrNull(clientForm.dream_home_price),
+        home_goal: clientString(clientForm.home_goal),
+        home_goals: Array.isArray(clientForm.home_goals) ? clientForm.home_goals : [],
+        preferred_location: clientString(clientForm.preferred_location),
+        preferred_locations: Array.isArray(clientForm.preferred_locations) ? clientForm.preferred_locations : [],
+        purchase_timeline: clientString(clientForm.purchase_timeline),
+        mortgage_status: clientString(clientForm.mortgage_status),
+        realtor_status: clientString(clientForm.realtor_status),
+        viewing_readiness: clientString(clientForm.viewing_readiness),
+        offer_readiness: clientString(clientForm.offer_readiness),
+        motivation_reason: clientString(clientForm.motivation_reason),
+        living_situation: clientString(clientForm.living_situation),
+        purchase_purpose: clientString(clientForm.purchase_purpose),
+        preferred_contact_method: clientString(clientForm.preferred_contact_method),
+        best_time_to_contact: clientString(clientForm.best_time_to_contact),
+        working_styles: Array.isArray(clientForm.working_styles) ? clientForm.working_styles : [],
+        priority_tags: Array.isArray(clientForm.priority_tags) ? clientForm.priority_tags : [],
+        languages: Array.isArray(clientForm.languages) ? clientForm.languages : [],
+        preferred_experience: clientString(clientForm.preferred_experience),
+        comfort_preferences: Array.isArray(clientForm.comfort_preferences) ? clientForm.comfort_preferences : [],
+      };
+      apiClient({
+        url: API_ENDPOINTS.client.profile,
+        method: "PUT",
+        data: payload,
+        token,
+      }).catch(() => {
+        /* explicit Save still surfaces errors */
+      });
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [clientForm, isClient, token]);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -223,8 +472,25 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       current_savings: clientNumberOrNull(clientForm.current_savings),
       monthly_savings: clientNumberOrNull(clientForm.monthly_savings),
       dream_home_price: clientNumberOrNull(clientForm.dream_home_price),
-      preferred_location: String(clientForm.preferred_location || "").trim(),
+      home_goal: clientString(clientForm.home_goal),
+      home_goals: Array.isArray(clientForm.home_goals) ? clientForm.home_goals : [],
+      preferred_location: clientString(clientForm.preferred_location),
+      preferred_locations: Array.isArray(clientForm.preferred_locations) ? clientForm.preferred_locations : [],
       purchase_timeline: clientForm.purchase_timeline,
+      mortgage_status: clientString(clientForm.mortgage_status),
+      realtor_status: clientString(clientForm.realtor_status),
+      viewing_readiness: clientString(clientForm.viewing_readiness),
+      offer_readiness: clientString(clientForm.offer_readiness),
+      motivation_reason: clientString(clientForm.motivation_reason),
+      living_situation: clientString(clientForm.living_situation),
+      purchase_purpose: clientString(clientForm.purchase_purpose),
+      preferred_contact_method: clientString(clientForm.preferred_contact_method),
+      best_time_to_contact: clientString(clientForm.best_time_to_contact),
+      working_styles: Array.isArray(clientForm.working_styles) ? clientForm.working_styles : [],
+      priority_tags: Array.isArray(clientForm.priority_tags) ? clientForm.priority_tags : [],
+      languages: Array.isArray(clientForm.languages) ? clientForm.languages : [],
+      preferred_experience: clientString(clientForm.preferred_experience),
+      comfort_preferences: Array.isArray(clientForm.comfort_preferences) ? clientForm.comfort_preferences : [],
     };
 
     const hasNegativeNumber = ["annual_income", "current_savings", "monthly_savings", "dream_home_price"].some(
@@ -264,8 +530,29 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
         current_savings: savedProfile?.current_savings ?? "",
         monthly_savings: savedProfile?.monthly_savings ?? "",
         dream_home_price: savedProfile?.dream_home_price ?? "",
+        home_goal: savedProfile?.home_goal || "",
+        home_goals: Array.isArray(savedProfile?.home_goals)
+          ? savedProfile.home_goals
+          : savedProfile?.home_goal
+            ? [savedProfile.home_goal]
+            : [],
         preferred_location: savedProfile?.preferred_location || "",
-        purchase_timeline: savedProfile?.purchase_timeline || "",
+        preferred_locations: Array.isArray(savedProfile?.preferred_locations) ? savedProfile.preferred_locations : [],
+        purchase_timeline: normalizeClientTimelineForLeadCapture(savedProfile?.purchase_timeline),
+        mortgage_status: savedProfile?.mortgage_status || "",
+        realtor_status: savedProfile?.realtor_status || "",
+        viewing_readiness: savedProfile?.viewing_readiness || "",
+        offer_readiness: savedProfile?.offer_readiness || "",
+        motivation_reason: savedProfile?.motivation_reason || "",
+        living_situation: savedProfile?.living_situation || "",
+        purchase_purpose: savedProfile?.purchase_purpose || "",
+        preferred_contact_method: savedProfile?.preferred_contact_method || "",
+        best_time_to_contact: savedProfile?.best_time_to_contact || "",
+        working_styles: Array.isArray(savedProfile?.working_styles) ? savedProfile.working_styles : [],
+        priority_tags: Array.isArray(savedProfile?.priority_tags) ? savedProfile.priority_tags : [],
+        languages: Array.isArray(savedProfile?.languages) ? savedProfile.languages : [],
+        preferred_experience: savedProfile?.preferred_experience || "",
+        comfort_preferences: Array.isArray(savedProfile?.comfort_preferences) ? savedProfile.comfort_preferences : [],
       });
       await onSaveSuccess?.();
       toast.success(data?.message || "Personal information updated successfully");
@@ -327,6 +614,16 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
 
   const displayName =
     [form.firstName, form.lastName].filter(Boolean).join(" ").trim() || "Your profile";
+  const fieldSizeClass = isClient ? "!h-10 text-xs" : "!h-12 text-[13px]";
+  const disabledFieldSizeClass = isClient
+    ? "!h-10 bg-gray-100 text-xs cursor-not-allowed"
+    : "!h-12 bg-gray-100 text-[13px] cursor-not-allowed";
+  const detailsCardClass = isClient
+    ? "overflow-hidden rounded-[1.6rem] border border-white/75 bg-gradient-to-br from-white via-white to-primary/[0.025] p-4 shadow-[0_18px_48px_rgba(15,23,42,0.06)] ring-1 ring-slate-100/80 sm:p-5"
+    : "rounded-xl border border-border/60 bg-white p-4 shadow-sm sm:p-5";
+  const detailsGridClass = isClient
+    ? "mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-x-3 md:gap-y-2.5"
+    : "mt-3.5 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-4 md:gap-y-3";
 
   return (
     <div className="space-y-5">
@@ -409,77 +706,305 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       </div>
 
       {/* Personal details */}
-      <div className="rounded-xl border border-border/60 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 className="text-xs font-semibold text-text-heading">
-              {isClient ? "Personal & homeownership details" : "Contact & scheduling"}
+      <div className={detailsCardClass}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            {isClient ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-primary">
+                <Sparkles size={13} />
+                60-second AI profile
+              </div>
+            ) : null}
+            <h3 className={`font-black tracking-tight text-text-heading ${isClient ? "mt-3 text-lg sm:text-xl" : "text-xs"}`}>
+              {isClient ? "Tell us what kind of help feels right" : "Contact & scheduling"}
             </h3>
             {isClient ? (
-              <p className="mt-1 text-xs leading-5 text-text-muted">
-                Manage your contact details and the client fields used for your dashboard progress.
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-text-muted sm:text-sm">
+                Choose what matters to you. We autosave your answers and use them to rank agents, lawyers, and mortgage brokers.
               </p>
             ) : null}
           </div>
           {isClient && clientLoading ? (
-            <span className="text-xs font-semibold text-text-muted">Loading...</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-text-muted">Loading...</span>
           ) : null}
         </div>
 
-        <div className="mt-3.5 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-4 md:gap-y-3">
-          <FormField
-            label="First Name"
-            name="firstName"
-            value={form.firstName}
-            onChange={handleChange}
-            onFocus={() => setFocusedField("firstName")}
-            onBlur={() => setFocusedField("")}
-            placeholder="Enter first name"
-            icon={User}
-            focusedField={focusedField}
-            className="!h-12 text-[13px]"
-            required
-          />
-          <FormField
-            label="Last Name"
-            name="lastName"
-            value={form.lastName}
-            onChange={handleChange}
-            onFocus={() => setFocusedField("lastName")}
-            onBlur={() => setFocusedField("")}
-            placeholder="Enter last name"
-            icon={User}
-            focusedField={focusedField}
-            className="!h-12 text-[13px]"
-            required
-          />
-          <FormField
-            label="Email"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            onFocus={() => setFocusedField("email")}
-            onBlur={() => setFocusedField("")}
-            placeholder="you@example.com"
-            icon={Mail}
-            focusedField={focusedField}
-            disabled
-            className="!h-12 bg-gray-100 text-[13px] cursor-not-allowed"
-            required
-          />
-          <PhoneNumberField
-            label="Phone"
-            name="phone"
-            value={form.phone}
-            onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
-            onFocus={() => setFocusedField("phone")}
-            onBlur={() => setFocusedField("")}
-            error={null}
-            required
-            className="!h-12 text-[13px]"
-          />
-          {!isClient ? (
+        {isClient ? (
+          <div className="mt-4 space-y-3">
+            <OnboardingSection
+              eyebrow="Step 1"
+              title="Your contact details"
+              helper="A quick identity check so matched professionals can reach you correctly."
+            >
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              <FormField
+                label="First Name"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("firstName")}
+                onBlur={() => setFocusedField("")}
+                placeholder="Enter first name"
+                icon={User}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+                required
+              />
+              <FormField
+                label="Last Name"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("lastName")}
+                onBlur={() => setFocusedField("")}
+                placeholder="Enter last name"
+                icon={User}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+                required
+              />
+              <FormField
+                label="Email"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("email")}
+                onBlur={() => setFocusedField("")}
+                placeholder="you@example.com"
+                icon={Mail}
+                focusedField={focusedField}
+                disabled
+                className={disabledFieldSizeClass}
+                required
+              />
+              <PhoneNumberField
+                label="Phone"
+                name="phone"
+                value={form.phone}
+                onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
+                onFocus={() => setFocusedField("phone")}
+                onBlur={() => setFocusedField("")}
+                error={null}
+                required
+                className={fieldSizeClass}
+              />
+            </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 2"
+              title="Home goal"
+              helper="Pick the journey that best describes you right now."
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {HOME_GOAL_OPTIONS.map((option) => (
+                  <ChipButton
+                    key={option.value}
+                    label={option.label}
+                    selected={(Array.isArray(clientForm.home_goals) ? clientForm.home_goals : []).includes(option.value)}
+                    onClick={() => toggleHomeGoal(option.value)}
+                  />
+                ))}
+              </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 3"
+              title="Budget"
+              helper="Set your ideal purchase range so financial fit can be scored accurately."
+              right={
+                <div className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-primary shadow-sm ring-1 ring-primary/10">
+                  {formatBudget(clientForm.dream_home_price)}
+                </div>
+              }
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[10px] font-bold text-text-muted">Drag to adjust</span>
+              </div>
+              <input
+                type="range"
+                min={BUDGET_MIN}
+                max={BUDGET_MAX}
+                step={BUDGET_STEP}
+                value={Number(clientForm.dream_home_price || 500000)}
+                onChange={(event) => setClientField("dream_home_price", event.target.value)}
+                className="mt-2.5 h-1.5 w-full cursor-pointer accent-primary"
+              />
+              <div className="mt-0.5 flex justify-between text-[10px] font-semibold text-text-muted">
+                <span>{formatBudget(BUDGET_MIN)}</span>
+                <span>{formatBudget(BUDGET_MAX)}</span>
+              </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 4"
+              title="Location and timeline"
+              helper="Tell us where you want to move and how soon you want to act."
+            >
+            <div className="grid gap-3 lg:grid-cols-[minmax(260px,420px)_auto] lg:items-end">
+              <div className="max-w-[420px]">
+                <FormField
+                  label="Preferred Location"
+                  name="preferred_location"
+                  value={clientForm.preferred_location}
+                  onChange={(event) => {
+                    handleClientChange(event);
+                    setClientField("preferred_locations", event.target.value ? [event.target.value] : []);
+                  }}
+                  onFocus={() => setFocusedField("preferred_location")}
+                  onBlur={() => setFocusedField("")}
+                  placeholder="Search city, neighbourhood, or region"
+                  icon={MapPin}
+                  focusedField={focusedField}
+                  className={fieldSizeClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-black text-text-heading">Buying Timeline</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {TIMELINE_OPTIONS.slice(0, 4).map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label.replace(" / within 1 month", "")}
+                      selected={clientForm.purchase_timeline === option.value}
+                      onClick={() => setClientField("purchase_timeline", option.value)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 5"
+              title="Working style"
+              helper="Select the personality and communication style you prefer."
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {WORKING_STYLE_OPTIONS.map((option) => (
+                  <ChipButton
+                    key={option.value}
+                    label={option.label}
+                    selected={clientForm.working_styles.includes(option.value)}
+                    onClick={() => toggleClientArrayValue("working_styles", option.value)}
+                  />
+                ))}
+              </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 6"
+              title="What matters most?"
+              helper="Choose up to five priorities so recommendations feel personal."
+              right={<span className="rounded-full bg-primary/[0.08] px-3 py-1 text-[10px] font-black text-primary">{clientForm.priority_tags.length}/5 selected</span>}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {PRIORITY_TAG_OPTIONS.map((option) => (
+                  <ChipButton
+                    key={option.value}
+                    label={option.label}
+                    selected={clientForm.priority_tags.includes(option.value)}
+                    disabled={clientForm.priority_tags.length >= 5}
+                    onClick={() => toggleClientArrayValue("priority_tags", option.value, 5)}
+                  />
+                ))}
+              </div>
+            </OnboardingSection>
+
+            <div className="grid gap-3">
+              <OnboardingSection eyebrow="Step 7" title="Experience" helper="Choose the experience level you trust most." className="h-full">
+                <div className="flex flex-wrap gap-1.5">
+                  {EXPERIENCE_PREFERENCE_OPTIONS.map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label}
+                      selected={clientForm.preferred_experience === option.value}
+                      onClick={() => setClientField("preferred_experience", option.value)}
+                    />
+                  ))}
+                </div>
+              </OnboardingSection>
+              <OnboardingSection eyebrow="Optional" title="Comfort preferences" helper="Add any extra comfort preferences if they matter to you." className="h-full">
+                <div className="flex flex-wrap gap-1.5">
+                  {COMFORT_PREFERENCE_OPTIONS.map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label}
+                      selected={clientForm.comfort_preferences.includes(option.value)}
+                      onClick={() => toggleClientArrayValue("comfort_preferences", option.value)}
+                    />
+                  ))}
+                </div>
+              </OnboardingSection>
+              <OnboardingSection eyebrow="Step 8" title="Language" helper="Pick languages that make communication comfortable." className="h-full">
+                <div className="flex flex-wrap gap-1.5">
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label}
+                      selected={clientForm.languages.includes(option.value)}
+                      onClick={() => toggleClientArrayValue("languages", option.value)}
+                    />
+                  ))}
+                </div>
+              </OnboardingSection>
+            </div>
+          </div>
+        ) : (
+          <div className={detailsGridClass}>
+            <FormField
+              label="First Name"
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("firstName")}
+              onBlur={() => setFocusedField("")}
+              placeholder="Enter first name"
+              icon={User}
+              focusedField={focusedField}
+              className={fieldSizeClass}
+              required
+            />
+            <FormField
+              label="Last Name"
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("lastName")}
+              onBlur={() => setFocusedField("")}
+              placeholder="Enter last name"
+              icon={User}
+              focusedField={focusedField}
+              className={fieldSizeClass}
+              required
+            />
+            <FormField
+              label="Email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              onFocus={() => setFocusedField("email")}
+              onBlur={() => setFocusedField("")}
+              placeholder="you@example.com"
+              icon={Mail}
+              focusedField={focusedField}
+              disabled
+              className={disabledFieldSizeClass}
+              required
+            />
+            <PhoneNumberField
+              label="Phone"
+              name="phone"
+              value={form.phone}
+              onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
+              onFocus={() => setFocusedField("phone")}
+              onBlur={() => setFocusedField("")}
+              error={null}
+              required
+              className={fieldSizeClass}
+            />
             <div className="md:col-span-2">
               <FormField
                 label="Calendly URL"
@@ -491,145 +1016,18 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                 placeholder="https://calendly.com/your-handle/..."
                 icon={Calendar}
                 focusedField={focusedField}
-                className="!h-12 text-[13px]"
+                className={fieldSizeClass}
               />
             </div>
-          ) : null}
+          </div>
+        )}
 
-          {isClient ? (
-            <>
-              <div className="md:col-span-2 mt-2 border-t border-border/50 pt-4">
-                <div className="flex items-center gap-2">
-                  <Home size={15} className="text-primary" />
-                  <h4 className="text-xs font-semibold text-text-heading">Homeownership details</h4>
-                </div>
-                <p className="mt-1 text-xs leading-5 text-text-muted">
-                  These details improve your property options and professional matches.
-                </p>
-              </div>
-
-              <FormField
-                label="Annual Income"
-                name="annual_income"
-                type="number"
-                value={clientForm.annual_income}
-                onChange={handleClientChange}
-                onFocus={() => setFocusedField("annual_income")}
-                onBlur={() => setFocusedField("")}
-                placeholder="75000"
-                icon={DollarSign}
-                focusedField={focusedField}
-                className="!h-12 text-[13px]"
-              />
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-text-heading">
-                  Employment Status
-                </label>
-                <div className="relative">
-                  <Briefcase className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                  <select
-                    name="employment_status"
-                    value={clientForm.employment_status}
-                    onChange={handleClientChange}
-                    className="h-12 w-full rounded-lg border border-border bg-white pl-10 pr-3 text-[13px] font-medium text-text-heading outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-                  >
-                    <option value="">Select employment status</option>
-                    {EMPLOYMENT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <FormField
-                label="Current Savings"
-                name="current_savings"
-                type="number"
-                value={clientForm.current_savings}
-                onChange={handleClientChange}
-                onFocus={() => setFocusedField("current_savings")}
-                onBlur={() => setFocusedField("")}
-                placeholder="25000"
-                icon={DollarSign}
-                focusedField={focusedField}
-                className="!h-12 text-[13px]"
-              />
-
-              <FormField
-                label="Monthly Savings"
-                name="monthly_savings"
-                type="number"
-                value={clientForm.monthly_savings}
-                onChange={handleClientChange}
-                onFocus={() => setFocusedField("monthly_savings")}
-                onBlur={() => setFocusedField("")}
-                placeholder="1000"
-                icon={DollarSign}
-                focusedField={focusedField}
-                className="!h-12 text-[13px]"
-              />
-
-              <FormField
-                label="Target Home Price"
-                name="dream_home_price"
-                type="number"
-                value={clientForm.dream_home_price}
-                onChange={handleClientChange}
-                onFocus={() => setFocusedField("dream_home_price")}
-                onBlur={() => setFocusedField("")}
-                placeholder="500000"
-                icon={Home}
-                focusedField={focusedField}
-                className="!h-12 text-[13px]"
-              />
-
-              <FormField
-                label="Preferred Location"
-                name="preferred_location"
-                value={clientForm.preferred_location}
-                onChange={handleClientChange}
-                onFocus={() => setFocusedField("preferred_location")}
-                onBlur={() => setFocusedField("")}
-                placeholder="Toronto, Mississauga, Downtown..."
-                icon={MapPin}
-                focusedField={focusedField}
-                className="!h-12 text-[13px]"
-              />
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-text-heading">
-                  Purchase Timeline
-                </label>
-                <div className="relative">
-                  <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                  <select
-                    name="purchase_timeline"
-                    value={clientForm.purchase_timeline}
-                    onChange={handleClientChange}
-                    className="h-12 w-full rounded-lg border border-border bg-white pl-10 pr-3 text-[13px] font-medium text-text-heading outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-                  >
-                    <option value="">Select purchase timeline</option>
-                    {TIMELINE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </>
-          ) : null}
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 border-t border-border/50 pt-4 sm:flex-row sm:items-center sm:justify-end">
+        <div className="mt-4 flex flex-col gap-2.5 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
           {canChangePassword ? (
             <button
               type="button"
               onClick={() => setShowPasswordModal(true)}
-              className="w-full rounded-md border border-border bg-white px-4 py-2 text-[13px] font-semibold text-text-heading transition hover:border-primary/40 hover:text-primary sm:w-auto"
+              className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-[13px] font-bold text-text-heading transition hover:border-primary/40 hover:text-primary sm:w-auto"
             >
               Change password
             </button>

@@ -58,11 +58,16 @@ export function useTrialExpiryRedirect(isMounted) {
   const planLimits = effectiveUser?.planLimits || effectiveUser?.plan_limits || null;
   const usage = effectiveUser?.usage || null;
   const trialRemainingMs = useMemo(() => getTrialRemainingMs(trialEndsAt, now), [trialEndsAt, now]);
+  const trialStillActive =
+    accountStatus === ACCOUNT_STATUS.FREE_TRIAL &&
+    Boolean(trialEndsAt) &&
+    trialRemainingMs > 0;
   const trialHasEnded =
     accountStatus === ACCOUNT_STATUS.EXPIRED ||
     (accountStatus === ACCOUNT_STATUS.FREE_TRIAL && Boolean(trialEndsAt) && trialRemainingMs <= 0);
   const trialQuotaExhausted =
     accountStatus === ACCOUNT_STATUS.FREE_TRIAL &&
+    !trialStillActive &&
     getActivePlanLimitStates(planLimits, usage).length > 0;
 
   useEffect(() => {
@@ -73,10 +78,11 @@ export function useTrialExpiryRedirect(isMounted) {
 
   useEffect(() => {
     if (!isMounted || !token) return;
-    if (!trialHasEnded && !trialQuotaExhausted && !quotaRedirectRequested) return;
+    const shouldHonorQuotaRedirect = quotaRedirectRequested && !trialStillActive;
+    if (!trialHasEnded && !trialQuotaExhausted && !shouldHonorQuotaRedirect) return;
     if (isAllowedAfterTrial(pathname)) return;
 
-    const quotaLocked = trialQuotaExhausted || quotaRedirectRequested;
+    const quotaLocked = trialQuotaExhausted || shouldHonorQuotaRedirect;
     toast.info(
       quotaLocked
         ? "Your free trial quota has been used. Choose a subscription plan to continue."
@@ -92,12 +98,15 @@ export function useTrialExpiryRedirect(isMounted) {
           ? "/checkout?trial=quota"
           : "/checkout?trial=expired"
     );
-  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, pathname, router, isClient]);
+  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, trialStillActive, pathname, router, isClient]);
 
   useEffect(() => {
     if (!isMounted || !token) return;
-    const onQuotaRequired = () => setQuotaRedirectRequested(true);
+    const onQuotaRequired = () => {
+      if (trialStillActive) return;
+      setQuotaRedirectRequested(true);
+    };
     window.addEventListener("nesti:subscription-quota-required", onQuotaRequired);
     return () => window.removeEventListener("nesti:subscription-quota-required", onQuotaRequired);
-  }, [isMounted, token]);
+  }, [isMounted, token, trialStillActive]);
 }

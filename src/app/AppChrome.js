@@ -291,7 +291,7 @@ export default function AppChrome({ children }) {
           "/leads",
           "/referrals?direction=inbound",
           "/clients",
-          "/professionals?role=agent",
+          "/professionals",
           "/analytics",
           "/nurture-logs",
           "/settings",
@@ -307,7 +307,7 @@ export default function AppChrome({ children }) {
           "/conversations",
           "/referrals?direction=inbound",
           "/clients",
-          "/professionals?role=agent",
+          "/professionals",
           "/analytics",
           "/nurture-logs",
           "/settings",
@@ -535,8 +535,8 @@ export default function AppChrome({ children }) {
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <TrialCountdownBadge compact />
-                {!isClient && <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />}
-                {!isClient && <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />}
+                <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />
+                <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />
                 <div className="relative" ref={userMenuRef}>
                   <button
                     type="button"

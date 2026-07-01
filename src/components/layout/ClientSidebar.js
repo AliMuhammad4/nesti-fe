@@ -14,8 +14,9 @@ import {
   CreditCard,
   TrendingUp,
   UserRound,
-  Briefcase,
-  Scale,
+  Sparkles,
+  ClipboardList,
+  MessageSquare,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -67,23 +68,14 @@ function SettingsSubIcon({ Icon, active }) {
   );
 }
 
-function isPrimaryNavActive(pathname, searchParams, href) {
-  const [rawPath, rawQuery = ""] = href.split("?");
-  const hashIdx = rawPath.indexOf("#");
-  const path = hashIdx === -1 ? rawPath : rawPath.slice(0, hashIdx);
-  
-  if (path === "/") return pathname === "/";
-  const pathMatches = pathname === path || pathname.startsWith(`${path}/`);
-  if (!pathMatches) return false;
+function isExactNavActive(pathname, href) {
+  const path = href.split("?")[0].split("#")[0];
+  return pathname === path;
+}
 
-  if (!rawQuery) return true;
-
-  const hrefParams = new URLSearchParams(rawQuery);
-  for (const [key, value] of hrefParams.entries()) {
-    if (searchParams.get(key) !== value) return false;
-  }
-
-  return true;
+function isSectionNavActive(pathname, href) {
+  const path = href.split("?")[0].split("#")[0];
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
@@ -151,9 +143,11 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
       onCloseMobile?.();
     });
 
-  const primaryItemActive = (item) => {
-    return isPrimaryNavActive(pathname, searchParams, item.href);
-  };
+  const isProfessionalsRoute = pathname === "/professionals" || pathname.startsWith("/professionals/");
+  const isRecommendedProfessionals = isProfessionalsRoute && searchParams?.get("recommended") === "1";
+  const isBrowseProfessionals = isProfessionalsRoute && !isRecommendedProfessionals;
+  const isDashboardActive = isExactNavActive(pathname, "/client-dashboard");
+  const isPropertiesActive = isSectionNavActive(pathname, "/client-dashboard/properties");
 
   const sidebarInner = (
     <aside
@@ -220,23 +214,23 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              primaryItemActive({ id: "dashboard", href: "/client-dashboard" })
+              isDashboardActive
                 ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
                 : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={primaryItemActive({ id: "dashboard", href: "/client-dashboard" }) ? "page" : undefined}
+            aria-current={isDashboardActive ? "page" : undefined}
             onMouseEnter={() => {
               if (!shouldPrefetch) return;
               router.prefetch("/client-dashboard");
             }}
           >
-            {primaryItemActive({ id: "dashboard", href: "/client-dashboard" }) && (
+            {isDashboardActive && (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
               />
             )}
-            <NavIconTile Icon={Home} variant={primaryItemActive({ id: "dashboard", href: "/client-dashboard" }) ? "active" : "idle"} />
+            <NavIconTile Icon={Home} variant={isDashboardActive ? "active" : "idle"} />
             <span className="min-w-0 truncate">Dashboard</span>
           </Link>
 
@@ -247,112 +241,119 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              pathname === "/client-dashboard/properties"
+              isPropertiesActive
                 ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
                 : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={pathname === "/client-dashboard/properties" ? "page" : undefined}
+            aria-current={isPropertiesActive ? "page" : undefined}
             onMouseEnter={() => {
               if (!shouldPrefetch) return;
               router.prefetch("/client-dashboard/properties");
             }}
           >
-            {pathname === "/client-dashboard/properties" && (
+            {isPropertiesActive && (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
               />
             )}
-            <NavIconTile Icon={Building2} variant={pathname === "/client-dashboard/properties" ? "active" : "idle"} />
+            <NavIconTile Icon={Building2} variant={isPropertiesActive ? "active" : "idle"} />
             <span className="min-w-0 truncate">Properties</span>
+          </Link>
+
+          <Link
+            href="/client-dashboard/inquiries"
+            onClick={() => {
+              setSettingsOpen(false);
+              onCloseMobile?.();
+            }}
+            className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
+              pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")
+                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+            }`}
+            aria-current={pathname === "/client-dashboard/inquiries" ? "page" : undefined}
+            onMouseEnter={() => {
+              if (!shouldPrefetch) return;
+              router.prefetch("/client-dashboard/inquiries");
+            }}
+          >
+            {(pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")) && (
+              <span
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                aria-hidden
+              />
+            )}
+            <NavIconTile
+              Icon={ClipboardList}
+              variant={
+                pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")
+                  ? "active"
+                  : "idle"
+              }
+            />
+            <span className="min-w-0 truncate">Inquiries</span>
           </Link>
         </div>
 
-        {/* Find Professionals Section */}
+        {/* Find Professionals */}
         <div>
           <p className="mb-1.5 px-1 text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
             Find Professionals
           </p>
           <div className="space-y-0.5">
             <Link
-              href="/professionals?role=agent"
+              href="/professionals"
               onClick={() => {
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                primaryItemActive({ href: "/professionals?role=agent" })
+                isBrowseProfessionals
                   ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
                   : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={primaryItemActive({ href: "/professionals?role=agent" }) ? "page" : undefined}
+              aria-current={isBrowseProfessionals ? "page" : undefined}
               onMouseEnter={() => {
                 if (!shouldPrefetch) return;
-                router.prefetch("/professionals?role=agent");
+                router.prefetch("/professionals");
               }}
             >
-              {primaryItemActive({ href: "/professionals?role=agent" }) && (
+              {isBrowseProfessionals && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={UserRound} variant={primaryItemActive({ href: "/professionals?role=agent" }) ? "active" : "idle"} />
-              <span className="min-w-0 truncate">Agents</span>
+              <NavIconTile Icon={UserRound} variant={isBrowseProfessionals ? "active" : "idle"} />
+              <span className="min-w-0 truncate">Professionals</span>
             </Link>
 
             <Link
-              href="/professionals?role=lawyer"
+              href="/professionals?recommended=1"
               onClick={() => {
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                primaryItemActive({ href: "/professionals?role=lawyer" })
+                isRecommendedProfessionals
                   ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
                   : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={primaryItemActive({ href: "/professionals?role=lawyer" }) ? "page" : undefined}
+              aria-current={isRecommendedProfessionals ? "page" : undefined}
               onMouseEnter={() => {
                 if (!shouldPrefetch) return;
-                router.prefetch("/professionals?role=lawyer");
+                router.prefetch("/professionals?recommended=1");
               }}
             >
-              {primaryItemActive({ href: "/professionals?role=lawyer" }) && (
+              {isRecommendedProfessionals && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={Scale} variant={primaryItemActive({ href: "/professionals?role=lawyer" }) ? "active" : "idle"} />
-              <span className="min-w-0 truncate">Lawyers</span>
-            </Link>
-
-            <Link
-              href="/professionals?role=mortgage_broker"
-              onClick={() => {
-                setSettingsOpen(false);
-                onCloseMobile?.();
-              }}
-              className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                primaryItemActive({ href: "/professionals?role=mortgage_broker" })
-                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
-              }`}
-              aria-current={primaryItemActive({ href: "/professionals?role=mortgage_broker" }) ? "page" : undefined}
-              onMouseEnter={() => {
-                if (!shouldPrefetch) return;
-                router.prefetch("/professionals?role=mortgage_broker");
-              }}
-            >
-              {primaryItemActive({ href: "/professionals?role=mortgage_broker" }) && (
-                <span
-                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
-                  aria-hidden
-                />
-              )}
-              <NavIconTile Icon={Briefcase} variant={primaryItemActive({ href: "/professionals?role=mortgage_broker" }) ? "active" : "idle"} />
-              <span className="min-w-0 truncate">Mortgage Brokers</span>
+              <NavIconTile Icon={Sparkles} variant={isRecommendedProfessionals ? "active" : "idle"} />
+              <span className="min-w-0 truncate">Recommended</span>
             </Link>
           </div>
         </div>
@@ -407,6 +408,29 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               )}
               <NavIconTile Icon={CreditCard} variant={pathname === '/client-dashboard/subscription' ? "active" : "idle"} />
               <span className="min-w-0 truncate">Subscription</span>
+            </Link>
+
+            <Link
+              href="/conversations"
+              onClick={() => {
+                setSettingsOpen(false);
+                onCloseMobile?.();
+              }}
+              className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
+                pathname === '/conversations'
+                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+              }`}
+              aria-current={pathname === '/conversations' ? "page" : undefined}
+            >
+              {pathname === '/conversations' && (
+                <span
+                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                  aria-hidden
+                />
+              )}
+              <NavIconTile Icon={MessageSquare} variant={pathname === '/conversations' ? "active" : "idle"} />
+              <span className="min-w-0 truncate">Messages</span>
             </Link>
           </div>
         </div>

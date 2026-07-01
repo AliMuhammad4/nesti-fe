@@ -2,9 +2,11 @@
 
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
 
-export async function createOrGetProChatThread({ token, other_user_id }) {
+export async function createOrGetProChatThread({ token, other_user_id, client = false }) {
   return apiClient({
-    url: API_ENDPOINTS?.proChat?.threads || "/api/pro-chat/threads",
+    url: client
+      ? API_ENDPOINTS?.proChat?.clientThreads || "/api/pro-chat/client/threads"
+      : API_ENDPOINTS?.proChat?.threads || "/api/pro-chat/threads",
     method: "POST",
     token,
     data: { other_user_id },
@@ -105,33 +107,67 @@ export async function resolveProChatGroupRejoinRequest({ token, id, userId, acti
   });
 }
 
-export async function fetchMyProChatThreads({ token, page = 1, limit = 200 }) {
+function proChatThreadsBase(client = false) {
+  return client
+    ? API_ENDPOINTS?.proChat?.clientThreads || "/api/pro-chat/client/threads"
+    : API_ENDPOINTS?.proChat?.threads || "/api/pro-chat/threads";
+}
+
+function proChatThreadDetailUrl(id, client = false) {
+  if (client) {
+    return API_ENDPOINTS?.proChat?.clientThreadDetail
+      ? API_ENDPOINTS.proChat.clientThreadDetail(id)
+      : `/api/pro-chat/client/threads/${id}`;
+  }
+  return API_ENDPOINTS?.proChat?.threadDetail ? API_ENDPOINTS.proChat.threadDetail(id) : `/api/pro-chat/threads/${id}`;
+}
+
+function proChatThreadMessagesUrl(id, client = false) {
+  if (client) {
+    return API_ENDPOINTS?.proChat?.clientThreadMessages
+      ? API_ENDPOINTS.proChat.clientThreadMessages(id)
+      : `/api/pro-chat/client/threads/${id}/messages`;
+  }
+  return API_ENDPOINTS?.proChat?.threadMessages
+    ? API_ENDPOINTS.proChat.threadMessages(id)
+    : `/api/pro-chat/threads/${id}/messages`;
+}
+
+function proChatThreadAttachmentsUrl(id, client = false) {
+  if (client) {
+    return API_ENDPOINTS?.proChat?.clientThreadAttachments
+      ? API_ENDPOINTS.proChat.clientThreadAttachments(id)
+      : `/api/pro-chat/client/threads/${id}/attachments`;
+  }
+  return API_ENDPOINTS?.proChat?.threadAttachments
+    ? API_ENDPOINTS.proChat.threadAttachments(id)
+    : `/api/pro-chat/threads/${id}/attachments`;
+}
+
+export async function fetchMyProChatThreads({ token, page = 1, limit = 200, client = false }) {
   const sp = new URLSearchParams();
   sp.set("page", String(Math.max(1, Number(page) || 1)));
   sp.set("limit", String(Math.max(1, Number(limit) || 1)));
   return apiClient({
-    url: `${API_ENDPOINTS?.proChat?.threads || "/api/pro-chat/threads"}?${sp.toString()}`,
+    url: `${proChatThreadsBase(client)}?${sp.toString()}`,
     method: "GET",
     token,
   });
 }
 
-export async function fetchProChatThreadById({ token, id }) {
+export async function fetchProChatThreadById({ token, id, client = false }) {
   return apiClient({
-    url: (API_ENDPOINTS?.proChat?.threadDetail ? API_ENDPOINTS.proChat.threadDetail(id) : `/api/pro-chat/threads/${id}`),
+    url: proChatThreadDetailUrl(id, client),
     method: "GET",
     token,
   });
 }
 
-export async function fetchProChatThreadMessages({ token, id, page = 1, limit = 50 }) {
+export async function fetchProChatThreadMessages({ token, id, page = 1, limit = 50, client = false }) {
   const sp = new URLSearchParams();
   sp.set("page", String(page));
   sp.set("limit", String(limit));
-  const base =
-    API_ENDPOINTS?.proChat?.threadMessages
-      ? API_ENDPOINTS.proChat.threadMessages(id)
-      : `/api/pro-chat/threads/${id}/messages`;
+  const base = proChatThreadMessagesUrl(id, client);
   return apiClient({
     url: `${base}?${sp.toString()}`,
     method: "GET",
@@ -139,11 +175,8 @@ export async function fetchProChatThreadMessages({ token, id, page = 1, limit = 
   });
 }
 
-export async function uploadProChatThreadAttachment({ token, id, file }) {
-  const url =
-    API_ENDPOINTS?.proChat?.threadAttachments
-      ? API_ENDPOINTS.proChat.threadAttachments(id)
-      : `/api/pro-chat/threads/${id}/attachments`;
+export async function uploadProChatThreadAttachment({ token, id, file, client = false }) {
+  const url = proChatThreadAttachmentsUrl(id, client);
   const fd = new FormData();
   fd.append("file", file);
   return apiClient({

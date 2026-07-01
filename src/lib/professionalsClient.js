@@ -19,6 +19,14 @@ export async function fetchProfessionals({ token, ...query }) {
   });
 }
 
+export async function fetchClientRecommendations({ token, ...query }) {
+  return apiClient({
+    url: withQuery(API_ENDPOINTS.client.recommendations, query),
+    method: "GET",
+    token,
+  });
+}
+
 export async function fetchProfessionalById({ token, id }) {
   return apiClient({
     url: API_ENDPOINTS.professionals.detail(id),

@@ -1,22 +1,27 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store";
 import {
-  DollarSign,
   Calendar,
-  Target,
-  Users,
-  Loader2,
-  AlertCircle,
   ChevronRight,
-  Briefcase,
-  Scale,
   Building2,
+  Loader2,
+  MapPin,
+  Home,
+  TrendingUp,
+  ClipboardList,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import {
+  ProfileSectionsBarChart,
+  SavingsDonutChart,
+  SavingsProjectionChart,
+} from "@/components/client-dashboard/ClientDashboardCharts";
 
 const PROFILE_COMPLETION_SECTIONS = [
   {
@@ -55,8 +60,13 @@ const PROFILE_COMPLETION_SECTIONS = [
   {
     id: "home",
     title: "Home Goals",
-    description: "Target home price and preferred purchase timeline.",
+    description: "Goal, budget, location, and purchase timeline.",
     fields: [
+      {
+        key: "home_goal",
+        label: "Home Goal",
+        isComplete: (profile) => Boolean(profile?.home_goal) || (Array.isArray(profile?.home_goals) && profile.home_goals.length > 0),
+      },
       {
         key: "dream_home_price",
         label: "Target Home Price",
@@ -74,6 +84,50 @@ const PROFILE_COMPLETION_SECTIONS = [
       },
     ],
   },
+  {
+    id: "preferences",
+    title: "Match Preferences",
+    description: "Signals used for AI professional compatibility.",
+    fields: [
+      {
+        key: "working_styles",
+        label: "Working Style",
+        isComplete: (profile) => Array.isArray(profile?.working_styles) && profile.working_styles.length > 0,
+      },
+      {
+        key: "priority_tags",
+        label: "What Matters Most",
+        isComplete: (profile) => Array.isArray(profile?.priority_tags) && profile.priority_tags.length > 0,
+      },
+      {
+        key: "languages",
+        label: "Languages",
+        isComplete: (profile) => Array.isArray(profile?.languages) && profile.languages.length > 0,
+      },
+      {
+        key: "preferred_experience",
+        label: "Preferred Experience",
+        isComplete: (profile) => Boolean(profile?.preferred_experience),
+      },
+    ],
+  },
+  {
+    id: "contact",
+    title: "Contact Preference",
+    description: "How and when professionals should contact you.",
+    fields: [
+      {
+        key: "preferred_contact_method",
+        label: "Preferred Contact Method",
+        isComplete: (profile) => Boolean(profile?.preferred_contact_method),
+      },
+      {
+        key: "best_time_to_contact",
+        label: "Best Time to Contact",
+        isComplete: (profile) => Boolean(profile?.best_time_to_contact),
+      },
+    ],
+  },
 ];
 
 const formatCurrency = (value) => {
@@ -83,6 +137,11 @@ const formatCurrency = (value) => {
 };
 
 const formatTimeline = (value) => {
+  if (!value) return "Not set";
+  return String(value).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const formatLabel = (value) => {
   if (!value) return "Not set";
   return String(value).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
@@ -102,6 +161,7 @@ export default function ClientDashboardPage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
 
   const profileCompletion = useMemo(() => {
     if (!profile) {
@@ -142,31 +202,8 @@ export default function ClientDashboardPage() {
     return { percentage, completed, missing, sections, total };
   }, [profile]);
 
-  // Handle hydration
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  // Handle authentication and role checks
-  useEffect(() => {
-    if (!hydrated) return;
-    
-    // Check authentication
-    if (!token) {
-      router.push('/log-in');
-      return;
-    }
-    
-    // Verify user is a client
-    if (user?.role && user.role !== 'client') {
-      router.push('/dashboard');
-      return;
-    }
-    
-    fetchClientData();
-  }, [hydrated, token, user?.role]);
-
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
+    if (!token) return;
     try {
       setLoading(true);
 
@@ -190,7 +227,30 @@ export default function ClientDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Handle hydration
+  useEffect(() => {
+    setHydrated(true);
+    setChartsReady(true);
+  }, []);
+
+  // Handle authentication and role checks
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!token) {
+      router.push('/log-in');
+      return;
+    }
+
+    if (user?.role && user.role !== 'client') {
+      router.push('/dashboard');
+      return;
+    }
+
+    fetchClientData();
+  }, [fetchClientData, hydrated, router, token, user?.role]);
 
   if (loading) {
     return (
@@ -233,192 +293,233 @@ export default function ClientDashboardPage() {
           ? Math.ceil(remainingAmount / monthlySavings)
           : null
       : null;
+  const missingFieldsPreview = profileCompletion.missing.slice(0, 3).map((item) => item.label);
+  const topPriorityTags = Array.isArray(profile?.priority_tags) ? profile.priority_tags.slice(0, 4) : [];
+  const PRIMARY_COLOR = "#16a34a";
+
+  const journeySteps = [
+    {
+      title: "Browse Properties",
+      helper: "Explore listings that match your budget and location",
+      href: "/client-dashboard/properties",
+      Icon: Building2,
+    },
+    {
+      title: "Find Professionals",
+      helper: "See AI-recommended agents, lawyers, and brokers",
+      href: "/professionals?recommended=1",
+      Icon: Users,
+    },
+    {
+      title: "My Inquiries",
+      helper: "Track property and professional conversations",
+      href: "/client-dashboard/inquiries",
+      Icon: ClipboardList,
+    },
+    {
+      title: "Messages",
+      helper: "Continue chats with your matched professionals",
+      href: "/conversations",
+      Icon: MessageSquare,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(52,199,89,0.18),transparent_30%),linear-gradient(135deg,#F3FBF6_0%,#EAF8EF_42%,#F8FFFB_100%)] px-4 py-4 sm:px-6 sm:py-6">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
+    <div className="min-h-screen w-full px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mx-auto max-w-6xl space-y-4">
+        <motion.header
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="overflow-hidden rounded-2xl border border-white/70 bg-white/72 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl"
+          transition={{ duration: 0.2 }}
+          className="flex flex-col gap-4 border-b border-gray-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div className="relative p-5 sm:p-6">
-            <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
-            <div className="pointer-events-none absolute bottom-0 left-0 h-24 w-24 rounded-full bg-emerald-200/30 blur-2xl" />
-            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="mb-3 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                  Client Dashboard
-                </div>
-                <h1 className="text-xl font-bold tracking-tight text-gray-950 sm:text-3xl">
-                  Welcome back, {clientDisplayName}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-                  Keep your buying goals, savings progress, and professional connections organized in one clean workspace.
-                </p>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Client dashboard</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+              Welcome back, {clientDisplayName}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">Savings, goals, and your next actions in one view.</p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3 rounded-lg border border-gray-200/80 bg-white px-3 py-2.5">
+            <div className="relative grid h-12 w-12 place-items-center">
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `conic-gradient(${PRIMARY_COLOR} ${profileCompletion.percentage * 3.6}deg, #f1f5f9 0deg)`,
+                }}
+              />
+              <div className="relative grid h-9 w-9 place-items-center rounded-full bg-white text-[11px] font-semibold text-primary">
+                {profileCompletion.percentage}%
               </div>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-900">Profile ready</p>
+              <p className="truncate text-[11px] text-gray-500">
+                {profileCompletion.percentage >= 100
+                  ? "Ready for AI matching"
+                  : `Missing ${missingFieldsPreview.join(", ")}${profileCompletion.missing.length > 3 ? "…" : ""}`}
+              </p>
+              {profileCompletion.percentage < 100 ? (
+                <button
+                  type="button"
+                  onClick={() => router.push("/settings?tab=personal")}
+                  className="mt-1 text-[11px] font-semibold text-primary hover:underline"
+                >
+                  Complete profile
+                </button>
+              ) : null}
             </div>
           </div>
-        </motion.div>
+        </motion.header>
 
-        {profileCompletion.percentage < 100 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.04 }}
-            className="flex flex-col gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600 ring-1 ring-amber-200">
-                <AlertCircle size={16} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-950">
-                  Complete your profile to improve your matches
-                </p>
-                <p className="mt-0.5 text-xs leading-5 text-gray-600">
-                  {profileCompletion.percentage}% complete. Missing{" "}
-                  {profileCompletion.missing.slice(0, 2).map((item) => item.label).join(", ")}
-                  {profileCompletion.missing.length > 2 ? ` and ${profileCompletion.missing.length - 2} more` : ""}.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push("/settings?tab=personal")}
-              className="shrink-0 rounded-lg bg-gray-950 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-gray-800"
-            >
-              Complete Now
-            </button>
-          </motion.div>
-        )}
-
-        <div className="grid gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
+            transition={{ duration: 0.2, delay: 0.03 }}
             id="progress"
-            className="rounded-2xl border border-white/70 bg-white/72 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.055)] backdrop-blur-xl sm:p-6"
+            className="rounded-lg border border-gray-200/80 bg-white lg:col-span-2"
           >
-            <div className="mb-5">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">
-                  Financial Snapshot
-                </p>
-                <h2 className="mt-1 text-lg font-bold text-gray-950 sm:text-xl">
-                  Homeownership Goals
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Your latest savings, target down payment, and purchase timeline.
-                </p>
+                <h2 className="text-sm font-semibold text-gray-900">Homeownership progress</h2>
+                <p className="text-xs text-gray-500">Target {formatCurrency(dreamHomePrice || null)}</p>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100 sm:grid-cols-4">
               {[
-                {
-                  label: "Current Savings",
-                  value: formatCurrency(currentSavings),
-                  helper: "Saved so far",
-                  Icon: DollarSign,
-                },
-                {
-                  label: "Down Payment Goal",
-                  value: formatCurrency(downPaymentGoal),
-                  helper: "20% of target price",
-                  Icon: Target,
-                },
-                {
-                  label: "Monthly Savings",
-                  value: formatCurrency(monthlySavings),
-                  helper: "Saved each month",
-                  Icon: DollarSign,
-                },
-                {
-                  label: "Months to Goal",
-                  value: formatMonths(monthsToGoal),
-                  helper: monthlySavings && monthlySavings > 0 ? "Based on monthly savings" : "Add monthly savings",
-                  Icon: Calendar,
-                },
-              ].map(({ label, value, helper, Icon }) => (
-                <div
-                  key={label}
-                  className="rounded-xl border border-white/70 bg-gradient-to-br from-white/85 to-primary/[0.035] p-3.5 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition hover:border-primary/20 hover:bg-white/95 hover:shadow-sm"
-                >
-                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/8 text-primary">
-                    <Icon size={16} />
-                  </div>
-                  <div className="text-xs font-semibold text-gray-500">{label}</div>
-                  <div className="mt-1 text-xl font-bold text-gray-950">{value}</div>
-                  <p className="mt-1 text-xs text-gray-400">{helper}</p>
+                { label: "Saved", value: formatCurrency(currentSavings) },
+                { label: "Down payment", value: formatCurrency(downPaymentGoal) },
+                { label: "Monthly", value: formatCurrency(monthlySavings) },
+                { label: "To goal", value: formatMonths(monthsToGoal) },
+              ].map(({ label, value }) => (
+                <div key={label} className="px-4 py-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+                  <p className="mt-0.5 text-base font-semibold tabular-nums text-gray-900">{value}</p>
                 </div>
               ))}
             </div>
-          </motion.div>
+
+            <div className="grid divide-y divide-gray-100 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+              <div className="px-4 py-3">
+                {chartsReady ? (
+                  <SavingsDonutChart currentSavings={currentSavings} downPaymentGoal={downPaymentGoal} />
+                ) : (
+                  <div className="h-[190px] animate-pulse rounded bg-gray-50" />
+                )}
+              </div>
+              <div className="px-4 py-3">
+                {chartsReady ? (
+                  <SavingsProjectionChart
+                    currentSavings={currentSavings}
+                    monthlySavings={monthlySavings}
+                    downPaymentGoal={downPaymentGoal}
+                  />
+                ) : (
+                  <div className="h-[190px] animate-pulse rounded bg-gray-50" />
+                )}
+              </div>
+            </div>
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
+            className="rounded-lg border border-gray-200/80 bg-white"
+          >
+            <div className="border-b border-gray-100 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-900">Your goals</h2>
+            </div>
+            <div className="divide-y divide-gray-100 px-4">
+              {[
+                { label: "Home goal", value: formatLabel(profile?.home_goal), Icon: Home },
+                { label: "Location", value: profile?.preferred_location || "Not set", Icon: MapPin },
+                { label: "Timeline", value: formatTimeline(profile?.purchase_timeline), Icon: Calendar },
+                { label: "Experience", value: formatLabel(profile?.preferred_experience), Icon: TrendingUp },
+              ].map(({ label, value, Icon }) => (
+                <div key={label} className="flex items-center gap-2.5 py-2.5">
+                  <Icon size={14} className="shrink-0 text-gray-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] text-gray-400">{label}</p>
+                    <p className="truncate text-sm font-medium text-gray-900">{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {topPriorityTags.length ? (
+              <div className="border-t border-gray-100 px-4 py-3">
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-gray-400">Priorities</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {topPriorityTags.map((tag) => (
+                    <span key={tag} className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                      {formatLabel(tag)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </motion.section>
         </div>
 
-        <div className="grid gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            className="rounded-2xl border border-white/70 bg-white/72 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.055)] backdrop-blur-xl"
+            transition={{ duration: 0.2, delay: 0.07 }}
+            className="rounded-lg border border-gray-200/80 bg-white"
           >
-            <div className="mb-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">Next Steps</p>
-              <h2 className="mt-1 text-base font-bold text-gray-950">Continue Your Journey</h2>
+            <div className="border-b border-gray-100 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-900">Match signal strength</h2>
+              <p className="text-xs text-gray-500">Profile areas used for recommendations</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                {
-                  title: "Browse Properties",
-                  helper: "View available homes",
-                  href: "/client-dashboard/properties",
-                  Icon: Building2,
-                  tone: "text-primary bg-primary/8",
-                },
-                {
-                  title: "Find an Agent",
-                  helper: "Connect with top agents",
-                  href: "/professionals?role=agent",
-                  Icon: Users,
-                  tone: "text-emerald-600 bg-emerald-50",
-                },
-                {
-                  title: "Find a Lawyer",
-                  helper: "Get legal guidance",
-                  href: "/professionals?role=lawyer",
-                  Icon: Scale,
-                  tone: "text-indigo-600 bg-indigo-50",
-                },
-                {
-                  title: "Get Pre-Approved",
-                  helper: "Talk to mortgage brokers",
-                  href: "/professionals?role=mortgage_broker",
-                  Icon: Briefcase,
-                  tone: "text-blue-600 bg-blue-50",
-                },
-              ].map(({ title, helper, href, Icon, tone }) => (
+            <div className="px-2 py-3">
+              {chartsReady ? (
+                <ProfileSectionsBarChart sections={profileCompletion.sections} />
+              ) : (
+                <div className="h-[200px] animate-pulse rounded bg-gray-50" />
+              )}
+            </div>
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.09 }}
+            className="rounded-lg border border-gray-200/80 bg-white"
+          >
+            <div className="border-b border-gray-100 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-900">Next steps</h2>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {journeySteps.map(({ title, helper, href, Icon }) => (
                 <button
                   key={title}
+                  type="button"
                   onClick={() => router.push(href)}
-                  className="group flex items-center justify-between rounded-xl border border-white/70 bg-gradient-to-br from-white/90 to-primary/[0.035] p-3.5 text-left shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition hover:border-primary/20 hover:bg-white"
+                  className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50/80"
                 >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
-                      <Icon size={17} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold text-gray-950">{title}</span>
-                      <span className="block truncate text-xs text-gray-500">{helper}</span>
-                    </span>
+                  <Icon size={16} className="shrink-0 text-gray-400 group-hover:text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-gray-900">{title}</span>
+                    <span className="block truncate text-xs text-gray-500">{helper}</span>
                   </span>
-                  <ChevronRight size={18} className="text-gray-300 transition group-hover:translate-x-1 group-hover:text-primary" />
+                  <ChevronRight size={15} className="shrink-0 text-gray-300 group-hover:text-primary" />
                 </button>
               ))}
             </div>
-          </motion.div>
+            <div className="border-t border-gray-100 px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => router.push("/client-dashboard/progress")}
+                className="text-xs font-medium text-gray-500 transition hover:text-primary"
+              >
+                View progress report →
+              </button>
+            </div>
+          </motion.section>
         </div>
       </div>
     </div>

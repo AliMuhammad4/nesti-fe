@@ -175,11 +175,20 @@ export const API_ENDPOINTS = {
     detail: withBaseUrl((id) => `/api/professionals/${id}`),
     icp: withBaseUrl("/api/professionals/icp"),
     uploadImage: withBaseUrl("/api/professionals/upload-image"),
+    coverAdjustments: withBaseUrl("/api/professionals/cover-adjustments"),
+  },
+  properties: {
+    list: withBaseUrl("/api/properties"),
+    detail: withBaseUrl((id) => `/api/properties/${id}`),
+    inquiry: withBaseUrl((id) => `/api/properties/${id}/inquiries`),
+    thread: withBaseUrl((id) => `/api/properties/${id}/thread`),
   },
   client: {
     profile: withBaseUrl("/api/client/profile"),
     profileMe: withBaseUrl("/api/client/profile/me"),
     settings: withBaseUrl("/api/client/settings"),
+    recommendations: withBaseUrl("/api/client/recommendations"),
+    inquiries: withBaseUrl("/api/client/inquiries"),
     subscriptionMe: withBaseUrl("/api/client/subscription/me"),
   },
   proChat: {
@@ -196,6 +205,10 @@ export const API_ENDPOINTS = {
     threadDetail: withBaseUrl((id) => `/api/pro-chat/threads/${id}`),
     threadMessages: withBaseUrl((id) => `/api/pro-chat/threads/${id}/messages`),
     threadAttachments: withBaseUrl((id) => `/api/pro-chat/threads/${id}/attachments`),
+    clientThreads: withBaseUrl("/api/pro-chat/client/threads"),
+    clientThreadDetail: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}`),
+    clientThreadMessages: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}/messages`),
+    clientThreadAttachments: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}/attachments`),
   },
 };
 

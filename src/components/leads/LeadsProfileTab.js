@@ -25,6 +25,7 @@ export default function LeadsProfileTab({
   const contact = leadData.contact || {};
   const property = leadData.property || {};
   const qualification = leadData.qualification || {};
+  const clientProfile = leadData.client_profile && typeof leadData.client_profile === "object" ? leadData.client_profile : null;
   const locationDisplay = property.location || (leadData.intent === "sell" ? property.address : "");
 
   const readable = (value) => {
@@ -115,6 +116,16 @@ export default function LeadsProfileTab({
     </div>
   );
 
+  const hasClientProfile = Boolean(
+    clientProfile &&
+      Object.values(clientProfile).some((value) => value !== null && value !== undefined && value !== "")
+  );
+
+  const clientMoney = (value) => {
+    const n = toFiniteNumber(value);
+    return n === null ? value : formatMoney(n);
+  };
+
   const pipelineInfo = getStatusDisplay(leadData.status ?? leadData.match_status);
   const outerClassName = embedded ? "space-y-4" : "rounded-md border border-border bg-white shadow-sm p-5 space-y-4";
   const sectionClassName = embedded ? "space-y-3" : "rounded-md border border-border bg-white p-4 space-y-3";
@@ -176,6 +187,27 @@ export default function LeadsProfileTab({
                   unboxed
                   professionalType={profRole}
                 />
+              </div>
+            </div>
+          ) : null}
+
+          {hasClientProfile ? (
+            <div className={embedded ? "space-y-4 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-4"}>
+              <div>
+                <div className="text-sm font-semibold text-text-heading">Client profile</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
+                  Homeownership details shared from the client profile at the time of inquiry.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <KeyValue label="Preferred location" value={clientProfile.preferred_location} />
+                <KeyValue label="Target home price" value={clientMoney(clientProfile.dream_home_price)} />
+                <KeyValue label="Purchase timeline" value={clientProfile.purchase_timeline} />
+                <KeyValue label="Employment" value={clientProfile.employment_status} />
+                <KeyValue label="Annual income" value={clientMoney(clientProfile.annual_income)} />
+                <KeyValue label="Current savings" value={clientMoney(clientProfile.current_savings)} />
+                <KeyValue label="Monthly savings" value={clientMoney(clientProfile.monthly_savings)} />
+                <KeyValue label="Down payment goal" value={clientMoney(clientProfile.down_payment_goal)} />
               </div>
             </div>
           ) : null}
