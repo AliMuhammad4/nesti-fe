@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/store";
 import {
   Loader2,
@@ -12,11 +12,17 @@ import { toast } from "react-toastify";
 
 export default function ClientSubscriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const token = useAppSelector((state) => state.auth.token);
   const user = useAppSelector((state) => state.auth.user);
   const [subscription, setSubscription] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+
+  const hasCheckoutReturn =
+    searchParams.get("billing") === "success" || Boolean(searchParams.get("session_id"));
 
   // Handle hydration
   useEffect(() => {
@@ -39,13 +45,26 @@ export default function ClientSubscriptionPage() {
       return;
     }
     
-    fetchSubscription();
-  }, [hydrated, token, user?.role]);
+    const loadData = async () => {
+      await Promise.all([
+        fetchSubscription(hasCheckoutReturn),
+        fetchInvoices(),
+      ]);
 
-  const fetchSubscription = async () => {
+      if (hasCheckoutReturn) {
+        toast.success("Payment completed successfully.");
+        router.replace('/client-dashboard/subscription');
+      }
+    };
+
+    loadData();
+  }, [hydrated, token, user?.role, hasCheckoutReturn]);
+
+  const fetchSubscription = async (refreshFromStripe = false) => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/me`, {
+      const refreshQuery = refreshFromStripe ? '?refresh=1' : '';
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/me${refreshQuery}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -60,6 +79,25 @@ export default function ClientSubscriptionPage() {
       toast.error('Failed to load subscription data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      setInvoicesLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/invoices`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInvoices(Array.isArray(data.data) ? data.data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription invoices:', error);
+    } finally {
+      setInvoicesLoading(false);
     }
   };
 
@@ -85,7 +123,11 @@ export default function ClientSubscriptionPage() {
         >
           <ClientSubscriptionPanel
             subscription={subscription}
-            onSubscriptionChange={fetchSubscription}
+            invoices={invoices}
+            invoicesLoading={invoicesLoading}
+            onSubscriptionChange={async () => {
+              await Promise.all([fetchSubscription(), fetchInvoices()]);
+            }}
             token={token}
           />
         </motion.div>

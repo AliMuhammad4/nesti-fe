@@ -14,6 +14,7 @@ import { useSavePersonalInfo, useUploadProfileMedia } from "@/hooks/useProfileAp
 import { setPersonalInfo } from "@/store/profileSlice";
 import ChangePassword from "@/components/settings/ChangePassword";
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
+import { STANDARD_LANGUAGE_OPTIONS } from "@/lib/matchingTaxonomy";
 
 function isValidCalendlyUrl(value) {
   const s = String(value || "").trim();
@@ -92,14 +93,7 @@ const PRIORITY_TAG_OPTIONS = [
   { value: "eco_friendly", label: "Eco-friendly homes" },
 ];
 
-const LANGUAGE_OPTIONS = [
-  { value: "english", label: "English" },
-  { value: "french", label: "French" },
-  { value: "punjabi", label: "Punjabi" },
-  { value: "mandarin", label: "Mandarin" },
-  { value: "arabic", label: "Arabic" },
-  { value: "other", label: "Other" },
-];
+const LANGUAGE_OPTIONS = STANDARD_LANGUAGE_OPTIONS;
 
 const EXPERIENCE_PREFERENCE_OPTIONS = [
   { value: "beginner_friendly", label: "Beginner-friendly" },

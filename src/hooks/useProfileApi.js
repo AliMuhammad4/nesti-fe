@@ -62,12 +62,42 @@ function mapBackendProfileToStore(data) {
         [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim(),
       certificates: Array.isArray(profile?.certificates) ? profile.certificates : [],
       specializations: Array.isArray(profile?.specializations) ? profile.specializations : [],
+      coreSpecializationTags: Array.isArray(profile?.core_specialization_tags)
+        ? profile.core_specialization_tags
+        : [],
+      specialtyStrengthTags: Array.isArray(profile?.specialty_strength_tags)
+        ? profile.specialty_strength_tags
+        : [],
       communicationChannels: Array.isArray(profile?.communication_channels)
         ? profile.communication_channels
         : [],
       preferredClients: Array.isArray(profile?.preferred_clients)
         ? profile.preferred_clients
         : [],
+      workingStyleTags: Array.isArray(profile?.working_style_tags)
+        ? profile.working_style_tags
+        : [],
+      personalityStyleTags: Array.isArray(profile?.personality_style_tags)
+        ? profile.personality_style_tags
+        : [],
+      serviceAreaPrimaryZones: Array.isArray(profile?.service_area_primary_zones)
+        ? profile.service_area_primary_zones
+        : [],
+      serviceAreaSecondaryZones: Array.isArray(profile?.service_area_secondary_zones)
+        ? profile.service_area_secondary_zones
+        : [],
+      serviceAreaCities: Array.isArray(profile?.service_area_cities)
+        ? profile.service_area_cities
+        : [],
+      serviceAreaRegions: Array.isArray(profile?.service_area_regions)
+        ? profile.service_area_regions
+        : [],
+      languagesSpoken: Array.isArray(profile?.languages_spoken)
+        ? profile.languages_spoken
+        : [],
+      otherLanguageText: profile?.other_language_text || "",
+      workingStyleStructured: profile?.working_style_structured || "",
+      experienceLevel: profile?.experience_level || "",
       calendlyLink: profile?.calendly_link || "",
     },
   };

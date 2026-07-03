@@ -9,6 +9,11 @@ import { useAppSelector } from "@/store";
 const toastError = (error) =>
   toast.error(error?.message || "Something went wrong. Please try again.");
 
+const invalidateBillingQueries = (queryClient) => {
+  queryClient.invalidateQueries({ queryKey: ["subscriptionMe"] });
+  queryClient.invalidateQueries({ queryKey: ["billingInvoices"] });
+};
+
 export function useBillingPlans() {
   return useQuery({
     queryKey: ["billingPlans"],
@@ -162,10 +167,10 @@ export function useChangeSubscriptionPlan() {
       if (data?.changeType === "upgrade" && data?.invoice?.hostedInvoiceUrl && data.invoice.status !== "paid") {
         window.location.href = data.invoice.hostedInvoiceUrl;
       }
-      queryClient.invalidateQueries({ queryKey: ["subscriptionMe"] });
-      queryClient.invalidateQueries({ queryKey: ["billingInvoices"] });
+      invalidateBillingQueries(queryClient);
     },
     onError: toastError,
+    onSettled: () => invalidateBillingQueries(queryClient),
   });
 }
 
@@ -183,11 +188,9 @@ export function useResumeSubscription() {
         token,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptionMe"] });
-      queryClient.invalidateQueries({ queryKey: ["billingInvoices"] });
-    },
+    onSuccess: () => invalidateBillingQueries(queryClient),
     onError: toastError,
+    onSettled: () => invalidateBillingQueries(queryClient),
   });
 }
 
@@ -205,11 +208,9 @@ export function useCancelSubscription() {
         token,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptionMe"] });
-      queryClient.invalidateQueries({ queryKey: ["billingInvoices"] });
-    },
+    onSuccess: () => invalidateBillingQueries(queryClient),
     onError: toastError,
+    onSettled: () => invalidateBillingQueries(queryClient),
   });
 }
 

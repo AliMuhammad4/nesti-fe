@@ -1,168 +1,246 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  Briefcase,
-  Clock,
-  BarChart3,
-  Target,
-  BookOpen,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SubmitButton from "@/components/auth/SubmitButton";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useSaveBusinessInfo } from "@/hooks/useProfileApi";
 import { setBusinessInfo } from "@/store/profileSlice";
-import BasicsStep from "@/components/settings/businessSteps/BasicsStep";
-import ExperienceStep from "@/components/settings/businessSteps/ExperienceStep";
-import StyleMetricsStep from "@/components/settings/businessSteps/StyleMetricsStep";
-import PreferencesStep from "@/components/settings/businessSteps/PreferencesStep";
+import { PROFESSIONAL_WORKING_STYLE_OPTIONS, STANDARD_LANGUAGE_OPTIONS } from "@/lib/matchingTaxonomy";
 
-const specializationsList = [
-  "Residential",
-  "Commercial",
-  "Luxury Homes",
-  "Investment Properties",
-  "First-Time Buyers",
-  "Vacation Homes",
-  "Condos",
-  "Townhouses",
-  "Detached Homes",
-  "Multifamily",
-  "New Construction",
-  "Foreclosures",
+const CORE_SPECIALIZATION_OPTIONS = [
+  "First-time home buyers",
+  "First-time investors",
+  "Move-up buyers",
+  "Luxury clients",
+  "Commercial clients",
+  "Rental / leasing",
+  "Credit-challenged buyers",
+  "Newcomer / immigrant support",
+  "High-net-worth clients",
+  "Family home buyers",
+  "Investor-focused deals",
+  "Downsizers",
 ];
 
-const communicationList = [
-  "Text Message",
-  "Email",
-  "Phone Calls",
-  "WhatsApp",
-  "Video Calls",
+const SERVICE_CITY_OPTIONS = [
+  "Toronto",
+  "Mississauga",
+  "Brampton",
+  "Oakville",
+  "Vaughan",
+  "Markham",
+  "Richmond Hill",
+  "Milton",
+  "Burlington",
+  "Hamilton",
 ];
 
-const preferredClientsList = [
-  "First-Time Buyers",
-  "Investors",
-  "Luxury Clients",
-  "Down-Sizers",
-  "Relocators",
-  "Pre-Approved Only",
-  "Cash Buyers",
-  "Quick Closers",
+const SERVICE_REGION_OPTIONS = [
+  "GTA",
+  "Durham",
+  "York",
+  "Peel",
+  "Halton",
+  "Waterloo",
+  "Niagara",
+  "Simcoe",
 ];
 
-const SUB_TABS = [
-  { id: "basics", label: "Basics", icon: Briefcase },
-  { id: "experience", label: "Experience", icon: Clock },
-  { id: "style", label: "Style & Metrics", icon: BarChart3 },
-  {
-    id: "audience",
-    label: "Audience & expertise",
-    icon: Target,
-  },
-  { id: "story", label: "Story", icon: BookOpen },
+const WORKING_STYLE_OPTIONS = PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => option.label);
+const LANGUAGE_OPTIONS = STANDARD_LANGUAGE_OPTIONS.map((option) => option.label);
+
+const EXPERIENCE_OPTIONS = [
+  { key: "junior", label: "Junior (0-2 years)" },
+  { key: "mid", label: "Mid (3-7 years)" },
+  { key: "senior", label: "Senior (7-15 years)" },
+  { key: "elite", label: "Elite (15+ years)" },
 ];
+
+const SPECIALTY_STRENGTH_OPTIONS = [
+  "First-time buyer expert",
+  "Investor strategy expert",
+  "Luxury market expert",
+  "Renovation / flip specialist",
+  "Newcomer relocation expert",
+  "Market analytics expert",
+  "Negotiation specialist",
+  "Financing-savvy advisor",
+  "Family housing expert",
+  "Commercial deal expert",
+];
+
+const PERSONALITY_TAG_OPTIONS = [
+  "Friendly & warm",
+  "Fast responder",
+  "Analytical",
+  "Calm & patient",
+  "Direct & transactional",
+  "Highly communicative",
+  "Relationship builder",
+  "High-energy closer",
+];
+
+const WORKING_STYLE_STRUCTURED_MAP = {
+  "Educational advisor": "educational_advisor",
+  "Fast deal closer": "fast_deal_closer",
+  "Data-driven strategist": "data_driven",
+  "Relationship-focused": "relationship_focused",
+  "Investor-oriented": "investor_oriented",
+};
+
+function toSlugValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\//g, " ")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/-+/g, "_");
+}
+
+function chipClass(active, disabled = false) {
+  return `min-h-9 rounded-full border px-3 py-1.5 text-xs font-semibold leading-tight transition sm:min-h-8 sm:text-[11px] ${
+    active
+      ? "border-primary bg-primary text-white shadow-sm"
+      : "border-border bg-white text-text-heading hover:border-primary/40 hover:text-primary"
+  } ${disabled && !active ? "cursor-not-allowed opacity-45" : ""}`;
+}
+
+function SectionCard({ title, helper, right, children }) {
+  return (
+    <section className="rounded-xl border border-border/80 bg-white p-3.5 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2 sm:mb-3.5">
+        <div>
+          <h3 className="text-[13px] font-bold text-text-heading sm:text-sm">{title}</h3>
+          {helper ? <p className="mt-0.5 text-[11px] leading-4 text-text-muted sm:text-xs">{helper}</p> : null}
+        </div>
+        {right ? <div>{right}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ChipPicker({ options, selected, onToggle, max }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = selected.includes(option);
+        const disabled = max ? selected.length >= max : false;
+        return (
+          <button
+            key={option}
+            type="button"
+            className={chipClass(active, disabled)}
+            disabled={disabled && !active}
+            onClick={() => onToggle(option, max)}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiSelectDropdown({ options, selected, onAdd, onRemove, placeholder }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <select
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="min-h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text-heading sm:w-auto"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="min-h-10 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+          onClick={() => {
+            if (!value) return;
+            onAdd(value);
+            setValue("");
+          }}
+        >
+          Add
+        </button>
+      </div>
+      {selected.length ? (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="min-h-9 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary"
+              onClick={() => onRemove(item)}
+              title="Remove"
+            >
+              {item} ×
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function BusinessInformation({ onSaveSuccess } = {}) {
   const dispatch = useAppDispatch();
   const storedBusiness = useAppSelector((state) => state.profile.businessInfo);
-  const [focusedField, setFocusedField] = useState("");
-  const [form, setForm] = useState({
-    professionalType: "",
-    companyName: "",
-    website: "",
-    phone: "",
-    email: "",
-    experience: "",
-    licenseNumber: "",
-    socialMedia: "",
-    transactionVolume: "",
-    avgSalePrice: "",
-    avgHomePrice: "",
-    commissionRatePercent: "",
-    responseTime: "",
-    availability: "",
-    supportLevel: "",
-    negotiationStyle: "",
-    salesApproach: "",
-    energyStyle: "",
-    personalityTag: "",
-    awards: "",
-    testimonial: "",
-    targetNeighborhoods: "",
-    fullName: "",
-    location: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [specializations, setSpecializations] = useState([]);
-  const [communicationChannels, setCommunicationChannels] = useState([]);
-  const [preferredClients, setPreferredClients] = useState([]);
   const saveBusinessInfo = useSaveBusinessInfo();
-  const [activeSubTab, setActiveSubTab] = useState("basics");
-  const formRef = useRef(form);
-  formRef.current = form;
-  const websiteLocationSaveTimerRef = useRef(null);
+
+  const [loading, setLoading] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [website, setWebsite] = useState("");
+  const [location, setLocation] = useState("");
+  const [calendlyLink, setCalendlyLink] = useState("");
+  const [testimonial, setTestimonial] = useState("");
+  const [otherLanguageText, setOtherLanguageText] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+
+  const [coreSpecializationTags, setCoreSpecializationTags] = useState([]);
+  const [serviceAreaCities, setServiceAreaCities] = useState([]);
+  const [serviceAreaRegions, setServiceAreaRegions] = useState([]);
+  const [serviceAreaPrimaryZones, setServiceAreaPrimaryZones] = useState([]);
+  const [serviceAreaSecondaryZones, setServiceAreaSecondaryZones] = useState([]);
+  const [workingStyleTags, setWorkingStyleTags] = useState([]);
+  const [languagesSpoken, setLanguagesSpoken] = useState([]);
+  const [specialtyStrengthTags, setSpecialtyStrengthTags] = useState([]);
+  const [personalityStyleTags, setPersonalityStyleTags] = useState([]);
+
   const hasUserEditedRef = useRef(false);
+  const autosaveTimerRef = useRef(null);
+  const essentialRef = useRef({ companyName: "", website: "", location: "" });
+
+  essentialRef.current = { companyName, website, location };
 
   const hydrateFromStore = useCallback(() => {
-    if (storedBusiness) {
-      setForm((prev) => ({ ...prev, ...storedBusiness }));
-      if (Array.isArray(storedBusiness.specializations))
-        setSpecializations(storedBusiness.specializations);
-      if (Array.isArray(storedBusiness.communicationChannels))
-        setCommunicationChannels(storedBusiness.communicationChannels);
-      if (Array.isArray(storedBusiness.preferredClients))
-        setPreferredClients(storedBusiness.preferredClients);
-    } else {
-      setForm((prev) => ({ ...prev }));
-      setSpecializations([]);
-      setCommunicationChannels([]);
-      setPreferredClients([]);
-    }
+    if (!storedBusiness) return;
+    setCompanyName(storedBusiness.companyName || "");
+    setWebsite(storedBusiness.website || "");
+    setLocation(storedBusiness.location || "");
+    setCalendlyLink(storedBusiness.calendlyLink || "");
+    setTestimonial(storedBusiness.testimonial || "");
+    setOtherLanguageText(storedBusiness.otherLanguageText || "");
+    setExperienceLevel(storedBusiness.experienceLevel || "");
+    setCoreSpecializationTags(Array.isArray(storedBusiness.coreSpecializationTags) ? storedBusiness.coreSpecializationTags : []);
+    setServiceAreaCities(Array.isArray(storedBusiness.serviceAreaCities) ? storedBusiness.serviceAreaCities : []);
+    setServiceAreaRegions(Array.isArray(storedBusiness.serviceAreaRegions) ? storedBusiness.serviceAreaRegions : []);
+    setServiceAreaPrimaryZones(Array.isArray(storedBusiness.serviceAreaPrimaryZones) ? storedBusiness.serviceAreaPrimaryZones : []);
+    setServiceAreaSecondaryZones(Array.isArray(storedBusiness.serviceAreaSecondaryZones) ? storedBusiness.serviceAreaSecondaryZones : []);
+    setWorkingStyleTags(Array.isArray(storedBusiness.workingStyleTags) ? storedBusiness.workingStyleTags : []);
+    setLanguagesSpoken(Array.isArray(storedBusiness.languagesSpoken) ? storedBusiness.languagesSpoken : []);
+    setSpecialtyStrengthTags(Array.isArray(storedBusiness.specialtyStrengthTags) ? storedBusiness.specialtyStrengthTags : []);
+    setPersonalityStyleTags(Array.isArray(storedBusiness.personalityStyleTags) ? storedBusiness.personalityStyleTags : []);
   }, [storedBusiness]);
-
-  const toggleFromList = (value, setter) => {
-    setter((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  };
-
-  const scheduleWebsiteLocationAutosave = useCallback(() => {
-    if (websiteLocationSaveTimerRef.current) {
-      clearTimeout(websiteLocationSaveTimerRef.current);
-    }
-    websiteLocationSaveTimerRef.current = setTimeout(async () => {
-      websiteLocationSaveTimerRef.current = null;
-      const { website, location, companyName } = formRef.current;
-      try {
-        await saveBusinessInfo.mutateAsync({
-          company_name: String(companyName || "").trim(),
-          website: website || "",
-          location: location || "",
-          silent: true,
-        });
-      } catch {
-        /* toast via hook */
-      }
-    }, 650);
-  }, [saveBusinessInfo]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    hasUserEditedRef.current = true;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "website" || name === "location" || name === "companyName") {
-      scheduleWebsiteLocationAutosave();
-    }
-  };
-
-  const handleSelectChange = (name, val) => {
-    hasUserEditedRef.current = true;
-    setForm((prev) => ({ ...prev, [name]: val }));
-  };
 
   useEffect(() => {
     if (hasUserEditedRef.current) return;
@@ -171,256 +249,380 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
 
   useEffect(() => {
     return () => {
-      if (websiteLocationSaveTimerRef.current) {
-        clearTimeout(websiteLocationSaveTimerRef.current);
-      }
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
   }, []);
 
-  /** Experience, Style & metrics, Audience & expertise, Story — does not touch basics fields. */
-  const buildRestPayload = () => ({
-    company_name: String(form.companyName || "").trim(),
-    website: form.website || "",
-    location: form.location || "",
-    target_neighborhoods: form.targetNeighborhoods || "",
-    experience: form.experience || "",
-    license_number: form.licenseNumber || "",
-    social_media: form.socialMedia || "",
-    transaction_volume: form.transactionVolume || "",
-    avg_sale_price: form.avgSalePrice || "",
-    avg_home_price: form.avgHomePrice ? Number(form.avgHomePrice) : null,
-    commission_rate_percent: form.commissionRatePercent ? Number(form.commissionRatePercent) : null,
-    response_time: form.responseTime || "",
-    availability: form.availability || "",
-    support_level: form.supportLevel || "",
-    negotiation_style: form.negotiationStyle || "",
-    sales_approach: form.salesApproach || "",
-    energy_style: form.energyStyle || "",
-    personality_tag: form.personalityTag || "",
-    awards: form.awards || "",
-    specializations,
-    communication_channels: communicationChannels,
-    preferred_clients: preferredClients,
-    bio: form.testimonial || "",
-  });
+  const toggleArrayValue = useCallback((setter) => (value, max = 0) => {
+    hasUserEditedRef.current = true;
+    setter((prev) => {
+      if (prev.includes(value)) return prev.filter((item) => item !== value);
+      if (max && prev.length >= max) return prev;
+      return [...prev, value];
+    });
+  }, []);
 
-  const handleSubmit = async (e) => {
-    if (e?.preventDefault) e.preventDefault();
+  const scheduleEssentialAutosave = useCallback(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      autosaveTimerRef.current = null;
+      const current = essentialRef.current;
+      try {
+        await saveBusinessInfo.mutateAsync({
+          company_name: String(current.companyName || "").trim(),
+          website: current.website || "",
+          location: current.location || "",
+          silent: true,
+        });
+      } catch {
+        /* surfaced by hook */
+      }
+    }, 650);
+  }, [saveBusinessInfo]);
+
+  const primaryWorkingStyleStructured = useMemo(() => {
+    const firstMapped = workingStyleTags.find((tag) => WORKING_STYLE_STRUCTURED_MAP[tag]);
+    return firstMapped ? WORKING_STYLE_STRUCTURED_MAP[firstMapped] : "";
+  }, [workingStyleTags]);
+
+  const buildPayload = useCallback(() => {
+    const normalizedLanguages = languagesSpoken.map((lang) => toSlugValue(lang));
+    const legacySpecializations = [...coreSpecializationTags, ...specialtyStrengthTags]
+      .filter(Boolean)
+      .slice(0, 10);
+
+    return {
+      company_name: String(companyName || "").trim(),
+      website: website || "",
+      location: location || "",
+      calendly_link: calendlyLink || "",
+      bio: testimonial || "",
+      experience_level: experienceLevel || "",
+      experience: experienceLevel || "",
+      core_specialization_tags: coreSpecializationTags,
+      specialty_strength_tags: specialtyStrengthTags,
+      working_style_tags: workingStyleTags,
+      working_style_structured: primaryWorkingStyleStructured || undefined,
+      personality_style_tags: personalityStyleTags,
+      personality_tag: personalityStyleTags[0] || "",
+      languages_spoken: normalizedLanguages,
+      other_language_text: otherLanguageText || "",
+      service_area_cities: serviceAreaCities,
+      service_area_regions: serviceAreaRegions,
+      service_area_primary_zones: serviceAreaPrimaryZones,
+      service_area_secondary_zones: serviceAreaSecondaryZones,
+      target_neighborhoods: serviceAreaPrimaryZones.join(", "),
+      specializations: legacySpecializations,
+    };
+  }, [
+    calendlyLink,
+    companyName,
+    coreSpecializationTags,
+    experienceLevel,
+    languagesSpoken,
+    location,
+    otherLanguageText,
+    personalityStyleTags,
+    primaryWorkingStyleStructured,
+    serviceAreaCities,
+    serviceAreaPrimaryZones,
+    serviceAreaRegions,
+    serviceAreaSecondaryZones,
+    specialtyStrengthTags,
+    testimonial,
+    website,
+    workingStyleTags,
+  ]);
+
+  const persistToStore = useCallback(() => {
+    dispatch(
+      setBusinessInfo({
+        ...(storedBusiness || {}),
+        companyName,
+        website,
+        location,
+        calendlyLink,
+        testimonial,
+        otherLanguageText,
+        experienceLevel,
+        coreSpecializationTags,
+        serviceAreaCities,
+        serviceAreaRegions,
+        serviceAreaPrimaryZones,
+        serviceAreaSecondaryZones,
+        workingStyleTags,
+        languagesSpoken,
+        specialtyStrengthTags,
+        personalityStyleTags,
+      }),
+    );
+  }, [
+    dispatch,
+    storedBusiness,
+    companyName,
+    website,
+    location,
+    calendlyLink,
+    testimonial,
+    otherLanguageText,
+    experienceLevel,
+    coreSpecializationTags,
+    serviceAreaCities,
+    serviceAreaRegions,
+    serviceAreaPrimaryZones,
+    serviceAreaSecondaryZones,
+    workingStyleTags,
+    languagesSpoken,
+    specialtyStrengthTags,
+    personalityStyleTags,
+  ]);
+
+  const handleSubmit = async () => {
     setLoading(true);
+    hasUserEditedRef.current = true;
     try {
-      await saveBusinessInfo.mutateAsync(buildRestPayload());
-      dispatch(
-        setBusinessInfo({
-          ...form,
-          specializations,
-          communicationChannels,
-          preferredClients,
-        })
-      );
+      await saveBusinessInfo.mutateAsync(buildPayload());
+      persistToStore();
       hasUserEditedRef.current = false;
       await onSaveSuccess?.();
     } catch {
-      /* error surfaced via toast in useSaveBusinessInfo hook */
+      /* surfaced by hook */
     } finally {
       setLoading(false);
     }
   };
 
-  const sharedProps = {
-    form,
-    focusedField,
-    setFocusedField,
-    handleChange,
-    handleSelectChange,
-    specializations,
-    communicationChannels,
-    preferredClients,
-    toggleFromList,
-    setSpecializations,
-    setCommunicationChannels,
-    setPreferredClients,
-    specializationsList,
-    communicationList,
-    preferredClientsList,
-  };
-
-  const currentIdx = SUB_TABS.findIndex((t) => t.id === activeSubTab);
-
-  const goNext = () => {
-    dispatch(
-      setBusinessInfo({
-        ...form,
-        specializations,
-        communicationChannels,
-        preferredClients,
-      })
-    );
-    hasUserEditedRef.current = false;
-    const nextIdx = Math.min(currentIdx + 1, SUB_TABS.length - 1);
-    setActiveSubTab(SUB_TABS[nextIdx].id);
-  };
-
-  const goBack = () => {
-    const prevIdx = Math.max(currentIdx - 1, 0);
-    setActiveSubTab(SUB_TABS[prevIdx].id);
-  };
-
-  const renderSubContent = () => {
-    switch (activeSubTab) {
-      case "basics":
-        return (
-          <div className="w-full min-w-0">
-            <BasicsStep {...sharedProps} />
-          </div>
-        );
-      case "experience":
-        return (
-          <div className="w-full min-w-0">
-            <ExperienceStep {...sharedProps} />
-          </div>
-        );
-      case "style":
-        return (
-          <div className="w-full min-w-0">
-            <StyleMetricsStep {...sharedProps} />
-          </div>
-        );
-      case "audience":
-        return (
-          <div className="w-full min-w-0">
-            <PreferencesStep {...sharedProps} mode="audience" />
-          </div>
-        );
-      case "story":
-        return (
-          <div className="w-full min-w-0">
-            <PreferencesStep {...sharedProps} mode="testimonial" />
-          </div>
-        );
-      default:
-        return (
-          <div className="w-full min-w-0">
-            <BasicsStep {...sharedProps} />
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="w-full min-w-0 space-y-4" style={{ width: "100%" }}>
-      {/* ── Header + step badge ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full space-y-4 pb-20 sm:pb-16">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-text-heading">Business Information</h2>
-          <p className="mt-0.5 text-xs text-text-muted">Keep your professional details up to date.</p>
+          <p className="mt-0.5 text-xs text-text-muted">
+            Complete your professional match profile in one fast guided flow.
+          </p>
         </div>
-        <span className="inline-flex items-center self-start rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary-dark">
-          Step {currentIdx + 1} / {SUB_TABS.length}
+        <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold text-primary">
+          7 profile groups
         </span>
       </div>
 
-      {/* ── Progress bar ── */}
-      <div className="grid w-full min-w-0 grid-cols-5 gap-0.5" style={{ width: "100%" }}>
-        {SUB_TABS.map((tab, idx) => {
-          const isPast = idx < currentIdx;
-          const isCurrent = idx === currentIdx;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveSubTab(tab.id)}
-              className="group w-full"
-              aria-label={tab.label}
-            >
-              <div
-                className={`h-1 rounded-full transition-all ${
-                  isCurrent
-                    ? "bg-primary"
-                    : isPast
-                    ? "bg-primary/40"
-                    : "bg-border"
-                } group-hover:bg-primary/60`}
-              />
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Sub-tabs row ── */}
-      <div className="flex w-full min-w-0 flex-wrap gap-1.5">
-        {SUB_TABS.map((tab, idx) => {
-          const Icon = tab.icon;
-          const isActive = activeSubTab === tab.id;
-          const isPast = idx < currentIdx;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold transition-all ${
-                isActive
-                  ? "bg-primary text-white shadow-sm"
-                  : isPast
-                  ? "bg-primary/10 text-primary-dark"
-                  : "bg-background-light text-text-muted hover:text-text-heading hover:bg-primary/5"
-              }`}
-            >
-              {isPast && !isActive ? (
-                <CheckCircle2 size={11} className="shrink-0" />
-              ) : (
-                <Icon size={11} className="shrink-0" />
-              )}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Content area (fixed min-height for consistency) ── */}
-      <div className="min-h-[280px] w-full min-w-0 max-w-none" style={{ width: "100%" }}>
-        <div className="block w-full min-w-0 max-w-none" style={{ width: "100%" }}>
-          {renderSubContent()}
+      <SectionCard title="Business essentials" helper="Public-facing essentials that stay in your profile.">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-text-heading">Company / brokerage</span>
+            <input
+              value={companyName}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setCompanyName(e.target.value);
+                scheduleEssentialAutosave();
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="Your company name"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-text-heading">Website</span>
+            <input
+              value={website}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setWebsite(e.target.value);
+                scheduleEssentialAutosave();
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="https://example.com"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-text-heading">Primary location</span>
+            <input
+              value={location}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setLocation(e.target.value);
+                scheduleEssentialAutosave();
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="City"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-text-heading">Calendly link</span>
+            <input
+              value={calendlyLink}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setCalendlyLink(e.target.value);
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="https://calendly.com/..."
+            />
+          </label>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* ── Footer navigation ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3.5">
-        <div>
-          {currentIdx > 0 ? (
-            <button
-              type="button"
-              onClick={goBack}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-heading transition hover:border-primary hover:text-primary"
-            >
-              <ChevronLeft size={14} />
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
-        </div>
+      <SectionCard
+        title="1) Who do you help best?"
+        helper="Core specialization tags (pick up to 5)."
+        right={<span className="text-[10px] font-semibold text-text-muted">{coreSpecializationTags.length}/5</span>}
+      >
+        <ChipPicker
+          options={CORE_SPECIALIZATION_OPTIONS}
+          selected={coreSpecializationTags}
+          onToggle={toggleArrayValue(setCoreSpecializationTags)}
+          max={5}
+        />
+      </SectionCard>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {currentIdx < SUB_TABS.length - 1 ? (
-            <button
-              type="button"
-              onClick={goNext}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-95"
-            >
-              Next
-              <ChevronRight size={14} />
-            </button>
-          ) : (
-            <SubmitButton
-              loading={loading}
-              onClick={handleSubmit}
-              type="button"
-              className="!h-auto !w-auto rounded-md bg-primary px-4 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-95"
-            >
-              Save changes
-            </SubmitButton>
-          )}
+      <SectionCard title="2) Where do you work?" helper="Set city/region coverage plus primary and secondary zones.">
+        <div className="space-y-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-text-heading">Cities</p>
+            <ChipPicker
+              options={SERVICE_CITY_OPTIONS}
+              selected={serviceAreaCities}
+              onToggle={toggleArrayValue(setServiceAreaCities)}
+            />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-text-heading">Regions</p>
+            <ChipPicker
+              options={SERVICE_REGION_OPTIONS}
+              selected={serviceAreaRegions}
+              onToggle={toggleArrayValue(setServiceAreaRegions)}
+            />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-text-heading">Primary zones (strong match)</p>
+            <ChipPicker
+              options={SERVICE_CITY_OPTIONS}
+              selected={serviceAreaPrimaryZones}
+              onToggle={toggleArrayValue(setServiceAreaPrimaryZones)}
+              max={8}
+            />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-text-heading">Secondary zones (soft match)</p>
+            <ChipPicker
+              options={SERVICE_CITY_OPTIONS}
+              selected={serviceAreaSecondaryZones}
+              onToggle={toggleArrayValue(setServiceAreaSecondaryZones)}
+              max={12}
+            />
+          </div>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="3) How do you work?"
+        helper="Working style tags (pick 3-5)."
+        right={<span className="text-[10px] font-semibold text-text-muted">{workingStyleTags.length}/5</span>}
+      >
+        <ChipPicker
+          options={WORKING_STYLE_OPTIONS}
+          selected={workingStyleTags}
+          onToggle={toggleArrayValue(setWorkingStyleTags)}
+          max={5}
+        />
+      </SectionCard>
+
+      <SectionCard title="4) Language system" helper="Use the standardized language list shared with clients.">
+        <MultiSelectDropdown
+          options={LANGUAGE_OPTIONS}
+          selected={languagesSpoken}
+          placeholder="Select language"
+          onAdd={(value) => {
+            hasUserEditedRef.current = true;
+            setLanguagesSpoken((prev) => (prev.includes(value) ? prev : [...prev, value]));
+          }}
+          onRemove={(value) => {
+            hasUserEditedRef.current = true;
+            setLanguagesSpoken((prev) => prev.filter((item) => item !== value));
+          }}
+        />
+        {languagesSpoken.includes("Other") ? (
+          <label className="mt-2 block space-y-1">
+            <span className="text-xs font-semibold text-text-heading">Other language</span>
+            <input
+              value={otherLanguageText}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setOtherLanguageText(e.target.value);
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="Type language name"
+            />
+          </label>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard title="5) Experience level" helper="Used internally for ranking, not shown as public status.">
+        <div className="flex flex-wrap gap-2">
+          {EXPERIENCE_OPTIONS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={chipClass(experienceLevel === option.key)}
+              onClick={() => {
+                hasUserEditedRef.current = true;
+                setExperienceLevel(option.key);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="6) Specialty strengths"
+        helper="Differentiator tags (pick up to 5)."
+        right={<span className="text-[10px] font-semibold text-text-muted">{specialtyStrengthTags.length}/5</span>}
+      >
+        <ChipPicker
+          options={SPECIALTY_STRENGTH_OPTIONS}
+          selected={specialtyStrengthTags}
+          onToggle={toggleArrayValue(setSpecialtyStrengthTags)}
+          max={5}
+        />
+      </SectionCard>
+
+      <SectionCard
+        title="7) Personality tags"
+        helper="Soft ranking signals (pick up to 5)."
+        right={<span className="text-[10px] font-semibold text-text-muted">{personalityStyleTags.length}/5</span>}
+      >
+        <ChipPicker
+          options={PERSONALITY_TAG_OPTIONS}
+          selected={personalityStyleTags}
+          onToggle={toggleArrayValue(setPersonalityStyleTags)}
+          max={5}
+        />
+      </SectionCard>
+
+      <SectionCard title="Short profile story" helper="Optional short note for public profile context.">
+        <textarea
+          value={testimonial}
+          onChange={(e) => {
+            hasUserEditedRef.current = true;
+            setTestimonial(e.target.value);
+          }}
+          rows={5}
+          className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+          placeholder="Share a short summary of how you help clients."
+        />
+      </SectionCard>
+
+      <div className="sticky bottom-0 z-10 -mx-1 mt-2 border-t border-border/80 bg-white/95 px-1 pt-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <SubmitButton
+          loading={loading}
+          onClick={handleSubmit}
+          type="button"
+          className="!h-auto !w-full rounded-md bg-primary px-4 py-2.5 text-[12px] font-semibold text-white shadow-sm transition hover:brightness-95 sm:!w-auto"
+        >
+          Save changes
+        </SubmitButton>
       </div>
     </div>
   );

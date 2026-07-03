@@ -261,12 +261,42 @@ function SettingsPageContent() {
         specializations: Array.isArray(apiProfessional?.specializations)
           ? apiProfessional.specializations
           : [],
+        coreSpecializationTags: Array.isArray(apiProfessional?.core_specialization_tags)
+          ? apiProfessional.core_specialization_tags
+          : [],
+        specialtyStrengthTags: Array.isArray(apiProfessional?.specialty_strength_tags)
+          ? apiProfessional.specialty_strength_tags
+          : [],
         communicationChannels: Array.isArray(apiProfessional?.communication_channels)
           ? apiProfessional.communication_channels
           : [],
         preferredClients: Array.isArray(apiProfessional?.preferred_clients)
           ? apiProfessional.preferred_clients
           : [],
+        workingStyleTags: Array.isArray(apiProfessional?.working_style_tags)
+          ? apiProfessional.working_style_tags
+          : [],
+        personalityStyleTags: Array.isArray(apiProfessional?.personality_style_tags)
+          ? apiProfessional.personality_style_tags
+          : [],
+        serviceAreaPrimaryZones: Array.isArray(apiProfessional?.service_area_primary_zones)
+          ? apiProfessional.service_area_primary_zones
+          : [],
+        serviceAreaSecondaryZones: Array.isArray(apiProfessional?.service_area_secondary_zones)
+          ? apiProfessional.service_area_secondary_zones
+          : [],
+        serviceAreaCities: Array.isArray(apiProfessional?.service_area_cities)
+          ? apiProfessional.service_area_cities
+          : [],
+        serviceAreaRegions: Array.isArray(apiProfessional?.service_area_regions)
+          ? apiProfessional.service_area_regions
+          : [],
+        languagesSpoken: Array.isArray(apiProfessional?.languages_spoken)
+          ? apiProfessional.languages_spoken
+          : [],
+        otherLanguageText: apiProfessional?.other_language_text || "",
+        workingStyleStructured: apiProfessional?.working_style_structured || "",
+        experienceLevel: apiProfessional?.experience_level || "",
         calendlyLink: apiProfessional?.calendly_link || "",
       })
     );

@@ -51,3 +51,25 @@ export async function cancelClientSubscription() {
   });
   return response.json();
 }
+
+export async function resumeClientSubscription() {
+  const response = await fetch(`${API_URL}/api/client/subscription/resume`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+    },
+  });
+  return response.json();
+}
+
+export async function changeClientSubscriptionPlan(tier) {
+  const response = await fetch(`${API_URL}/api/client/subscription/change-plan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+    },
+    body: JSON.stringify({ tier }),
+  });
+  return response.json();
+}
