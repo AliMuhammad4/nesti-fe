@@ -12,7 +12,6 @@ export default function ProfileAnalyticsPage() {
     start_date: null,
     end_date: null,
   });
-
   const { data: analyticsData, isLoading } = useAnalyticsDashboard(token, {
     period,
     ...dateRange,
