@@ -31,6 +31,7 @@ const VALID_TABS = [
   "business",
   "icp",
   "subscription",
+  "subscriptions",
   "chatbot",
   "leads",
 ];
@@ -65,6 +66,7 @@ function SettingsPageContent() {
   const onboardingIncompleteOnEntryRef = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
+  const role = String(profileQuery.data?.user?.role || "").toLowerCase();
 
   useEffect(() => {
     setIsMounted(true);
@@ -181,7 +183,7 @@ function SettingsPageContent() {
     }
 
     if (tab && VALID_TABS.includes(tab)) {
-      setActiveTab(tab);
+      setActiveTab(tab === "subscriptions" ? "subscription" : tab);
     } else if (!tab) {
       setActiveTab("personal");
     }
@@ -192,6 +194,13 @@ function SettingsPageContent() {
       toast.warning("Your trial has expired. Please subscribe to continue.");
     }
   }, [searchParams, router, hasFeature]);
+
+  useEffect(() => {
+    const tab = String(searchParams.get("tab") || "").toLowerCase();
+    if ((tab === "subscription" || tab === "subscriptions") && role === "client") {
+      router.replace("/client-dashboard/subscription");
+    }
+  }, [role, router, searchParams]);
 
   // Keep settings forms in sync with `/auth/profile`.
   // PersonalInfo/BusinessInformation read from `state.profile.*` (profileSlice),
@@ -379,19 +388,21 @@ function SettingsPageContent() {
         >
           <p className="font-semibold text-amber-950">Finish your workspace setup</p>
           <p className="mt-1.5 leading-relaxed text-amber-900/95">
-            Complete <strong>Personal Information</strong> (name, email, phone) and{" "}
-            <strong>Business Information</strong> (company name and where you serve). Other areas of the app stay
+            Complete <strong>Personal Information</strong> (name, email, phone, and company details) and{" "}
+            <strong>Business Information</strong> (where you serve clients). Other areas of the app stay
             locked until both are done.
           </p>
           <ul className="mt-2 list-inside list-disc text-xs text-amber-900/85">
             {!profileSetup.personal_complete ? (
-              <li>Personal: add phone and confirm your name and email.</li>
+              <li>
+                Personal: add your phone number, confirm your name and email, and enter your{" "}
+                <strong>company / brokerage</strong>.
+              </li>
             ) : null}
             {!profileSetup.business_complete ? (
               <li>
-                Business: add <strong>company / brokerage</strong> (Basics). For service area, use{" "}
-                <strong>Location</strong> on Basics and/or <strong>target neighborhoods</strong> under Style &amp;
-                Metrics.
+                Business: add at least one <strong>service area</strong> under{" "}
+                <strong>Where do you work?</strong> (search for a city, province, state, or region).
               </li>
             ) : null}
           </ul>

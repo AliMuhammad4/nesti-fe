@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { User, Mail, Calendar, Pencil, ImageIcon, MapPin, Sparkles, CheckCircle2 } from "lucide-react";
+import { User, Mail, Calendar, Pencil, ImageIcon, MapPin, CheckCircle2, Building2, Globe, Link2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { notifyClientProfileUpdated } from "@/lib/clientProfileEvents";
 import FormField from "@/components/auth/FormField";
 import PhoneNumberField from "@/components/ui/PhoneNumberField";
 import SubmitButton from "@/components/auth/SubmitButton";
@@ -31,7 +32,7 @@ function isValidCalendlyUrl(value) {
 const MAX_PROFILE_IMAGE_BYTES = 16 * 1024 * 1024;
 const MAX_PROFILE_IMAGE_MB = 16;
 
-const validatePersonalInfo = (form) => {
+const validatePersonalInfo = (form, { requireCompany = false } = {}) => {
   const errors = {};
   if (!form.firstName.trim()) errors.firstName = "First name is required";
   if (!form.lastName.trim()) errors.lastName = "Last name is required";
@@ -39,6 +40,9 @@ const validatePersonalInfo = (form) => {
   if (emailError) errors.email = emailError;
   const phoneError = validatePhoneRequired(form.phone);
   if (phoneError) errors.phone = phoneError;
+  if (requireCompany && !String(form.companyName || "").trim()) {
+    errors.companyName = "Company / brokerage is required";
+  }
   if (!isValidCalendlyUrl(form.calendlyUrl)) {
     errors.calendlyUrl = "Please enter a valid Calendly URL (https://calendly.com/...)";
   }
@@ -51,6 +55,30 @@ const TIMELINE_OPTIONS = [
   { value: "3-6 months", label: "3 - 6 months" },
   { value: "6-12 months", label: "6 - 12 months" },
   { value: "browsing", label: "Just browsing" },
+];
+
+const EMPLOYMENT_STATUS_OPTIONS = [
+  { value: "full_time", label: "Full-time" },
+  { value: "part_time", label: "Part-time" },
+  { value: "self_employed", label: "Self-employed" },
+  { value: "business_owner", label: "Business owner" },
+  { value: "contract", label: "Contract" },
+  { value: "student", label: "Student" },
+  { value: "retired", label: "Retired" },
+  { value: "other", label: "Other" },
+];
+
+const CONTACT_METHOD_OPTIONS = [
+  { value: "phone", label: "Phone call" },
+  { value: "sms", label: "SMS / WhatsApp" },
+  { value: "email", label: "Email" },
+];
+
+const CONTACT_TIME_OPTIONS = [
+  { value: "morning", label: "Morning" },
+  { value: "afternoon", label: "Afternoon" },
+  { value: "evening", label: "Evening" },
+  { value: "anytime", label: "Anytime" },
 ];
 
 const HOME_GOAL_OPTIONS = [
@@ -168,10 +196,10 @@ function ChipButton({ selected, label, onClick, disabled = false }) {
       type="button"
       onClick={onClick}
       disabled={disabled && !selected}
-      className={`rounded-full border px-3 py-1.5 text-[10px] font-black transition duration-200 ${
+      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold leading-none transition duration-200 ${
         selected
-          ? "border-primary bg-gradient-to-r from-primary to-emerald-500 text-white shadow-[0_8px_18px_rgba(22,163,74,0.18)]"
-          : "border-slate-200 bg-white/90 text-text-body shadow-[0_6px_14px_rgba(15,23,42,0.035)] hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary hover:shadow-sm"
+          ? "border-primary bg-gradient-to-r from-primary to-emerald-500 text-white shadow-[0_8px_18px_rgba(22,163,74,0.2)]"
+          : "border-slate-200 bg-white text-text-body shadow-[0_4px_12px_rgba(15,23,42,0.03)] hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary hover:shadow-sm"
       } ${disabled && !selected ? "cursor-not-allowed opacity-45" : ""}`}
     >
       {label}
@@ -179,13 +207,17 @@ function ChipButton({ selected, label, onClick, disabled = false }) {
   );
 }
 
-function OnboardingSection({ title, helper, right, children, className = "" }) {
+function OnboardingSection({ eyebrow, title, helper, right, children, className = "" }) {
+  const showEyebrow = Boolean(eyebrow) && !/^step\b/i.test(String(eyebrow || "").trim());
   return (
-    <section className={`border-t border-slate-100 pt-3 first:border-t-0 first:pt-0 ${className}`}>
-      <div className="mb-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+    <section className={`rounded-2xl border border-slate-100 bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(15,23,42,0.03)] sm:px-4 sm:py-3.5 ${className}`}>
+      <div className="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h4 className="text-[13px] font-black text-text-heading">{title}</h4>
-          {helper ? <p className="mt-0.5 text-[11px] leading-4 text-text-muted">{helper}</p> : null}
+          {showEyebrow ? (
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary/75">{eyebrow}</p>
+          ) : null}
+          <h4 className="text-[13px] font-black text-text-heading sm:text-sm">{title}</h4>
+          {helper ? <p className="mt-0.5 text-[11px] leading-4 text-text-muted sm:text-xs">{helper}</p> : null}
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>
@@ -196,6 +228,7 @@ function OnboardingSection({ title, helper, right, children, className = "" }) {
 
 export default function PersonalInfo({ onSaveSuccess } = {}) {
   const storedPersonal = useAppSelector((state) => state.profile.personalInfo);
+  const storedBusiness = useAppSelector((state) => state.profile.businessInfo);
   const authUser = useAppSelector((state) => state.auth.user);
   const token = useAppSelector((state) => state.auth.token);
   const profileQuery = useProfileQuery();
@@ -207,6 +240,10 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
     email: "",
     phone: "",
     calendlyUrl: "",
+    companyName: "",
+    website: "",
+    officeLocation: "",
+    socialMedia: "",
   });
   const [profileImage, setProfileImage] = useState("");
   const [coverImage, setCoverImage] = useState("");
@@ -256,20 +293,24 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
   const isClient = String(profileQuery.data?.user?.role || authUser?.role || "").toLowerCase() === "client";
 
   useEffect(() => {
-    if (storedPersonal) {
+    if (storedPersonal || storedBusiness) {
       setForm((prev) => ({
         ...prev,
-        ...storedPersonal,
-        calendlyUrl: storedPersonal.calendlyUrl || storedPersonal.calendalyUrl || "",
+        ...(storedPersonal || {}),
+        calendlyUrl: storedPersonal?.calendlyUrl || storedPersonal?.calendalyUrl || prev.calendlyUrl || "",
+        companyName: storedBusiness?.companyName || prev.companyName || "",
+        website: storedBusiness?.website || prev.website || "",
+        officeLocation: storedPersonal?.location || storedBusiness?.location || prev.officeLocation || "",
+        socialMedia: storedBusiness?.socialMedia || prev.socialMedia || "",
       }));
-      if (storedPersonal.profileImage) {
+      if (storedPersonal?.profileImage) {
         setProfileImage(storedPersonal.profileImage);
       }
-      if (storedPersonal.coverImage) {
+      if (storedPersonal?.coverImage) {
         setCoverImage(storedPersonal.coverImage);
       }
     }
-  }, [storedPersonal]);
+  }, [storedPersonal, storedBusiness]);
 
   useEffect(() => {
     if (!isClient || !token) return;
@@ -410,7 +451,9 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
         method: "PUT",
         data: payload,
         token,
-      }).catch(() => {
+      })
+        .then(() => notifyClientProfileUpdated())
+        .catch(() => {
         /* explicit Save still surfaces errors */
       });
     }, 650);
@@ -419,7 +462,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
-    const errors = validatePersonalInfo(form);
+    const errors = validatePersonalInfo(form, { requireCompany: !isClient });
     if (Object.keys(errors).length) {
       Object.values(errors).forEach((msg) => toast.error(msg));
       return;
@@ -431,6 +474,12 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       phone: normalizePhoneForStorage(form.phone),
       calendly_link: form.calendlyUrl.trim(),
     };
+    if (!isClient) {
+      payload.company_name = String(form.companyName || "").trim();
+      payload.website = String(form.website || "").trim();
+      payload.location = String(form.officeLocation || "").trim();
+      payload.social_media = String(form.socialMedia || "").trim();
+    }
     if (profileImage && /^https?:\/\//i.test(String(profileImage))) {
       payload.profile_image = String(profileImage).trim();
     }
@@ -549,6 +598,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
         comfort_preferences: Array.isArray(savedProfile?.comfort_preferences) ? savedProfile.comfort_preferences : [],
       });
       await onSaveSuccess?.();
+      notifyClientProfileUpdated();
       toast.success(data?.message || "Personal information updated successfully");
     } catch (error) {
       toast.error(error?.message || "Failed to save personal information");
@@ -613,7 +663,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
     ? "!h-10 bg-gray-100 text-xs cursor-not-allowed"
     : "!h-12 bg-gray-100 text-[13px] cursor-not-allowed";
   const detailsCardClass = isClient
-    ? "overflow-hidden rounded-[1.6rem] border border-white/75 bg-gradient-to-br from-white via-white to-primary/[0.025] p-4 shadow-[0_18px_48px_rgba(15,23,42,0.06)] ring-1 ring-slate-100/80 sm:p-5"
+    ? "overflow-hidden rounded-[1.6rem] border border-white/70 bg-gradient-to-br from-white via-white to-emerald-50/25 p-4 shadow-[0_20px_52px_rgba(15,23,42,0.06)] ring-1 ring-slate-100/90 sm:p-5"
     : "rounded-xl border border-border/60 bg-white p-4 shadow-sm sm:p-5";
   const detailsGridClass = isClient
     ? "mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-x-3 md:gap-y-2.5"
@@ -703,12 +753,6 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
       <div className={detailsCardClass}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            {isClient ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-primary">
-                <Sparkles size={13} />
-                60-second AI profile
-              </div>
-            ) : null}
             <h3 className={`font-black tracking-tight text-text-heading ${isClient ? "mt-3 text-lg sm:text-xl" : "text-xs"}`}>
               {isClient ? "Tell us what kind of help feels right" : "Contact & scheduling"}
             </h3>
@@ -724,7 +768,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
         </div>
 
         {isClient ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4 sm:space-y-4.5">
             <OnboardingSection
               eyebrow="Step 1"
               title="Your contact details"
@@ -833,6 +877,67 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
 
             <OnboardingSection
               eyebrow="Step 4"
+              title="Financial foundation"
+              helper="These values help calculate your readiness and match quality."
+            >
+              <div className="grid gap-3 md:grid-cols-3">
+                <FormField
+                  label="Annual Income"
+                  name="annual_income"
+                  type="number"
+                  min="0"
+                  value={clientForm.annual_income}
+                  onChange={handleClientChange}
+                  onFocus={() => setFocusedField("annual_income")}
+                  onBlur={() => setFocusedField("")}
+                  placeholder="e.g. 120000"
+                  focusedField={focusedField}
+                  className={fieldSizeClass}
+                />
+                <FormField
+                  label="Current Savings"
+                  name="current_savings"
+                  type="number"
+                  min="0"
+                  value={clientForm.current_savings}
+                  onChange={handleClientChange}
+                  onFocus={() => setFocusedField("current_savings")}
+                  onBlur={() => setFocusedField("")}
+                  placeholder="e.g. 50000"
+                  focusedField={focusedField}
+                  className={fieldSizeClass}
+                />
+                <FormField
+                  label="Monthly Savings"
+                  name="monthly_savings"
+                  type="number"
+                  min="0"
+                  value={clientForm.monthly_savings}
+                  onChange={handleClientChange}
+                  onFocus={() => setFocusedField("monthly_savings")}
+                  onBlur={() => setFocusedField("")}
+                  placeholder="e.g. 2500"
+                  focusedField={focusedField}
+                  className={fieldSizeClass}
+                />
+              </div>
+              <div className="mt-3">
+                <label className="mb-1.5 block text-[11px] font-black text-text-heading">Employment Status</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {EMPLOYMENT_STATUS_OPTIONS.map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label}
+                      selected={clientForm.employment_status === option.value}
+                      onClick={() => setClientField("employment_status", option.value)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </OnboardingSection>
+
+            <OnboardingSection
+              eyebrow="Step 5"
               title="Location and timeline"
               helper="Tell us where you want to move and how soon you want to act."
             >
@@ -871,7 +976,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
             </OnboardingSection>
 
             <OnboardingSection
-              eyebrow="Step 5"
+              eyebrow="Step 6"
               title="Working style"
               helper="Select the personality and communication style you prefer."
             >
@@ -888,7 +993,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
             </OnboardingSection>
 
             <OnboardingSection
-              eyebrow="Step 6"
+              eyebrow="Step 7"
               title="What matters most?"
               helper="Choose up to five priorities so recommendations feel personal."
               right={<span className="rounded-full bg-primary/[0.08] px-3 py-1 text-[10px] font-black text-primary">{clientForm.priority_tags.length}/5 selected</span>}
@@ -906,8 +1011,8 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
               </div>
             </OnboardingSection>
 
-            <div className="grid gap-3">
-              <OnboardingSection eyebrow="Step 7" title="Experience" helper="Choose the experience level you trust most." className="h-full">
+            <div className="grid gap-4">
+              <OnboardingSection eyebrow="Step 8" title="Experience" helper="Choose the experience level you trust most." className="h-full">
                 <div className="flex flex-wrap gap-1.5">
                   {EXPERIENCE_PREFERENCE_OPTIONS.map((option) => (
                     <ChipButton
@@ -931,7 +1036,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                   ))}
                 </div>
               </OnboardingSection>
-              <OnboardingSection eyebrow="Step 8" title="Language" helper="Pick languages that make communication comfortable." className="h-full">
+              <OnboardingSection eyebrow="Step 9" title="Language" helper="Pick languages that make communication comfortable." className="h-full">
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGE_OPTIONS.map((option) => (
                     <ChipButton
@@ -944,6 +1049,41 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                 </div>
               </OnboardingSection>
             </div>
+
+            <OnboardingSection
+              eyebrow="Step 10"
+              title="Contact preferences"
+              helper="Tell professionals how and when you want to be contacted."
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-black text-text-heading">Preferred Contact Method</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CONTACT_METHOD_OPTIONS.map((option) => (
+                      <ChipButton
+                        key={option.value}
+                        label={option.label}
+                        selected={clientForm.preferred_contact_method === option.value}
+                        onClick={() => setClientField("preferred_contact_method", option.value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-black text-text-heading">Best Time to Contact</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CONTACT_TIME_OPTIONS.map((option) => (
+                      <ChipButton
+                        key={option.value}
+                        label={option.label}
+                        selected={clientForm.best_time_to_contact === option.value}
+                        onClick={() => setClientField("best_time_to_contact", option.value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </OnboardingSection>
           </div>
         ) : (
           <div className={detailsGridClass}>
@@ -1016,7 +1156,65 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-col gap-2.5 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
+        {!isClient ? (
+          <div className="mt-4 border-t border-slate-100 pt-3.5">
+            <h4 className="text-xs font-bold text-text-heading">Business details</h4>
+            <p className="mt-0.5 text-[11px] text-text-muted">Your public company info and social links.</p>
+            <div className={`${detailsGridClass} mt-2.5`}>
+              <FormField
+                label="Company / brokerage"
+                name="companyName"
+                value={form.companyName}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("companyName")}
+                onBlur={() => setFocusedField("")}
+                placeholder="Your company name"
+                icon={Building2}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+                required
+              />
+              <FormField
+                label="Website"
+                name="website"
+                value={form.website}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("website")}
+                onBlur={() => setFocusedField("")}
+                placeholder="https://example.com"
+                icon={Globe}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+              />
+              <FormField
+                label="Primary office location"
+                name="officeLocation"
+                value={form.officeLocation}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("officeLocation")}
+                onBlur={() => setFocusedField("")}
+                placeholder="Your main city or office base"
+                icon={MapPin}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+              />
+              <FormField
+                label="Social media"
+                name="socialMedia"
+                value={form.socialMedia}
+                onChange={handleChange}
+                onFocus={() => setFocusedField("socialMedia")}
+                onBlur={() => setFocusedField("")}
+                placeholder="LinkedIn URL"
+                icon={Link2}
+                focusedField={focusedField}
+                className={fieldSizeClass}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex flex-col gap-2.5 rounded-2xl border border-slate-100 bg-slate-50/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-end">
           {canChangePassword ? (
             <button
               type="button"

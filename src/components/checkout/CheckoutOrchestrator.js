@@ -75,7 +75,7 @@ export default function CheckoutOrchestrator() {
 
   useEffect(() => {
     if (!isAuthenticated || !isClient) return;
-    router.replace("/client-dashboard/subscription");
+    router.replace("/client-dashboard/billing");
   }, [isAuthenticated, isClient, router]);
 
   const handleChoosePlan = (plan) => {

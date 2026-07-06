@@ -13,12 +13,24 @@ function Field({ label, value }) {
   );
 }
 
+function normalizeImageUrl(image) {
+  if (typeof image === "string") return image.trim();
+  if (image && typeof image === "object") {
+    return String(image.secure_url || image.url || "").trim();
+  }
+  return "";
+}
+
 /**
  * Listing snapshot for buyer inquiries (used on lead workspace + referral lead snapshot).
  */
 export default function InquiredPropertyOverview({ property, className = "" }) {
   if (!property || typeof property !== "object") return null;
   const address = inquiredPropertyDisplayAddress(property);
+  const images = (Array.isArray(property.images) ? property.images : [])
+    .map(normalizeImageUrl)
+    .filter(Boolean)
+    .slice(0, 8);
 
   return (
     <div
@@ -35,9 +47,30 @@ export default function InquiredPropertyOverview({ property, className = "" }) {
         <Field label="Type" value={property.property_type} />
         <Field label="Bedrooms" value={property.bedrooms} />
         <Field label="Bathrooms" value={property.bathrooms} />
+        <Field label="Square footage" value={property.square_footage} />
         <Field label="Listed by" value={property.listed_by_name} />
         <Field label="Seller" value={property.seller_name} />
       </div>
+      {images.length ? (
+        <div className="mt-3">
+          <div className="text-[9px] font-medium uppercase tracking-wide text-text-muted">Photos</div>
+          <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {images.map((url, index) => (
+              <div
+                key={`${url}-${index}`}
+                className="overflow-hidden rounded-md border border-border/60 bg-white"
+              >
+                <img
+                  src={url}
+                  alt={`Listing photo ${index + 1}`}
+                  className="h-24 w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

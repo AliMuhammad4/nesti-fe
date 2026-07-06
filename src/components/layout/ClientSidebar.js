@@ -25,6 +25,7 @@ import { PUBLIC_HOME_PATH, navigateToPublicHome } from "@/lib/workspaceNavigatio
 
 const CLIENT_SETTINGS_ITEMS = [
   { id: "personal", label: "Personal Information", tab: "personal", icon: User },
+  { id: "subscription", label: "Subscriptions", href: "/client-dashboard/subscription", icon: CreditCard },
 ];
 
 function NavIconTile({ Icon, variant = "idle" }) {
@@ -388,26 +389,26 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
             </Link>
 
             <Link
-              href="/client-dashboard/subscription"
+              href="/client-dashboard/billing"
               onClick={() => {
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                pathname === '/client-dashboard/subscription'
+                pathname === '/client-dashboard/billing'
                   ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
                   : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={pathname === '/client-dashboard/subscription' ? "page" : undefined}
+              aria-current={pathname === '/client-dashboard/billing' ? "page" : undefined}
             >
-              {pathname === '/client-dashboard/subscription' && (
+              {pathname === '/client-dashboard/billing' && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={CreditCard} variant={pathname === '/client-dashboard/subscription' ? "active" : "idle"} />
-              <span className="min-w-0 truncate">Subscription</span>
+              <NavIconTile Icon={CreditCard} variant={pathname === '/client-dashboard/billing' ? "active" : "idle"} />
+              <span className="min-w-0 truncate">Billing</span>
             </Link>
 
             <Link

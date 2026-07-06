@@ -5,6 +5,11 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { CheckCircle2, ChevronLeft, ChevronRight, Download, Info, X, XCircle } from "lucide-react";
 import { formatLeadIntakeSlug } from "@/lib/leadsPageUtils";
+import InquiredPropertyOverview from "@/components/leads/InquiredPropertyOverview";
+import {
+  inquiredPropertyFromLead,
+  isClientDashboardPropertyInquiry,
+} from "@/lib/inquiredPropertyUtils";
 
 export default function LeadsDetailsTab({
   selectedConversation,
@@ -16,7 +21,6 @@ export default function LeadsDetailsTab({
   onOpenMeta,
   onCancelCalendlyAppointment,
   cancelCalendlyPending = false,
-  inquiredPropertyAddress = "",
   embedded = false,
 }) {
   const [showCalendlyCancelModal, setShowCalendlyCancelModal] = useState(false);
@@ -45,7 +49,8 @@ export default function LeadsDetailsTab({
     !isMortgageBrokerLead &&
     (String(leadData.intent || "").toLowerCase() === "sell" ||
       /seller|sell/.test(String(leadData.lead_type || "").toLowerCase()));
-  const isInquiredPropertyInlineView = Boolean(inquiredPropertyAddress);
+  const isClientDashboardPropertyInquiryLead = isClientDashboardPropertyInquiry(leadData);
+  const inquiredPropertySnapshot = inquiredPropertyFromLead(leadData);
   const outerClassName = embedded ? "space-y-4" : "rounded-md border border-border bg-white shadow-sm p-5 space-y-4";
   const sectionClassName = embedded ? "space-y-3 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-3";
   const roleClosedLabels = {
@@ -479,72 +484,70 @@ export default function LeadsDetailsTab({
             </>
           ) : (
             <>
-              <div className={sectionClassName}>
-                <div className="text-sm font-semibold text-text-heading">Property</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                  {isInquiredPropertyInlineView ? (
-                    <KeyValue label="Address" value={inquiredPropertyAddress} />
-                  ) : (
-                    <>
+              {isClientDashboardPropertyInquiryLead ? (
+                <InquiredPropertyOverview property={inquiredPropertySnapshot} />
+              ) : (
+                <>
+                  <div className={sectionClassName}>
+                    <div className="text-sm font-semibold text-text-heading">Property</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                       {hideBuyerSellerIntent ? null : <KeyValue label="Intent" value={leadData.intent} />}
                       <KeyValue label="Location" value={property.location} />
-                    </>
-                  )}
-                  <KeyValue label="Budget" value={budgetDisplay} />
-                  <KeyValue label="Timeline" value={property.timeline} />
-                  <KeyValue label="Type" value={property.property_type} />
-                  <KeyValue label="Bedrooms" value={property.bedrooms} />
-                  <KeyValue label="Bathrooms" value={property.bathrooms} />
-                  <KeyValue label="Parking required" value={property.parking_required} />
-                  <KeyValue label="Backyard needed" value={property.backyard_needed} />
-                  <KeyValue label="Must-have features" value={property.must_have_features} />
-                </div>
-              </div>
-
-              {isInquiredPropertyInlineView ? qualificationSection : null}
-
-              {isAgentSellerLead && propertyImages.length ? (
-                <div className={sectionClassName}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-text-heading">Property photos</div>
-                      <p className="text-[11px] text-text-muted mt-0.5">
-                        Uploaded by the seller during lead intake.
-                      </p>
+                      <KeyValue label="Budget" value={budgetDisplay} />
+                      <KeyValue label="Timeline" value={property.timeline} />
+                      <KeyValue label="Type" value={property.property_type} />
+                      <KeyValue label="Bedrooms" value={property.bedrooms} />
+                      <KeyValue label="Bathrooms" value={property.bathrooms} />
+                      <KeyValue label="Parking required" value={property.parking_required} />
+                      <KeyValue label="Backyard needed" value={property.backyard_needed} />
+                      <KeyValue label="Must-have features" value={property.must_have_features} />
                     </div>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
-                      {propertyImages.length} image{propertyImages.length === 1 ? "" : "s"}
-                    </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {propertyImages.map((img, index) => {
-                      const src = img.secure_url || img.url;
-                      return (
-                        <button
-                          type="button"
-                          key={`${img.public_id || src}-${index}`}
-                          onClick={() => setPreviewImageIndex(index)}
-                          className="group overflow-hidden rounded-xl border border-border bg-background-light"
-                        >
-                          <Image
-                            src={src}
-                            alt={img.original_filename || `Seller property image ${index + 1}`}
-                            width={320}
-                            height={180}
-                            className="h-28 w-full object-cover transition-transform duration-200 group-hover:scale-105"
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
 
-              {!isInquiredPropertyInlineView ? qualificationSection : null}
+                  {isAgentSellerLead && propertyImages.length ? (
+                    <div className={sectionClassName}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-text-heading">Property photos</div>
+                          <p className="text-[11px] text-text-muted mt-0.5">
+                            Uploaded by the seller during lead intake.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                          {propertyImages.length} image{propertyImages.length === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {propertyImages.map((img, index) => {
+                          const src = img.secure_url || img.url;
+                          return (
+                            <button
+                              type="button"
+                              key={`${img.public_id || src}-${index}`}
+                              onClick={() => setPreviewImageIndex(index)}
+                              className="group overflow-hidden rounded-xl border border-border bg-background-light"
+                            >
+                              <Image
+                                src={src}
+                                alt={img.original_filename || `Seller property image ${index + 1}`}
+                                width={320}
+                                height={180}
+                                className="h-28 w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {qualificationSection}
+                </>
+              )}
             </>
           )}
 
-          {!isInquiredPropertyInlineView ? conversionTrustSection : null}
+          {conversionTrustSection}
 
         </>
       ) : (

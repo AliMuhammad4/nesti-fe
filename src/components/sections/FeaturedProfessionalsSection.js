@@ -1,32 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { Star, MapPin, Award, ArrowRight } from "lucide-react";
 
+async function fetchFeaturedProfessionals(limit = 6) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/featured/professionals?limit=${limit}`,
+  );
+  const data = await response.json();
+  if (!data.success) return [];
+  return data.data || [];
+}
+
 export default function FeaturedProfessionalsSection() {
-  const [professionals, setProfessionals] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchFeaturedProfessionals();
-  }, []);
-
-  const fetchFeaturedProfessionals = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/featured/professionals?limit=6`);
-      const data = await response.json();
-      if (data.success) {
-        setProfessionals(data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching featured professionals:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: professionals = [], isLoading: loading } = useQuery({
+    queryKey: ["featured-professionals", 6],
+    queryFn: () => fetchFeaturedProfessionals(6),
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (loading) {
     return (

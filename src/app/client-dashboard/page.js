@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { CLIENT_PROFILE_UPDATED_EVENT } from "@/lib/clientProfileEvents";
 import {
   ProfileSectionsBarChart,
   SavingsDonutChart,
@@ -75,7 +76,12 @@ const PROFILE_COMPLETION_SECTIONS = [
       {
         key: "preferred_location",
         label: "Preferred Location",
-        isComplete: (profile) => Boolean(profile?.preferred_location?.trim?.() || profile?.preferred_location),
+        isComplete: (profile) => {
+          if (Array.isArray(profile?.preferred_locations) && profile.preferred_locations.length > 0) {
+            return true;
+          }
+          return Boolean(String(profile?.preferred_location || "").trim());
+        },
       },
       {
         key: "purchase_timeline",
@@ -197,7 +203,12 @@ export default function ClientDashboardPage() {
     const completed = sections.flatMap((section) => section.fields.filter((field) => field.complete));
     const missing = sections.flatMap((section) => section.fields.filter((field) => !field.complete));
     const total = sections.reduce((sum, section) => sum + section.totalCount, 0);
-    const percentage = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+    const percentage =
+      Number.isFinite(Number(profile?.profile_completeness)) && profile?.profile_completeness != null
+        ? Math.round(Number(profile.profile_completeness))
+        : total > 0
+          ? Math.round((completed.length / total) * 100)
+          : 0;
 
     return { percentage, completed, missing, sections, total };
   }, [profile]);
@@ -251,6 +262,28 @@ export default function ClientDashboardPage() {
 
     fetchClientData();
   }, [fetchClientData, hydrated, router, token, user?.role]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const refreshProfile = () => {
+      if (document.visibilityState === "visible") {
+        fetchClientData();
+      }
+    };
+
+    const onProfileUpdated = () => fetchClientData();
+
+    window.addEventListener("focus", refreshProfile);
+    document.addEventListener("visibilitychange", refreshProfile);
+    window.addEventListener(CLIENT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+
+    return () => {
+      window.removeEventListener("focus", refreshProfile);
+      document.removeEventListener("visibilitychange", refreshProfile);
+      window.removeEventListener(CLIENT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    };
+  }, [fetchClientData, token]);
 
   if (loading) {
     return (

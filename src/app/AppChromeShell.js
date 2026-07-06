@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import AppChrome from "./AppChrome";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 
 export default function AppChromeShell({ children }) {
   const [mounted, setMounted] = useState(false);
-  const pathname = usePathname() || "";
-  const isChatbotEmbedRoute = pathname === "/chatbot" || pathname.startsWith("/chatbot/");
+  const [isChatbotEmbedRoute, setIsChatbotEmbedRoute] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const pathname = window.location?.pathname || "";
+      setIsChatbotEmbedRoute(pathname === "/chatbot" || pathname.startsWith("/chatbot/"));
+    }
     setMounted(true);
   }, []);
 

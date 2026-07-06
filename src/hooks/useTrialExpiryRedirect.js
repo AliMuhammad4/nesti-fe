@@ -13,6 +13,7 @@ import { getTrialRemainingMs } from "@/components/ui/TrialCountdownBadge";
 
 const ALLOWED_PREFIXES = [
   "/checkout",
+  "/client-dashboard/billing",
   "/client-dashboard/subscription",
   "/calendly-callback",
   "/log-in",
@@ -93,7 +94,7 @@ export function useTrialExpiryRedirect(isMounted) {
     );
     router.replace(
       isClient
-        ? "/client-dashboard/subscription"
+        ? "/client-dashboard/billing"
         : quotaLocked
           ? "/checkout?trial=quota"
           : "/checkout?trial=expired"

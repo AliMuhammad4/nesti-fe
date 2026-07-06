@@ -1084,6 +1084,11 @@ countries-list@^3.2.2:
   resolved "https://registry.npmjs.org/countries-list/-/countries-list-3.2.2.tgz"
   integrity sha512-ABJ/RWQBrPWy+hRuZoW+0ooK8p65Eo3WmUZwHm6v4wmfSPznNAKzjy3+UUYrJK2v3182BVsgWxdB6ROidj39kw==
 
+countries-states-cities-service@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.npmjs.org/countries-states-cities-service/-/countries-states-cities-service-1.4.0.tgz"
+  integrity sha512-68cl4k1d3T/0OPM7k/51Pdzjk9jBBXdDyMx2PvOsnG6T2Z5TRcM+09s3AumAOTm1GcCkEMIfg97YsyONvOVjzA==
+
 country-flag-icons@^1.6.14:
   version "1.6.19"
   resolved "https://registry.npmjs.org/country-flag-icons/-/country-flag-icons-1.6.19.tgz"

@@ -1,4 +1,4 @@
-import { hasInquiredPropertyContext } from "@/lib/inquiredPropertyUtils";
+import { hasInquiredPropertyContext, isClientDashboardPropertyInquiry } from "@/lib/inquiredPropertyUtils";
 
 /** Must match backend `fetchLeads` `limit` so pagination totals stay correct. */
 export const LEADS_PAGE_SIZE = 10;
@@ -140,6 +140,7 @@ export function getLeadMatchId(lead) {
 export function isDirectInquiryLead(lead) {
   if (!lead || typeof lead !== "object") return false;
   if (lead.is_direct_public_inquiry) return true;
+  if (isClientDashboardPropertyInquiry(lead)) return true;
   const source = String(lead.source || "").trim().toLowerCase();
   return source === "public_web_form" || source === "public_inquiry";
 }

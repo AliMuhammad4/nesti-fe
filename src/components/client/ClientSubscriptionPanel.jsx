@@ -91,11 +91,14 @@ export default function ClientSubscriptionPanel({
   invoicesLoading = false,
   onSubscriptionChange,
   token,
+  mode = "billing",
 }) {
   const [loading, setLoading] = useState(false);
   const [processingTier, setProcessingTier] = useState(null);
   const [planSwitchTarget, setPlanSwitchTarget] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPlanOptions, setShowPlanOptions] = useState(false);
+  const isSubscriptionPage = mode === "subscription";
 
   const handleSubscribe = async (tier) => {
     try {
@@ -127,15 +130,17 @@ export default function ClientSubscriptionPanel({
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = async (reason) => {
     try {
       setLoading(true);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/cancel`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ reason }),
       });
 
       const data = await response.json();
@@ -232,35 +237,97 @@ export default function ClientSubscriptionPanel({
   const pendingTierEffectiveAt = subscription?.pending_tier_effective_at;
   const pendingPlan = PLANS.find((plan) => plan.tier === pendingTier);
   const currentPlan = PLANS.find((plan) => plan.tier === currentTier);
+  const renewalLabel = formatDate(subscription?.current_period_end);
+  const showPlanCards = isSubscriptionPage ? true : (!isActive || showPlanOptions);
+  const visiblePlans = isActive && !isSubscriptionPage
+    ? PLANS.filter((plan) => getTierRank(plan.tier) > getTierRank(currentTier))
+    : PLANS;
+  const canShowPlanToggle = isActive
+    ? (isSubscriptionPage ? true : visiblePlans.length > 0)
+    : visiblePlans.length > 0;
 
   return (
     <div className="w-full space-y-5">
-      {subscription && isActive ? (
-        <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-white p-5 shadow-[0_14px_38px_rgba(15,23,42,0.055)]">
+      {subscription && isActive && !isSubscriptionPage ? (
+        <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.055)]">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary-dark to-primary" />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
-                <ShieldCheck size={19} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-primary">Current plan</p>
-                <h3 className="mt-1 text-lg font-black capitalize text-text-heading">{currentTier}</h3>
-                {subscription.cancel_at_period_end ? (
-                  <p className="mt-1 text-xs font-semibold text-red-600">Cancels at period end</p>
-                ) : (
-                  <p className="mt-1 text-sm text-text-muted">
-                    Your client subscription is active. Renews on {formatDate(subscription.current_period_end)}.
-                  </p>
-                )}
+          <div className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative p-5 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ShieldCheck size={18} />
+                  </span>
+                  <h2 className="text-xl font-black text-text-heading sm:text-2xl">
+                    {currentPlan?.name || String(currentTier || '').replace(/_/g, ' ')}{" "}
+                    {isSubscriptionPage ? "plan" : "billing plan"}
+                  </h2>
+                </div>
+                <p className="max-w-2xl text-sm leading-relaxed text-text-body">
+                  {isSubscriptionPage
+                    ? (currentPlan?.description || 'Monthly subscription billed through Stripe.')
+                    : `Current billing plan with renewal details and payment history. ${currentPlan?.description || ''}`.trim()}
+                </p>
+              </div>
+              <div className="w-full shrink-0 rounded-2xl border border-border/80 bg-gradient-to-br from-white to-background-light/45 p-4 lg:w-auto lg:min-w-[10rem]">
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-black tracking-tight text-primary">
+                    {currentPlan?.price || '—'}
+                  </span>
+                  <span className="mb-1.5 text-sm font-semibold text-text-muted">
+                    {currentPlan?.period || '/month'}
+                  </span>
+                </div>
+                <p className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-text-muted">
+                  <CreditCard size={13} className="text-primary" />
+                  Recurring monthly billing
+                </p>
               </div>
             </div>
-            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-primary to-primary-dark px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white shadow-sm">
-              <Check size={13} />
-              Active
-            </span>
+
+            <div
+              className={`mt-5 grid gap-3 sm:grid-cols-2 ${
+                canShowPlanToggle ? "lg:grid-cols-3" : "lg:grid-cols-2"
+              }`}
+            >
+              <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-white to-background-light/45 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">Next renewal</p>
+                <p className="mt-1 text-sm font-semibold text-text-heading">{renewalLabel || '—'}</p>
+              </div>
+              <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-white to-background-light/45 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">Status</p>
+                <p className={`mt-1 text-sm font-semibold ${subscription?.cancel_at_period_end ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {subscription?.cancel_at_period_end ? 'Cancels at period end' : 'Active subscription'}
+                </p>
+              </div>
+              {canShowPlanToggle ? (
+                <div className="flex items-center rounded-2xl border border-border/80 bg-gradient-to-br from-white to-background-light/45 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPlanOptions((prev) => !prev)}
+                    className="text-sm font-bold text-primary hover:underline"
+                  >
+                    {showPlanOptions
+                      ? 'Hide plans'
+                      : isSubscriptionPage
+                        ? 'Change plan'
+                        : 'Upgrade options'}{" "}
+                    →
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {subscription?.cancel_at_period_end ? (
+              <div className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Subscription is set to end on{" "}
+                <span className="font-semibold text-amber-950">{renewalLabel || "your period end date"}</span>.
+                Manage cancellation only from the Subscriptions page.
+              </div>
+            ) : null}
           </div>
-        </div>
+        </section>
       ) : null}
 
       {pendingPlan ? (
@@ -274,34 +341,10 @@ export default function ClientSubscriptionPanel({
         </div>
       ) : null}
 
-      {subscription?.cancel_at_period_end ? (
-        <div className="rounded-3xl border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-text-body shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-bold text-text-heading">Cancellation scheduled</p>
-              <p className="mt-1 leading-relaxed text-text-muted">
-                Your client subscription remains active until{" "}
-                <span className="font-semibold text-primary">
-                  {subscription.current_period_end ? formatDate(subscription.current_period_end) : "the end of your billing period"}
-                </span>
-                . You can continue it before that date.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleResume}
-              disabled={loading}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-              Continue subscription
-            </button>
-          </div>
-        </div>
-      ) : null}
-
+      {showPlanCards ? (
+      visiblePlans.length > 0 ? (
       <div className="grid gap-4 lg:grid-cols-3">
-        {PLANS.map((plan) => {
+        {visiblePlans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = currentTier === plan.tier && isActive;
           const isScheduledPlan = pendingTier === plan.tier;
@@ -385,13 +428,11 @@ export default function ClientSubscriptionPanel({
               </ul>
 
               {isCurrentPlan ? (
-                <button
-                  onClick={() => setShowCancelModal(true)}
-                  disabled={loading || subscription?.cancel_at_period_end}
-                  className="relative z-10 mt-auto w-full rounded-2xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md disabled:opacity-50"
-                >
-                  {subscription?.cancel_at_period_end ? 'Cancellation Scheduled' : 'Cancel Plan'}
-                </button>
+                <div className="relative z-10 mt-auto w-full rounded-2xl border border-primary/25 bg-primary/5 px-4 py-2.5 text-center text-sm font-semibold text-primary">
+                  {subscription?.cancel_at_period_end
+                    ? "Current subscribed plan (cancellation scheduled)"
+                    : "Current subscribed plan"}
+                </div>
               ) : (
                 <button
                   onClick={() => {
@@ -416,7 +457,7 @@ export default function ClientSubscriptionPanel({
                   ) : isScheduledPlan ? (
                     'Scheduled'
                   ) : isActive ? (
-                    switchLabel
+                    isSubscriptionPage ? switchLabel : "Upgrade"
                   ) : (
                     <span className="flex items-center justify-center gap-2">
                       Subscribe
@@ -429,57 +470,119 @@ export default function ClientSubscriptionPanel({
           );
         })}
       </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-text-muted">
+          You are already on the highest available plan.
+        </div>
+      )
+      ) : null}
+
+      {isSubscriptionPage && isActive ? (
+        subscription?.cancel_at_period_end ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-amber-900">
+              Access ends <span className="font-bold text-amber-950">{renewalLabel || 'at period end'}</span>.
+              Continue subscription anytime before then.
+            </p>
+            <button
+              type="button"
+              onClick={handleResume}
+              disabled={loading}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+              Continue subscription
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-text-muted">
+              Cancel anytime. Access continues until the end of your billing period.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              disabled={loading}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border bg-background-light/60 px-4 py-2 text-sm font-medium text-text-muted transition hover:border-border/90 hover:bg-background-light hover:text-text-body disabled:opacity-60"
+            >
+              Cancel subscription
+            </button>
+          </div>
+        )
+      ) : null}
 
       {isActive ? (
-        <div className="rounded-3xl border border-border/80 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.055)]">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h4 className="text-sm font-black uppercase tracking-[0.08em] text-text-heading">Billing history</h4>
-            <span className="text-xs font-semibold text-text-muted">{invoices.length} paid invoice(s)</span>
+        <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+          <div className="border-b border-border/60 px-5 py-4 sm:px-6">
+            <h3 className="text-base font-black text-text-heading">
+              {isSubscriptionPage ? "Billing history" : "Payment activity"}
+            </h3>
+            <p className="mt-1 text-sm text-text-muted">
+              {isSubscriptionPage
+                ? "Paid invoices from your subscription."
+                : "Invoice records and payment receipts for your current plan."}
+            </p>
           </div>
-          {invoicesLoading ? (
-            <div className="flex items-center justify-center py-6 text-sm text-text-muted">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading invoices...
-            </div>
-          ) : invoices.length ? (
-            <div className="space-y-2">
-              {invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-background-light/35 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-text-heading">{invoice.number || invoice.id}</p>
-                    <p className="text-xs text-text-muted">
-                      {formatDate(invoice.createdAt)}
-                      {invoice.periodStart && invoice.periodEnd
-                        ? ` · ${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-sm font-black text-primary">{invoice.displayAmount || "-"}</p>
-                    <a
-                      href={invoice.hostedInvoiceUrl || invoice.invoicePdf || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs font-semibold transition ${
-                        invoice.hostedInvoiceUrl || invoice.invoicePdf
-                          ? "border-primary/25 text-primary hover:bg-primary/5"
-                          : "pointer-events-none border-border text-text-muted"
-                      }`}
-                    >
-                      Open
-                      <ExternalLink size={12} />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-3 text-sm text-text-muted">No paid invoices yet. Your invoices will appear here after payment.</p>
-          )}
-        </div>
+          <div className="px-5 py-4 sm:px-6">
+            {invoicesLoading ? (
+              <div className="flex items-center gap-2 py-8 text-sm text-text-muted">
+                <Loader2 size={16} className="animate-spin text-primary" />
+                Loading invoices...
+              </div>
+            ) : null}
+            {!invoicesLoading && invoices.length === 0 ? (
+              <p className="py-4 text-sm text-text-muted">No paid invoices yet.</p>
+            ) : null}
+            {invoices.length > 0 ? (
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 text-left text-[11px] uppercase tracking-[0.12em] text-text-muted">
+                      <th className="pb-3 pr-4 font-bold">Date</th>
+                      <th className="pb-3 pr-4 font-bold">Invoice</th>
+                      <th className="pb-3 pr-4 font-bold">Description</th>
+                      <th className="pb-3 pr-4 text-right font-bold">Amount</th>
+                      <th className="pb-3 text-right font-bold">Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((invoice) => (
+                      <tr key={invoice.id} className="border-b border-border/40 last:border-0 hover:bg-background-light/50">
+                        <td className="whitespace-nowrap py-3.5 pr-4 text-text-body">
+                          {formatDate(invoice.createdAt) || "—"}
+                        </td>
+                        <td className="whitespace-nowrap py-3.5 pr-4 font-mono text-xs text-text-muted">
+                          {invoice.number || invoice.id}
+                        </td>
+                        <td className="py-3.5 pr-4 text-text-body">
+                          <span className="line-clamp-1">{invoice.description || `${invoice.number || "Invoice"} payment`}</span>
+                        </td>
+                        <td className="whitespace-nowrap py-3.5 pr-4 text-right font-bold text-primary">
+                          {invoice.displayAmount || "-"}
+                        </td>
+                        <td className="whitespace-nowrap py-3.5 text-right">
+                          {invoice.hostedInvoiceUrl || invoice.invoicePdf ? (
+                            <a
+                              href={invoice.hostedInvoiceUrl || invoice.invoicePdf}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+                            >
+                              View
+                              <ExternalLink size={13} />
+                            </a>
+                          ) : (
+                            <span className="text-text-muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        </section>
       ) : null}
 
       <ClientPlanSwitchConfirmModal
@@ -517,6 +620,7 @@ function ClientCancelSubscriptionModal({
   onConfirm,
 }) {
   const [mounted, setMounted] = useState(false);
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -530,6 +634,10 @@ function ClientCancelSubscriptionModal({
     return () => {
       scrollTarget.style.overflow = previousOverflow;
     };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) setReason("");
   }, [isOpen]);
 
   if (!mounted) return null;
@@ -575,6 +683,23 @@ function ClientCancelSubscriptionModal({
                     will lose access to paid client subscription features after your current period ends.
                   </p>
                 </div>
+                <div className="mt-3">
+                  <label
+                    htmlFor="client-cancel-reason"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-text-muted"
+                  >
+                    Reason for cancellation
+                  </label>
+                  <textarea
+                    id="client-cancel-reason"
+                    rows={3}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    placeholder="Please tell us why you want to cancel..."
+                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-body outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                    disabled={isPending}
+                  />
+                </div>
               </div>
               <button
                 type="button"
@@ -596,8 +721,8 @@ function ClientCancelSubscriptionModal({
               </button>
               <button
                 type="button"
-                onClick={onConfirm}
-                disabled={isPending}
+                onClick={() => onConfirm(reason.trim())}
+                disabled={isPending || !reason.trim()}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
               >
                 {isPending ? <Loader2 size={16} className="animate-spin" /> : null}

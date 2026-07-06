@@ -110,7 +110,7 @@ export default function ProfessionalDetailPage() {
     website: pro?.website || "",
     phone: pro?.phone || "",
     email: pro?.email || "",
-    experience: pro?.experience || "",
+    experience: pro?.experience || pro?.experience_level || "",
     licenseNumber: pro?.license_number || "",
     socialMedia: pro?.social_media || "",
     transactionVolume: pro?.transaction_volume || "",

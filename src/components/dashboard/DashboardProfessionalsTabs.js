@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { fetchClientRecommendations, fetchProfessionals } from "@/lib/professionalsClient";
+import { CLIENT_PROFILE_UPDATED_EVENT } from "@/lib/clientProfileEvents";
 import useDynamicTablePageSize from "@/hooks/useDynamicTablePageSize";
 import { ClientMatchExplanation, ClientMatchSummary } from "@/components/matching/MatchExplanation";
 
@@ -14,6 +16,8 @@ const ROLE_TABS = [
   { id: "mortgage_broker", label: "Mortgage Brokers" },
 ];
 const RECOMMENDATION_ROLE_TABS = [{ id: "all", label: "All" }, ...ROLE_TABS];
+const PROFILE_COMPLETENESS_CTA_THRESHOLD = 70;
+const RECOMMENDATIONS_PAGE_SIZE = 12;
 
 function displayName(row) {
   const full = String(row?.full_name || "").trim();
@@ -47,6 +51,7 @@ export default function DashboardProfessionalsTabs({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const useRecommendations = searchParams?.get("recommended") === "1";
   const availableTabs = useRecommendations ? RECOMMENDATION_ROLE_TABS : ROLE_TABS;
   const normalizedInitialRole = availableTabs.some((t) => t.id === initialRole)
@@ -103,15 +108,25 @@ export default function DashboardProfessionalsTabs({
   useEffect(() => {
     setPage(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    const invalidateRecommendations = () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-professionals"] });
+    };
+    window.addEventListener(CLIENT_PROFILE_UPDATED_EVENT, invalidateRecommendations);
+    return () => window.removeEventListener(CLIENT_PROFILE_UPDATED_EVENT, invalidateRecommendations);
+  }, [queryClient]);
+
   const activeRole = activeTab === "all" ? "" : activeTab;
   const query = useQuery({
-    queryKey: ["dashboard-professionals", token, activeRole, page, effectivePageSize, useRecommendations],
+    queryKey: ["dashboard-professionals", token, activeRole, page, effectivePageSize, useRecommendations, RECOMMENDATIONS_PAGE_SIZE],
     enabled: Boolean(token),
     queryFn: () =>
       useRecommendations
-        ? fetchClientRecommendations({ token, role: activeRole, limit: effectivePageSize })
+        ? fetchClientRecommendations({ token, role: activeRole, page, limit: RECOMMENDATIONS_PAGE_SIZE })
         : fetchProfessionals({ token, role: activeRole, page, limit: effectivePageSize }),
-    staleTime: 60_000,
+    staleTime: useRecommendations ? 0 : 60_000,
+    refetchOnMount: useRecommendations ? "always" : true,
     placeholderData: (prev) => prev,
   });
 
@@ -119,12 +134,26 @@ export default function DashboardProfessionalsTabs({
     () => (Array.isArray(query.data?.items) ? query.data.items : []),
     [query.data?.items],
   );
+  const profileCompleteness = Number(query.data?.client_profile_completeness ?? NaN);
+  const requiredProfileCompleteness = Number(
+    query.data?.matching_meta?.min_profile_completeness ?? PROFILE_COMPLETENESS_CTA_THRESHOLD,
+  );
+  const matchingEnabled = query.data?.matching_meta?.matching_enabled !== false;
+  const showProfileCompletenessBanner =
+    useRecommendations &&
+    query.isSuccess &&
+    Number.isFinite(profileCompleteness) &&
+    profileCompleteness < PROFILE_COMPLETENESS_CTA_THRESHOLD;
   const pagination = query.data?.pagination || {};
   const currentPage = Number(pagination.page || page || 1);
   const totalPages = Number(pagination.total_pages || 1);
   const total = Number(pagination.total || items.length || 0);
+  const currentLimit = Number(pagination.limit || (useRecommendations ? RECOMMENDATIONS_PAGE_SIZE : effectivePageSize) || 1);
+  const showingStart = total > 0 ? (currentPage - 1) * currentLimit + 1 : 0;
+  const showingEnd = total > 0 ? Math.min(total, currentPage * currentLimit) : 0;
   const hasPrev = Boolean(pagination.has_prev_page || currentPage > 1);
   const hasNext = Boolean(pagination.has_next_page || currentPage < totalPages);
+  const showRange = total > currentLimit;
   const tableRows = useMemo(() => {
     if (items.length >= effectivePageSize) return items;
     return [...items, ...Array.from({ length: effectivePageSize - items.length }, () => null)];
@@ -137,10 +166,21 @@ export default function DashboardProfessionalsTabs({
       }`}
     >
       <p className="text-xs text-text-muted">
+        {showRange ? (
+          <>
+            Showing <span className="font-semibold text-text-heading">{showingStart}</span>-
+            <span className="font-semibold text-text-heading">{showingEnd}</span> of{" "}
+            <span className="font-semibold text-text-heading">{total}</span>
+            {" · "}
+          </>
+        ) : (
+          <>
+            <span className="font-semibold text-text-heading">{total}</span> total
+            {" · "}
+          </>
+        )}
         Page <span className="font-semibold text-text-heading">{currentPage}</span> of{" "}
         <span className="font-semibold text-text-heading">{totalPages}</span>
-        {" · "}
-        <span className="font-semibold text-text-heading">{total}</span> total
       </p>
       <div className="flex items-center gap-2">
         <button
@@ -204,9 +244,25 @@ export default function DashboardProfessionalsTabs({
 
       {useRecommendations ? (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        {showProfileCompletenessBanner ? (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+            <p className="text-sm font-medium text-amber-950">
+              Your profile is {Math.round(profileCompleteness)}% complete
+            </p>
+            <p className="mt-1 text-xs text-amber-900/80">
+              Add budget, location, timeline, and preferences to get sharper professional matches.
+            </p>
+            <Link
+              href="/settings?tab=personal"
+              className="mt-2 inline-flex text-xs font-semibold text-primary hover:underline"
+            >
+              Complete your profile
+            </Link>
+          </div>
+        ) : null}
         <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {query.isLoading ? (
-            Array.from({ length: 6 }).map((_, index) => (
+            Array.from({ length: RECOMMENDATIONS_PAGE_SIZE }).map((_, index) => (
               <div
                 key={`recommendation-skeleton-${index}`}
                 className="h-[168px] animate-pulse rounded-xl border border-border bg-slate-50"
@@ -216,12 +272,33 @@ export default function DashboardProfessionalsTabs({
             <div className="col-span-full rounded-xl border border-red-100 bg-red-50 p-5 text-sm text-red-600">
               {query.error?.message || "Failed to load recommendations."}
             </div>
+          ) : !matchingEnabled ? (
+            <div className="col-span-full rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-8 text-center">
+              <p className="text-sm font-semibold text-amber-950">
+                Complete your profile to unlock recommendations
+              </p>
+              <p className="mt-1 text-xs text-amber-900/80">
+                Reach {Math.round(requiredProfileCompleteness)}% completion to see ranked professionals.
+              </p>
+              <Link
+                href="/settings?tab=personal"
+                className="mt-3 inline-flex rounded-md bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+              >
+                Complete your profile
+              </Link>
+            </div>
           ) : items.length === 0 ? (
             <div className="col-span-full rounded-xl border border-dashed border-border bg-slate-50/70 p-8 text-center">
               <p className="text-sm font-medium text-text-heading">No matches yet</p>
               <p className="mt-1 text-xs text-text-muted">
                 Complete your profile preferences to unlock better recommendations.
               </p>
+              <Link
+                href="/settings?tab=personal"
+                className="mt-3 inline-flex rounded-md bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+              >
+                Complete your profile
+              </Link>
             </div>
           ) : (
             items.map((row) => {
@@ -387,10 +464,10 @@ export default function DashboardProfessionalsTabs({
         </table>
       </div>
       )}
-      {!paginationOutside ? paginationStrip : null}
+      {!paginationOutside && (!useRecommendations || matchingEnabled) ? paginationStrip : null}
       </section>
-      {paginationOutside ? (
-        <div className={`shrink-0 ${useRecommendations ? "mt-3" : "mt-3"}`}>{paginationStrip}</div>
+      {paginationOutside && (!useRecommendations || matchingEnabled) ? (
+        <div className="mt-3 shrink-0">{paginationStrip}</div>
       ) : null}
     </>
   );
