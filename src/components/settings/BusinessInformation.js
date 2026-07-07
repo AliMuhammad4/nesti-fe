@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SubmitButton from "@/components/auth/SubmitButton";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useSaveBusinessInfo } from "@/hooks/useProfileApi";
+import { useProfileQuery } from "@/hooks/useAuthApi";
 import { setBusinessInfo } from "@/store/profileSlice";
 import { PROFESSIONAL_WORKING_STYLE_OPTIONS, STANDARD_LANGUAGE_OPTIONS } from "@/lib/matchingTaxonomy";
 import { toast } from "react-toastify";
 import ServiceAreaPicker from "@/components/settings/ServiceAreaPicker";
 import { dedupeServiceAreas } from "@/lib/serviceAreaUtils";
 
-const CORE_SPECIALIZATION_OPTIONS = [
+const AGENT_CORE_SPECIALIZATION_OPTIONS = [
   "First-time home buyers",
   "First-time investors",
   "Move-up buyers",
@@ -25,9 +26,39 @@ const CORE_SPECIALIZATION_OPTIONS = [
   "Downsizers",
 ];
 
+const LAWYER_CORE_SPECIALIZATION_OPTIONS = [
+  "Purchase transactions",
+  "Sale transactions",
+  "Refinance transactions",
+  "Title transfers",
+  "Commercial real estate closings",
+  "Pre-construction contracts",
+  "Assignment sales",
+  "Private lending files",
+  "Landlord / tenant matters",
+  "Real estate disputes",
+  "Closing document review",
+  "Notary services",
+];
+
 const WORKING_STYLE_OPTIONS = PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => option.label);
+const WORKING_STYLE_LABEL_TO_VALUE = Object.fromEntries(
+  PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => [option.label, option.value]),
+);
+const WORKING_STYLE_VALUE_TO_LABEL = Object.fromEntries(
+  PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => [option.value, option.label]),
+);
 const LANGUAGE_OPTIONS = STANDARD_LANGUAGE_OPTIONS.map((option) => option.label);
 const MAX_LANGUAGES = 8;
+
+const SLUG_ALIASES = {
+  transactional_and_efficient: ["transactional_efficient"],
+  transactional_efficient: ["transactional_and_efficient"],
+  calm_and_patient_guide: ["calm_patient_guide"],
+  calm_patient_guide: ["calm_and_patient_guide"],
+  data_driven_strategist: ["data_driven"],
+  data_driven: ["data_driven_strategist"],
+};
 
 const EXPERIENCE_OPTIONS = [
   { key: "junior", label: "Junior (0-2 years)" },
@@ -69,14 +100,19 @@ const WORKING_STYLE_STRUCTURED_MAP = {
 };
 
 function toSlugValue(value) {
-  return String(value || "")
-    .trim()
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^[a-z0-9_]+$/.test(raw.toLowerCase())) {
+    return raw.toLowerCase();
+  }
+  return raw
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/\//g, " ")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "_")
-    .replace(/-+/g, "_");
+    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function chipClass(active, disabled = false) {
@@ -178,7 +214,7 @@ function ChipPicker({ options, selected, onToggle, max }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((option) => {
-        const active = selected.includes(option);
+        const active = selected.some((item) => slugEquals(item, option));
         const disabled = max ? selected.length >= max : false;
         return (
           <button
@@ -196,12 +232,6 @@ function ChipPicker({ options, selected, onToggle, max }) {
   );
 }
 
-function removeLegacyLocationFallback(cities = [], location = "") {
-  const normalizedLocation = String(location || "").trim().toLowerCase();
-  if (!normalizedLocation || cities.length !== 1) return cities;
-  return String(cities[0] || "").trim().toLowerCase() === normalizedLocation ? [] : cities;
-}
-
 function normalizeLanguageLabel(value) {
   const normalized = toSlugValue(value);
   return LANGUAGE_OPTIONS.find((option) => toSlugValue(option) === normalized) || value;
@@ -213,6 +243,74 @@ function normalizeLanguageForSave(value) {
     (option) => option.value === normalized || toSlugValue(option.label) === normalized,
   );
   return match?.value || normalized;
+}
+
+function slugVariants(value) {
+  const base = toSlugValue(value);
+  if (!base) return [];
+  const variants = new Set([base, base.replace(/_and_/g, "_")]);
+  for (const alias of SLUG_ALIASES[base] || []) {
+    variants.add(alias);
+    variants.add(alias.replace(/_and_/g, "_"));
+  }
+  return [...variants].filter(Boolean);
+}
+
+function slugEquals(a, b) {
+  const left = new Set(slugVariants(a));
+  return slugVariants(b).some((variant) => left.has(variant));
+}
+
+function mapValuesToChipOptions(options = [], values = []) {
+  const out = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const raw = String(value || "").trim();
+    if (!raw) continue;
+    const match = options.find((option) => slugEquals(option, raw));
+    if (!match || out.includes(match)) continue;
+    out.push(match);
+  }
+  return out;
+}
+
+function mapWorkingStyleValuesToLabels(values = []) {
+  const out = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const raw = String(value || "").trim();
+    if (!raw) continue;
+    const fromTaxonomy = WORKING_STYLE_VALUE_TO_LABEL[raw];
+    const match =
+      fromTaxonomy ||
+      WORKING_STYLE_OPTIONS.find((option) => slugEquals(option, raw)) ||
+      null;
+    if (!match || out.includes(match)) continue;
+    out.push(match);
+  }
+  return out;
+}
+
+function mapApiProfileToFormSource(profile = {}) {
+  return {
+    professionalType: profile.professional_type || "",
+    calendlyLink: profile.calendly_link || "",
+    otherLanguageText: profile.other_language_text || "",
+    experienceLevel: profile.experience_level || profile.experience || "",
+    licenseNumber: profile.license_number || "",
+    responseTime: profile.response_time || "",
+    availability: profile.availability || "",
+    awards: profile.awards || "",
+    location: profile.location || "",
+    coreSpecializationTags: profile.core_specialization_tags || [],
+    specializations: profile.specializations || [],
+    specialtyStrengthTags: profile.specialty_strength_tags || [],
+    workingStyleTags: profile.working_style_tags || [],
+    workingStyleStructured: profile.working_style_structured || "",
+    personalityStyleTags: profile.personality_style_tags || [],
+    languagesSpoken: profile.languages_spoken || [],
+    serviceAreaCities: profile.service_area_cities || [],
+    serviceAreaRegions: profile.service_area_regions || [],
+    serviceAreaPrimaryZones: profile.service_area_primary_zones || [],
+  };
 }
 
 function normalizeLanguagesForSave(languages = []) {
@@ -230,7 +328,9 @@ function normalizeLanguagesForSave(languages = []) {
 
 export default function BusinessInformation({ onSaveSuccess } = {}) {
   const dispatch = useAppDispatch();
+  const authRole = useAppSelector((state) => state.auth.user?.role || "");
   const storedBusiness = useAppSelector((state) => state.profile.businessInfo);
+  const profileQuery = useProfileQuery();
   const saveBusinessInfo = useSaveBusinessInfo();
 
   const [loading, setLoading] = useState(false);
@@ -250,49 +350,104 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
   const [languagesSpoken, setLanguagesSpoken] = useState([]);
   const [specialtyStrengthTags, setSpecialtyStrengthTags] = useState([]);
   const [personalityStyleTags, setPersonalityStyleTags] = useState([]);
+  const [rehydrateTick, setRehydrateTick] = useState(0);
+  const apiProfile = profileQuery.data?.professionalProfile;
+  const resolvedRole = String(
+    apiProfile?.professional_type || storedBusiness?.professionalType || authRole || "",
+  )
+    .trim()
+    .toLowerCase();
+  const coreSpecializationOptions = useMemo(
+    () => (resolvedRole === "lawyer" ? LAWYER_CORE_SPECIALIZATION_OPTIONS : AGENT_CORE_SPECIALIZATION_OPTIONS),
+    [resolvedRole],
+  );
 
   const hasUserEditedRef = useRef(false);
 
-  const hydrateFromStore = useCallback(() => {
-    if (!storedBusiness) return;
-    setCalendlyLink(storedBusiness.calendlyLink || "");
-    setOtherLanguageText(storedBusiness.otherLanguageText || "");
-    setExperienceLevel(storedBusiness.experienceLevel || "");
-    setLicenseNumber(storedBusiness.licenseNumber || "");
-    setResponseTime(storedBusiness.responseTime || "");
-    setAvailability(storedBusiness.availability || "");
-    setAwards(storedBusiness.awards || "");
-    setCoreSpecializationTags(Array.isArray(storedBusiness.coreSpecializationTags) ? storedBusiness.coreSpecializationTags : []);
-    const hydratedCities = Array.isArray(storedBusiness.serviceAreaCities)
-      ? removeLegacyLocationFallback(storedBusiness.serviceAreaCities, storedBusiness.location)
-      : [];
-    const hydratedRegions = Array.isArray(storedBusiness.serviceAreaRegions) ? storedBusiness.serviceAreaRegions : [];
-    const hydratedPriority = Array.isArray(storedBusiness.serviceAreaPrimaryZones)
-      ? storedBusiness.serviceAreaPrimaryZones
-      : [];
-    const deduped = dedupeServiceAreas(hydratedCities, hydratedRegions, hydratedPriority);
-    setServiceAreaCities(deduped.cities);
-    setServiceAreaRegions(deduped.regions);
-    setServiceAreaPrimaryZones(deduped.priorityCities);
-    setWorkingStyleTags(Array.isArray(storedBusiness.workingStyleTags) ? storedBusiness.workingStyleTags : []);
-    setLanguagesSpoken(
-      Array.isArray(storedBusiness.languagesSpoken)
-        ? storedBusiness.languagesSpoken.map(normalizeLanguageLabel).filter(Boolean).slice(0, MAX_LANGUAGES)
-        : [],
-    );
-    setSpecialtyStrengthTags(Array.isArray(storedBusiness.specialtyStrengthTags) ? storedBusiness.specialtyStrengthTags : []);
-    setPersonalityStyleTags(Array.isArray(storedBusiness.personalityStyleTags) ? storedBusiness.personalityStyleTags : []);
-  }, [storedBusiness]);
+  const hydrateForm = useCallback(
+    (source) => {
+      if (!source) return;
+
+      setCalendlyLink(source.calendlyLink || "");
+      setOtherLanguageText(source.otherLanguageText || "");
+      setExperienceLevel(source.experienceLevel || "");
+      setLicenseNumber(source.licenseNumber || "");
+      setResponseTime(source.responseTime || "");
+      setAvailability(source.availability || "");
+      setAwards(source.awards || "");
+
+      const sourceCoreSpecializations =
+        Array.isArray(source.coreSpecializationTags) && source.coreSpecializationTags.length
+          ? source.coreSpecializationTags
+          : Array.isArray(source.specializations)
+            ? source.specializations.filter((item) =>
+                coreSpecializationOptions.some((option) => slugEquals(option, item)),
+              )
+            : [];
+      setCoreSpecializationTags(mapValuesToChipOptions(coreSpecializationOptions, sourceCoreSpecializations));
+
+      const hydratedCities = Array.isArray(source.serviceAreaCities) ? source.serviceAreaCities : [];
+      const hydratedRegions = Array.isArray(source.serviceAreaRegions) ? source.serviceAreaRegions : [];
+      const hydratedPriority = Array.isArray(source.serviceAreaPrimaryZones) ? source.serviceAreaPrimaryZones : [];
+      const deduped = dedupeServiceAreas(hydratedCities, hydratedRegions, hydratedPriority);
+      setServiceAreaCities(deduped.cities);
+      setServiceAreaRegions(deduped.regions);
+      setServiceAreaPrimaryZones(deduped.priorityCities);
+
+      const sourceWorkingStyles =
+        Array.isArray(source.workingStyleTags) && source.workingStyleTags.length
+          ? source.workingStyleTags
+          : source.workingStyleStructured
+            ? [source.workingStyleStructured]
+            : [];
+      setWorkingStyleTags(mapWorkingStyleValuesToLabels(sourceWorkingStyles));
+
+      setLanguagesSpoken(
+        Array.isArray(source.languagesSpoken)
+          ? source.languagesSpoken.map(normalizeLanguageLabel).filter(Boolean).slice(0, MAX_LANGUAGES)
+          : [],
+      );
+      setSpecialtyStrengthTags(mapValuesToChipOptions(SPECIALTY_STRENGTH_OPTIONS, source.specialtyStrengthTags));
+      setPersonalityStyleTags(mapValuesToChipOptions(PERSONALITY_TAG_OPTIONS, source.personalityStyleTags));
+    },
+    [coreSpecializationOptions],
+  );
 
   useEffect(() => {
     if (hasUserEditedRef.current) return;
-    hydrateFromStore();
-  }, [hydrateFromStore]);
+    const apiSource = apiProfile ? mapApiProfileToFormSource(apiProfile) : null;
+    const storeSource = storedBusiness
+      ? {
+          professionalType: storedBusiness.professionalType,
+          calendlyLink: storedBusiness.calendlyLink,
+          otherLanguageText: storedBusiness.otherLanguageText,
+          experienceLevel: storedBusiness.experienceLevel || storedBusiness.experience,
+          licenseNumber: storedBusiness.licenseNumber,
+          responseTime: storedBusiness.responseTime,
+          availability: storedBusiness.availability,
+          awards: storedBusiness.awards,
+          location: storedBusiness.location,
+          coreSpecializationTags: storedBusiness.coreSpecializationTags,
+          specializations: storedBusiness.specializations,
+          specialtyStrengthTags: storedBusiness.specialtyStrengthTags,
+          workingStyleTags: storedBusiness.workingStyleTags,
+          workingStyleStructured: storedBusiness.workingStyleStructured,
+          personalityStyleTags: storedBusiness.personalityStyleTags,
+          languagesSpoken: storedBusiness.languagesSpoken,
+          serviceAreaCities: storedBusiness.serviceAreaCities,
+          serviceAreaRegions: storedBusiness.serviceAreaRegions,
+          serviceAreaPrimaryZones: storedBusiness.serviceAreaPrimaryZones,
+        }
+      : null;
+    hydrateForm(apiSource || storeSource);
+  }, [apiProfile, storedBusiness, hydrateForm, rehydrateTick]);
 
   const toggleArrayValue = useCallback((setter) => (value, max = 0) => {
     hasUserEditedRef.current = true;
     setter((prev) => {
-      if (prev.includes(value)) return prev.filter((item) => item !== value);
+      if (prev.some((item) => slugEquals(item, value))) {
+        return prev.filter((item) => !slugEquals(item, value));
+      }
       if (max && prev.length >= max) return prev;
       return [...prev, value];
     });
@@ -321,12 +476,14 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
       response_time: responseTime || "",
       availability: availability || "",
       awards: awards || "",
-      core_specialization_tags: coreSpecializationTags,
-      specialty_strength_tags: specialtyStrengthTags,
-      working_style_tags: workingStyleTags,
+      core_specialization_tags: coreSpecializationTags.map(toSlugValue).filter(Boolean),
+      specialty_strength_tags: specialtyStrengthTags.map(toSlugValue).filter(Boolean),
+      working_style_tags: workingStyleTags
+        .map((label) => WORKING_STYLE_LABEL_TO_VALUE[label] || toSlugValue(label))
+        .filter(Boolean),
       working_style_structured: primaryWorkingStyleStructured || undefined,
-      personality_style_tags: personalityStyleTags,
-      personality_tag: personalityStyleTags[0] || "",
+      personality_style_tags: personalityStyleTags.map(toSlugValue).filter(Boolean),
+      personality_tag: personalityStyleTags[0] ? toSlugValue(personalityStyleTags[0]) : "",
       languages_spoken: normalizedLanguages,
       other_language_text: otherLanguageText || "",
       service_area_cities: deduped.cities,
@@ -426,6 +583,8 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
       await saveBusinessInfo.mutateAsync(buildPayload());
       persistToStore();
       hasUserEditedRef.current = false;
+      // Ensure we re-run hydration after save; ref flips don't trigger effects.
+      setRehydrateTick((n) => n + 1);
       await onSaveSuccess?.();
     } catch {
       /* surfaced by hook */
@@ -531,7 +690,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
             <FieldLabel required>Core specializations</FieldLabel>
             <div className="mt-2">
               <ChipPicker
-                options={CORE_SPECIALIZATION_OPTIONS}
+                options={coreSpecializationOptions}
                 selected={coreSpecializationTags}
                 onToggle={toggleArrayValue(setCoreSpecializationTags)}
                 max={5}

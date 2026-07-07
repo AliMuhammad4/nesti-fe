@@ -12,6 +12,7 @@ import {
   resolveProChatRejoinRequestFromNotification,
 } from "@/lib/notificationsClient";
 import { CALENDLY_BILLING_URL } from "@/lib/calendlyErrors";
+import PropertyNotificationPreview from "@/components/notifications/PropertyNotificationPreview";
 
 function normalizeLeadId(value) {
   const raw = String(value || "").trim();
@@ -198,6 +199,10 @@ export default function NotificationDetailModal({ notification, onClose }) {
   const pna = display?.primary_next_action;
   const pnaTitle = pna && typeof pna === "object" ? pna.title : null;
   const pnaTemplate = pna && typeof pna === "object" ? pna.follow_up_template : null;
+  const isPropertyListingNotification =
+    String(display?.notification_type || "").trim() === "new_property_for_sale" ||
+    String(display?.action?.type || "").trim() === "open_property";
+  const propertyPreview = display?.action?.property_preview || null;
 
   return createPortal(
     <div
@@ -261,10 +266,20 @@ export default function NotificationDetailModal({ notification, onClose }) {
           </p>
         ) : (
           <>
-            {display?.body ? (
-              <p className="mt-4 text-sm leading-relaxed text-text-heading/90">{display.body}</p>
+            {propertyPreview ? (
+              <>
+                {display?.outcomes_headline ? (
+                  <p className="mt-4 text-sm font-medium text-text-heading">{display.outcomes_headline}</p>
+                ) : null}
+                <PropertyNotificationPreview preview={propertyPreview} />
+              </>
+            ) : display?.body ? (
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-text-heading/90">
+                {display.body}
+              </p>
             ) : null}
 
+            {!isPropertyListingNotification ? (
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <MetaItem label="Grade" value={display?.grade} />
               <MetaItem label="Score" value={display?.score != null ? String(display.score) : null} />
@@ -273,15 +288,16 @@ export default function NotificationDetailModal({ notification, onClose }) {
               <MetaItem label="Urgency" value={display?.urgency} />
               <MetaItem label="Response window" value={display?.urgency_window} />
             </div>
+            ) : null}
 
-            {display?.speed_to_lead_tip ? (
+            {display?.speed_to_lead_tip && !isPropertyListingNotification ? (
               <div className="mt-4 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm text-text-heading">
                 <span className="font-semibold text-primary">Speed to lead: </span>
                 {display.speed_to_lead_tip}
               </div>
             ) : null}
 
-            {display?.outcomes_headline ? (
+            {display?.outcomes_headline && !isPropertyListingNotification ? (
               <div className="mt-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Goal</p>
                 <p className="text-sm text-text-heading">{display.outcomes_headline}</p>

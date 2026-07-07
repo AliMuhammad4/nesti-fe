@@ -56,6 +56,23 @@ const WINDOW_OPTIONS = [
   { value: 90, label: "90d" },
 ];
 const DEFAULT_WINDOW_DAYS = 30;
+function safeLocalStorageGet(key) {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage write failures for restricted contexts.
+  }
+}
 function normalizeProfilesPayload(data) {
   if (Array.isArray(data?.lead_profiles)) return data.lead_profiles;
   if (Array.isArray(data?.items)) return data.items;
@@ -195,7 +212,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isMounted || typeof window === "undefined") return;
-    const status = window.localStorage.getItem(guideStorageKey);
+    const status = safeLocalStorageGet(guideStorageKey);
     setGuideDismissed(status === "dismissed" || status === "completed");
   }, [guideStorageKey, isMounted]);
 
@@ -363,9 +380,7 @@ export default function DashboardPage() {
 
   const handleGuideDismiss = (status = "dismissed") => {
     setGuideDismissed(true);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(guideStorageKey, status);
-    }
+    safeLocalStorageSet(guideStorageKey, status);
   };
 
   const inviteShareText = displayInviteLink

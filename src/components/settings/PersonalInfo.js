@@ -16,6 +16,14 @@ import { setPersonalInfo } from "@/store/profileSlice";
 import ChangePassword from "@/components/settings/ChangePassword";
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
 import { STANDARD_LANGUAGE_OPTIONS } from "@/lib/matchingTaxonomy";
+import {
+  CLIENT_LIVING_SITUATION_OPTIONS,
+  CLIENT_MORTGAGE_STATUS_OPTIONS,
+  CLIENT_MOTIVATION_REASON_OPTIONS,
+  CLIENT_OFFER_READINESS_OPTIONS,
+  CLIENT_REALTOR_STATUS_OPTIONS,
+  CLIENT_VIEWING_READINESS_OPTIONS,
+} from "@/lib/clientBuyerQualificationOptions";
 
 function isValidCalendlyUrl(value) {
   const s = String(value || "").trim();
@@ -207,6 +215,15 @@ function ChipButton({ selected, label, onClick, disabled = false }) {
   );
 }
 
+function QualificationField({ label, children, className = "" }) {
+  return (
+    <div className={`space-y-1.5 ${className}`}>
+      <label className="block text-[11px] font-black text-text-heading">{label}</label>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
 function OnboardingSection({ eyebrow, title, helper, right, children, className = "" }) {
   const showEyebrow = Boolean(eyebrow) && !/^step\b/i.test(String(eyebrow || "").trim());
   return (
@@ -226,7 +243,7 @@ function OnboardingSection({ eyebrow, title, helper, right, children, className 
   );
 }
 
-export default function PersonalInfo({ onSaveSuccess } = {}) {
+export default function PersonalInfo({ onSaveSuccess, clientSettingsSection = "all" } = {}) {
   const storedPersonal = useAppSelector((state) => state.profile.personalInfo);
   const storedBusiness = useAppSelector((state) => state.profile.businessInfo);
   const authUser = useAppSelector((state) => state.auth.user);
@@ -668,14 +685,14 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
   const detailsGridClass = isClient
     ? "mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 md:gap-x-3 md:gap-y-2.5"
     : "mt-3.5 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-4 md:gap-y-3";
+  const showClientBasicSection = isClient && (clientSettingsSection === "all" || clientSettingsSection === "basic");
+  const showClientProfileSection = isClient && (clientSettingsSection === "all" || clientSettingsSection === "profile");
+  const showChangePasswordButton = canChangePassword && (!isClient || clientSettingsSection !== "profile");
 
   return (
     <div className="space-y-5">
-      <h2 className="text-lg font-bold tracking-tight text-text-heading sm:text-xl">
-        Personal information
-      </h2>
-
       {/* Cover + profile card */}
+      {!isClient || showClientBasicSection ? (
       <div className="overflow-hidden rounded-xl border border-border/60 bg-white shadow-sm">
         {/* Cover — fixed 16:5 aspect */}
         <div className="relative aspect-[16/5] w-full min-h-[8rem] sm:min-h-0">
@@ -748,17 +765,24 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
           </div>
         </div>
       </div>
+      ) : null}
 
       {/* Personal details */}
       <div className={detailsCardClass}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h3 className={`font-black tracking-tight text-text-heading ${isClient ? "mt-3 text-lg sm:text-xl" : "text-xs"}`}>
-              {isClient ? "Tell us what kind of help feels right" : "Contact & scheduling"}
+              {isClient
+                ? showClientProfileSection
+                  ? "Share your buying profile"
+                  : "Your personal details"
+                : "Contact & scheduling"}
             </h3>
             {isClient ? (
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-text-muted sm:text-sm">
-                Choose what matters to you. We autosave your answers and use them to rank agents, lawyers, and mortgage brokers.
+              <p className="mt-1 text-xs leading-5 text-text-muted sm:text-sm">
+                {showClientProfileSection
+                  ? "Complete every section below to finish your profile so professionals can evaluate your needs clearly."
+                  : "Keep your basic contact and communication details up to date."}
               </p>
             ) : null}
           </div>
@@ -769,6 +793,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
 
         {isClient ? (
           <div className="mt-4 space-y-4 sm:space-y-4.5">
+            {showClientBasicSection ? (
             <OnboardingSection
               eyebrow="Step 1"
               title="Your contact details"
@@ -829,7 +854,10 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
               />
             </div>
             </OnboardingSection>
+            ) : null}
 
+            {showClientProfileSection ? (
+            <>
             <OnboardingSection
               eyebrow="Step 2"
               title="Home goal"
@@ -921,9 +949,8 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                   className={fieldSizeClass}
                 />
               </div>
-              <div className="mt-3">
-                <label className="mb-1.5 block text-[11px] font-black text-text-heading">Employment Status</label>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="mt-3 space-y-4">
+                <QualificationField label="Employment status">
                   {EMPLOYMENT_STATUS_OPTIONS.map((option) => (
                     <ChipButton
                       key={option.value}
@@ -932,47 +959,110 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                       onClick={() => setClientField("employment_status", option.value)}
                     />
                   ))}
-                </div>
+                </QualificationField>
+                <QualificationField label="Mortgage status">
+                  {CLIENT_MORTGAGE_STATUS_OPTIONS.map((option) => (
+                    <ChipButton
+                      key={option.value}
+                      label={option.label}
+                      selected={clientForm.mortgage_status === option.value}
+                      onClick={() => setClientField("mortgage_status", option.value)}
+                    />
+                  ))}
+                </QualificationField>
               </div>
             </OnboardingSection>
 
             <OnboardingSection
               eyebrow="Step 5"
-              title="Location and timeline"
-              helper="Tell us where you want to move and how soon you want to act."
+              title="Location, timeline & buying readiness"
+              helper="Where you want to buy, when, and how ready you are — same signals used in lead intake and inquiry scoring."
             >
-            <div className="grid gap-3 lg:grid-cols-[minmax(260px,420px)_auto] lg:items-end">
-              <div className="max-w-[420px]">
-                <FormField
-                  label="Preferred Location"
-                  name="preferred_location"
-                  value={clientForm.preferred_location}
-                  onChange={(event) => {
-                    handleClientChange(event);
-                    setClientField("preferred_locations", event.target.value ? [event.target.value] : []);
-                  }}
-                  onFocus={() => setFocusedField("preferred_location")}
-                  onBlur={() => setFocusedField("")}
-                  placeholder="Search city, neighbourhood, or region"
-                  icon={MapPin}
-                  focusedField={focusedField}
-                  className={fieldSizeClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-black text-text-heading">Buying Timeline</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TIMELINE_OPTIONS.slice(0, 4).map((option) => (
-                    <ChipButton
-                      key={option.value}
-                      label={option.label.replace(" / within 1 month", "")}
-                      selected={clientForm.purchase_timeline === option.value}
-                      onClick={() => setClientField("purchase_timeline", option.value)}
-                    />
-                  ))}
+              <div className="space-y-5">
+                <div className="grid gap-4 lg:grid-cols-[minmax(260px,420px)_1fr] lg:items-start">
+                  <FormField
+                    label="Preferred Location"
+                    name="preferred_location"
+                    value={clientForm.preferred_location}
+                    onChange={(event) => {
+                      handleClientChange(event);
+                      setClientField("preferred_locations", event.target.value ? [event.target.value] : []);
+                    }}
+                    onFocus={() => setFocusedField("preferred_location")}
+                    onBlur={() => setFocusedField("")}
+                    placeholder="Search city, neighbourhood, or region"
+                    icon={MapPin}
+                    focusedField={focusedField}
+                    className={fieldSizeClass}
+                  />
+                  <QualificationField label="Buying timeline">
+                    {TIMELINE_OPTIONS.slice(0, 4).map((option) => (
+                      <ChipButton
+                        key={option.value}
+                        label={option.label.replace(" / within 1 month", "")}
+                        selected={clientForm.purchase_timeline === option.value}
+                        onClick={() => setClientField("purchase_timeline", option.value)}
+                      />
+                    ))}
+                  </QualificationField>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-primary/75">Buying readiness</p>
+                  <div className="grid gap-5 md:grid-cols-2 md:items-start">
+                    <QualificationField label="Working with a realtor?">
+                      {CLIENT_REALTOR_STATUS_OPTIONS.map((option) => (
+                        <ChipButton
+                          key={option.value}
+                          label={option.label}
+                          selected={clientForm.realtor_status === option.value}
+                          onClick={() => setClientField("realtor_status", option.value)}
+                        />
+                      ))}
+                    </QualificationField>
+                    <QualificationField label="Ready to view homes?">
+                      {CLIENT_VIEWING_READINESS_OPTIONS.map((option) => (
+                        <ChipButton
+                          key={option.value}
+                          label={option.label}
+                          selected={clientForm.viewing_readiness === option.value}
+                          onClick={() => setClientField("viewing_readiness", option.value)}
+                        />
+                      ))}
+                    </QualificationField>
+                    <QualificationField label="Current living situation">
+                      {CLIENT_LIVING_SITUATION_OPTIONS.map((option) => (
+                        <ChipButton
+                          key={option.value}
+                          label={option.label}
+                          selected={clientForm.living_situation === option.value}
+                          onClick={() => setClientField("living_situation", option.value)}
+                        />
+                      ))}
+                    </QualificationField>
+                    <QualificationField label="Ready to make an offer?">
+                      {CLIENT_OFFER_READINESS_OPTIONS.map((option) => (
+                        <ChipButton
+                          key={option.value}
+                          label={option.label}
+                          selected={clientForm.offer_readiness === option.value}
+                          onClick={() => setClientField("offer_readiness", option.value)}
+                        />
+                      ))}
+                    </QualificationField>
+                    <QualificationField label="What's driving your search?" className="md:col-span-2">
+                      {CLIENT_MOTIVATION_REASON_OPTIONS.map((option) => (
+                        <ChipButton
+                          key={option.value}
+                          label={option.label}
+                          selected={clientForm.motivation_reason === option.value}
+                          onClick={() => setClientField("motivation_reason", option.value)}
+                        />
+                      ))}
+                    </QualificationField>
+                  </div>
                 </div>
               </div>
-            </div>
             </OnboardingSection>
 
             <OnboardingSection
@@ -1036,20 +1126,24 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                   ))}
                 </div>
               </OnboardingSection>
-              <OnboardingSection eyebrow="Step 9" title="Language" helper="Pick languages that make communication comfortable." className="h-full">
-                <div className="flex flex-wrap gap-1.5">
-                  {LANGUAGE_OPTIONS.map((option) => (
-                    <ChipButton
-                      key={option.value}
-                      label={option.label}
-                      selected={clientForm.languages.includes(option.value)}
-                      onClick={() => toggleClientArrayValue("languages", option.value)}
-                    />
-                  ))}
-                </div>
-              </OnboardingSection>
             </div>
+            </>
+            ) : null}
 
+            {showClientBasicSection ? (
+            <>
+            <OnboardingSection eyebrow="Step 9" title="Language" helper="Pick languages that make communication comfortable.">
+              <div className="flex flex-wrap gap-1.5">
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <ChipButton
+                    key={option.value}
+                    label={option.label}
+                    selected={clientForm.languages.includes(option.value)}
+                    onClick={() => toggleClientArrayValue("languages", option.value)}
+                  />
+                ))}
+              </div>
+            </OnboardingSection>
             <OnboardingSection
               eyebrow="Step 10"
               title="Contact preferences"
@@ -1084,6 +1178,8 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
                 </div>
               </div>
             </OnboardingSection>
+            </>
+            ) : null}
           </div>
         ) : (
           <div className={detailsGridClass}>
@@ -1215,7 +1311,7 @@ export default function PersonalInfo({ onSaveSuccess } = {}) {
         ) : null}
 
         <div className="mt-5 flex flex-col gap-2.5 rounded-2xl border border-slate-100 bg-slate-50/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-end">
-          {canChangePassword ? (
+          {showChangePasswordButton ? (
             <button
               type="button"
               onClick={() => setShowPasswordModal(true)}

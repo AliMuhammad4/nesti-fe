@@ -231,7 +231,7 @@ export default function LeadsProfileTab({
                     This lead came from a client inquiring on a specific listing from their dashboard.
                   </p>
                 </div>
-                <InquiredPropertyOverview property={inquiredPropertySnapshot} />
+                <InquiredPropertyOverview property={inquiredPropertySnapshot} showPhotos={false} />
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {hideBuyerSellerIntent ? null : <KeyValue label="Intent" value={leadData.intent} />}
                   <KeyValue label="Score" value={leadData.score != null ? String(leadData.score) : null} />

@@ -13,6 +13,7 @@ import {
   resolveProChatRejoinRequestFromNotification,
 } from "@/lib/notificationsClient";
 import { useNotificationsUi } from "@/contexts/NotificationsUiContext";
+import PropertyNotificationPreview from "@/components/notifications/PropertyNotificationPreview";
 
 function formatShortTime(iso) {
   if (!iso) return "";
@@ -240,8 +241,12 @@ export default function NotificationsBell({ enabled = true }) {
                             </span>
                             <span className="shrink-0 text-[10px] text-text-muted">{formatShortTime(n.created_at)}</span>
                           </div>
-                          {n.body ? (
-                            <p className="mt-0.5 line-clamp-2 text-[11px] text-text-muted">{n.body}</p>
+                          {n.action?.property_preview ? (
+                            <PropertyNotificationPreview preview={n.action.property_preview} compact />
+                          ) : n.body ? (
+                            <p className="mt-0.5 line-clamp-2 text-[11px] text-text-muted">
+                              {String(n.body).split("\n")[0]}
+                            </p>
                           ) : null}
                         </button>
                         {rejoinMeta ? (

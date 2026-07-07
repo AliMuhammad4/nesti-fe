@@ -17,6 +17,7 @@ import {
   Sparkles,
   ClipboardList,
   MessageSquare,
+  Target,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -25,6 +26,7 @@ import { PUBLIC_HOME_PATH, navigateToPublicHome } from "@/lib/workspaceNavigatio
 
 const CLIENT_SETTINGS_ITEMS = [
   { id: "personal", label: "Personal Information", tab: "personal", icon: User },
+  { id: "professional", label: "Home Acquisition Profile", tab: "professional", icon: Target },
   { id: "subscription", label: "Subscriptions", href: "/client-dashboard/subscription", icon: CreditCard },
 ];
 

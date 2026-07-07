@@ -178,14 +178,15 @@ h6 {
   box-shadow:
     0 10px 25px rgba(15, 23, 42, 0.12),
     0 4px 10px rgba(15, 23, 42, 0.08) !important;
-  padding: 0.7rem 0.85rem !important;
+  padding: 0.75rem 0.9rem !important;
   min-height: 0 !important;
+  align-items: flex-start !important;
 }
 
 .nesti-toast--rich {
-  width: min(92vw, 440px) !important;
-  max-width: min(92vw, 440px) !important;
-  padding: 0.85rem 1rem !important;
+  width: min(92vw, 380px) !important;
+  max-width: min(92vw, 380px) !important;
+  padding: 0.875rem 1rem !important;
 }
 
 .nesti-toast-body {
@@ -195,10 +196,13 @@ h6 {
   line-height: 1.35rem !important;
   font-weight: 500 !important;
   word-break: break-word;
+  flex: 1 1 auto !important;
+  align-self: stretch !important;
 }
 
 .nesti-toast--rich .nesti-toast-body {
   width: 100% !important;
+  max-width: 100% !important;
   white-space: normal !important;
 }
 

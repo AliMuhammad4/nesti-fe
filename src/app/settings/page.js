@@ -28,6 +28,7 @@ import {
 
 const VALID_TABS = [
   "personal",
+  "professional",
   "business",
   "icp",
   "subscription",
@@ -350,15 +351,17 @@ function SettingsPageContent() {
       router.replace("/dashboard");
       return;
     }
-    if (!data?.profile_setup?.is_complete) {
+    if (role !== "client" && !data?.profile_setup?.is_complete) {
       goToBusinessTab();
     }
-  }, [queryClient, router, goToBusinessTab]);
+  }, [queryClient, router, goToBusinessTab, role]);
 
   const tabContent = useMemo(() => {
     switch (activeTab) {
       case "personal":
-        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} />;
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="basic" />;
+      case "professional":
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="profile" />;
       case "subscription":
         return <SubscriptionInfo />;
       case "chatbot":
@@ -368,13 +371,15 @@ function SettingsPageContent() {
       case "icp":
         return <IcpIntegrationCard />;
       default:
-        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} />;
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="basic" />;
     }
   }, [activeTab, onPersonalSaveSuccess, onBusinessSaveSuccess]);
 
   const profileSetup = profileQuery.data?.profile_setup;
   const setupIncomplete =
     profileQuery.isSuccess && profileSetup && !profileSetup.is_complete;
+  const useClientSettingsShell =
+    role === "client" && (activeTab === "personal" || activeTab === "professional");
 
   if (!isMounted) return null;
   if (!isAuthenticated) return null;
@@ -388,27 +393,60 @@ function SettingsPageContent() {
         >
           <p className="font-semibold text-amber-950">Finish your workspace setup</p>
           <p className="mt-1.5 leading-relaxed text-amber-900/95">
-            Complete <strong>Personal Information</strong> (name, email, phone, and company details) and{" "}
-            <strong>Business Information</strong> (where you serve clients). Other areas of the app stay
-            locked until both are done.
+            {role === "client" ? (
+              <>
+                Complete <strong>Personal Information</strong> (name, email, phone, language, and contact preferences) and{" "}
+                <strong>Home Acquisition Profile</strong> (your home goals and buying profile). Other areas of the app stay
+                locked until both are done.
+              </>
+            ) : (
+              <>
+                Complete <strong>Personal Information</strong> (name, email, phone, and company details) and{" "}
+                <strong>Business Information</strong> (where you serve clients). Other areas of the app stay
+                locked until both are done.
+              </>
+            )}
           </p>
           <ul className="mt-2 list-inside list-disc text-xs text-amber-900/85">
             {!profileSetup.personal_complete ? (
               <li>
-                Personal: add your phone number, confirm your name and email, and enter your{" "}
-                <strong>company / brokerage</strong>.
+                {role === "client" ? (
+                  <>
+                    Personal: add your phone number, confirm your name and email, and set your language and contact preferences.
+                  </>
+                ) : (
+                  <>
+                    Personal: add your phone number, confirm your name and email, and enter your{" "}
+                    <strong>company / brokerage</strong>.
+                  </>
+                )}
               </li>
             ) : null}
             {!profileSetup.business_complete ? (
               <li>
-                Business: add at least one <strong>service area</strong> under{" "}
-                <strong>Where do you work?</strong> (search for a city, province, state, or region).
+                {role === "client" ? (
+                  <>
+                    Home Acquisition Profile: complete your home goal, budget, financial profile, and buying readiness.
+                  </>
+                ) : (
+                  <>
+                    Business: add at least one <strong>service area</strong> under{" "}
+                    <strong>Where do you work?</strong> (search for a city, province, state, or region).
+                  </>
+                )}
               </li>
             ) : null}
           </ul>
         </div>
       ) : null}
-      <div className="w-full rounded-xl border border-border bg-white shadow-sm" style={{ width: "100%" }}>
+      <div
+        className={
+          useClientSettingsShell
+            ? "w-full"
+            : "w-full rounded-xl border border-border bg-white shadow-sm"
+        }
+        style={{ width: "100%" }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -416,7 +454,7 @@ function SettingsPageContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18 }}
-            className="w-full min-w-0 p-5 sm:p-5"
+            className={useClientSettingsShell ? "w-full min-w-0" : "w-full min-w-0 p-5 sm:p-5"}
             style={{ width: "100%" }}
           >
             {tabContent}

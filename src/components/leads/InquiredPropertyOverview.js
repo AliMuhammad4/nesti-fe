@@ -1,6 +1,9 @@
 "use client";
 
-import { inquiredPropertyDisplayAddress } from "@/lib/inquiredPropertyUtils";
+import {
+  inquiredPropertyDistinctAddress,
+  normalizeInquiredPropertyImages,
+} from "@/lib/inquiredPropertyUtils";
 
 function Field({ label, value }) {
   const text = String(value ?? "").trim();
@@ -13,24 +16,13 @@ function Field({ label, value }) {
   );
 }
 
-function normalizeImageUrl(image) {
-  if (typeof image === "string") return image.trim();
-  if (image && typeof image === "object") {
-    return String(image.secure_url || image.url || "").trim();
-  }
-  return "";
-}
-
 /**
  * Listing snapshot for buyer inquiries (used on lead workspace + referral lead snapshot).
  */
-export default function InquiredPropertyOverview({ property, className = "" }) {
+export default function InquiredPropertyOverview({ property, className = "", showPhotos = true }) {
   if (!property || typeof property !== "object") return null;
-  const address = inquiredPropertyDisplayAddress(property);
-  const images = (Array.isArray(property.images) ? property.images : [])
-    .map(normalizeImageUrl)
-    .filter(Boolean)
-    .slice(0, 8);
+  const address = inquiredPropertyDistinctAddress(property);
+  const images = showPhotos ? normalizeInquiredPropertyImages(property.images) : [];
 
   return (
     <div
@@ -55,14 +47,14 @@ export default function InquiredPropertyOverview({ property, className = "" }) {
         <div className="mt-3">
           <div className="text-[9px] font-medium uppercase tracking-wide text-text-muted">Photos</div>
           <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {images.map((url, index) => (
+            {images.map((url) => (
               <div
-                key={`${url}-${index}`}
+                key={url}
                 className="overflow-hidden rounded-md border border-border/60 bg-white"
               >
                 <img
                   src={url}
-                  alt={`Listing photo ${index + 1}`}
+                  alt="Listing photo"
                   className="h-24 w-full object-cover"
                   loading="lazy"
                 />

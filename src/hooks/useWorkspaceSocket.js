@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { io } from "socket.io-client";
 import { toast } from "react-toastify";
 import { getSocketOrigin } from "@/lib/api";
+import WorkspaceRichToast from "@/components/ui/WorkspaceRichToast";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { incrementUnread } from "@/store/proChatSlice";
 
@@ -40,13 +40,14 @@ function toastBodyPreview(payload) {
  * polling (XHR) first — filter “All” or search `socket.io` if you don’t see a WS row yet.
  */
 export function useWorkspaceSocket(token, queryClient) {
-  const pathname = usePathname() || "";
-  const isProfessionalPublicPage = pathname.startsWith("/p/") || pathname.startsWith("/professional/");
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const myUserId = useAppSelector((s) => s.auth.user?.id || s.auth.user?._id || "");
   useEffect(() => {
     if (!token || !queryClient) return;
+    const pathname =
+      typeof window !== "undefined" ? String(window.location?.pathname || "") : "";
+    const isProfessionalPublicPage =
+      pathname.startsWith("/p/") || pathname.startsWith("/professional/");
     const origin = getSocketOrigin();
     if (!origin) {
       if (process.env.NODE_ENV === "development") {
@@ -90,6 +91,10 @@ export function useWorkspaceSocket(token, queryClient) {
         const lid = String(action?.lead_match_id || "").trim();
         return lid ? `/leads/${encodeURIComponent(lid)}` : null;
       }
+      if (type === "open_property") {
+        const pid = String(action?.property_id || "").trim();
+        return pid ? `/client-dashboard/properties/${encodeURIComponent(pid)}` : null;
+      }
       if (type === "open_referral") {
         const rid = String(action?.referral_id || "").trim();
         const dir = String(action?.direction || "inbound").trim().toLowerCase();
@@ -121,6 +126,7 @@ export function useWorkspaceSocket(token, queryClient) {
       const type = String(action?.type || "").trim();
       if (type === "open_prochat_thread") return "Open chat";
       if (type === "open_lead") return "Open lead";
+      if (type === "open_property") return "View property";
       if (type === "open_referral") return "Open referral";
       if (type === "open_bulk_followups") return "Review drafts";
       if (type === "open_billing") return "View billing";
@@ -145,6 +151,9 @@ export function useWorkspaceSocket(token, queryClient) {
         }
       }
       refreshLeadWorkspaceData();
+      if (notificationType === "new_property_for_sale") {
+        queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
+      }
 
       // Public professional pages should not show workspace toasts.
       // Keep background cache updates, but avoid UI notification noise here.
@@ -160,46 +169,37 @@ export function useWorkspaceSocket(token, queryClient) {
       }
       if (title && typeof title === "string") {
         const preview = toastBodyPreview(payload);
+        const label = actionLabel(payload?.action);
+        const toastOptions = {
+          autoClose: href ? 9000 : 6000,
+          closeOnClick: !href,
+          className: href ? "nesti-toast--rich" : "nesti-toast",
+          icon: false,
+        };
+
         if (!href) {
           toast.info(
-            preview ? (
-              <div className="text-left">
-                <p className="font-semibold leading-snug text-slate-900">{title}</p>
-                <p className="mt-1 text-[12px] font-normal leading-relaxed text-slate-600">{preview}</p>
-              </div>
-            ) : (
-              title
-            ),
-            { autoClose: 6000 },
+            <WorkspaceRichToast title={title} preview={preview} />,
+            toastOptions,
           );
           return;
         }
+
         toast.info(
-          <div className="flex w-full flex-col gap-2.5 text-left">
-            <div>
-              <p className="text-[13px] font-semibold leading-snug text-slate-900">{title}</p>
-              {preview ? (
-                <p className="mt-1 text-[12px] font-normal leading-relaxed text-slate-600">{preview}</p>
-              ) : null}
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="rounded-md bg-primary px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-primary-dark"
-                onClick={() => {
-                  toast.dismiss();
-                  if (isExternalHref) {
-                    window.open(href, "_blank", "noopener,noreferrer");
-                    return;
-                  }
-                  router.push(href);
-                }}
-              >
-                {actionLabel(payload?.action)}
-              </button>
-            </div>
-          </div>,
-          { autoClose: 9000, closeOnClick: false, className: "nesti-toast--rich" },
+          <WorkspaceRichToast
+            title={title}
+            preview={preview}
+            actionLabel={label}
+            onAction={() => {
+              toast.dismiss();
+              if (isExternalHref) {
+                window.open(href, "_blank", "noopener,noreferrer");
+                return;
+              }
+              window.location.assign(href);
+            }}
+          />,
+          { ...toastOptions, closeOnClick: false },
         );
       }
     };
@@ -285,5 +285,5 @@ export function useWorkspaceSocket(token, queryClient) {
       socket.off("disconnect");
       socket.disconnect();
     };
-  }, [token, queryClient, pathname, isProfessionalPublicPage, dispatch, myUserId, router]);
+  }, [token, queryClient, dispatch, myUserId]);
 }

@@ -225,7 +225,7 @@ export function ProfileSectionsBarChart({ sections }) {
           <YAxis
             type="category"
             dataKey="name"
-            width={108}
+            width={132}
             tick={{ fontSize: 11, fill: "#475569" }}
             axisLine={false}
             tickLine={false}

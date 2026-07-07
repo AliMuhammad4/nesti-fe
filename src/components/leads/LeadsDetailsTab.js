@@ -5,10 +5,11 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { CheckCircle2, ChevronLeft, ChevronRight, Download, Info, X, XCircle } from "lucide-react";
 import { formatLeadIntakeSlug } from "@/lib/leadsPageUtils";
-import InquiredPropertyOverview from "@/components/leads/InquiredPropertyOverview";
 import {
   inquiredPropertyFromLead,
   isClientDashboardPropertyInquiry,
+  listedPropertyInquiryMessage,
+  normalizeInquiredPropertyImages,
 } from "@/lib/inquiredPropertyUtils";
 
 export default function LeadsDetailsTab({
@@ -22,6 +23,7 @@ export default function LeadsDetailsTab({
   onCancelCalendlyAppointment,
   cancelCalendlyPending = false,
   embedded = false,
+  suppressPropertyPhotos = false,
 }) {
   const [showCalendlyCancelModal, setShowCalendlyCancelModal] = useState(false);
   const [calendlyCancelSubmitting, setCalendlyCancelSubmitting] = useState(false);
@@ -32,9 +34,15 @@ export default function LeadsDetailsTab({
   const isLawyerLead = profRole === "lawyer";
   const isMortgageBrokerLead = profRole === "mortgage_broker";
   const property = leadData.property || {};
-  const propertyImages = Array.isArray(property.images)
-    ? property.images.filter((img) => img?.secure_url || img?.url)
-    : [];
+  const propertyImages = (() => {
+    const seen = new Set();
+    return (Array.isArray(property.images) ? property.images : []).filter((img) => {
+      const src = String(img?.secure_url || img?.url || "").trim();
+      if (!src || seen.has(src)) return false;
+      seen.add(src);
+      return true;
+    });
+  })();
   const qualification = leadData.qualification || {};
   const conversionFunnel = leadData.conversion_funnel || {};
   const decisionSupport = leadData.decision_support || {};
@@ -51,6 +59,12 @@ export default function LeadsDetailsTab({
       /seller|sell/.test(String(leadData.lead_type || "").toLowerCase()));
   const isClientDashboardPropertyInquiryLead = isClientDashboardPropertyInquiry(leadData);
   const inquiredPropertySnapshot = inquiredPropertyFromLead(leadData);
+  const inquiredPropertyPhotoUrls = normalizeInquiredPropertyImages(inquiredPropertySnapshot?.images);
+  const showSellerPropertyPhotos =
+    isAgentSellerLead &&
+    propertyImages.length > 0 &&
+    !suppressPropertyPhotos &&
+    !(isClientDashboardPropertyInquiryLead && inquiredPropertyPhotoUrls.length > 0);
   const outerClassName = embedded ? "space-y-4" : "rounded-md border border-border bg-white shadow-sm p-5 space-y-4";
   const sectionClassName = embedded ? "space-y-3 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-3";
   const roleClosedLabels = {
@@ -353,6 +367,42 @@ export default function LeadsDetailsTab({
     </div>
   );
 
+  const clientPropertyInquirySection = (() => {
+    const inquiryMessage = listedPropertyInquiryMessage(leadData);
+    const snapshot = inquiredPropertySnapshot || {};
+    const priceDisplay =
+      snapshot.expected_price != null && String(snapshot.expected_price).trim()
+        ? readable(snapshot.expected_price)
+        : budgetDisplay;
+    return (
+      <div className={sectionClassName}>
+        <div className="text-sm font-semibold text-text-heading">Inquiry overview</div>
+        <p className="text-[11px] leading-relaxed text-text-muted">
+          This lead came from a client dashboard listing inquiry, not chat intake. Use Lead Profile for
+          listing details and the Inquired Property tab for photos and seller match context.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <KeyValue label="Intent" value={leadData.intent} />
+          <KeyValue label="Lead type" value={leadData.lead_type} />
+          <KeyValue label="Score" value={leadData.score != null ? String(leadData.score) : null} />
+          <KeyValue label="Property type" value={snapshot.property_type || property.property_type} />
+          <KeyValue label="Price / budget" value={priceDisplay} />
+          <KeyValue label="Bedrooms" value={snapshot.bedrooms || property.bedrooms} />
+          <KeyValue label="Bathrooms" value={snapshot.bathrooms || property.bathrooms} />
+          <KeyValue label="Listed by" value={snapshot.listed_by_name} />
+        </div>
+        {inquiryMessage ? (
+          <div className="rounded-md border border-border/60 bg-background-light/35 px-3 py-2.5">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Client message</div>
+            <p className="mt-1 text-xs leading-relaxed text-text-heading whitespace-pre-wrap break-words">
+              {inquiryMessage}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    );
+  })();
+
   const conversionTrustSection = (
     <div className={sectionClassName}>
       <div className="text-sm font-semibold text-text-heading">
@@ -485,7 +535,7 @@ export default function LeadsDetailsTab({
           ) : (
             <>
               {isClientDashboardPropertyInquiryLead ? (
-                <InquiredPropertyOverview property={inquiredPropertySnapshot} />
+                clientPropertyInquirySection
               ) : (
                 <>
                   <div className={sectionClassName}>
@@ -504,7 +554,7 @@ export default function LeadsDetailsTab({
                     </div>
                   </div>
 
-                  {isAgentSellerLead && propertyImages.length ? (
+                  {showSellerPropertyPhotos ? (
                     <div className={sectionClassName}>
                       <div className="flex items-center justify-between gap-3">
                         <div>

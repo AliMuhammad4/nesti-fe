@@ -15,7 +15,14 @@ import {
   ClipboardList,
   Users,
   MessageSquare,
+  Landmark,
+  UserCheck,
 } from "lucide-react";
+import {
+  CLIENT_MORTGAGE_STATUS_OPTIONS,
+  CLIENT_REALTOR_STATUS_OPTIONS,
+  labelForQualificationValue,
+} from "@/lib/clientBuyerQualificationOptions";
 import { toast } from "react-toastify";
 import { CLIENT_PROFILE_UPDATED_EVENT } from "@/lib/clientProfileEvents";
 import {
@@ -56,12 +63,17 @@ const PROFILE_COMPLETION_SECTIONS = [
           profile?.monthly_savings !== undefined &&
           profile?.monthly_savings !== "",
       },
+      {
+        key: "mortgage_status",
+        label: "Mortgage Status",
+        isComplete: (profile) => Boolean(profile?.mortgage_status),
+      },
     ],
   },
   {
     id: "home",
-    title: "Home Goals",
-    description: "Goal, budget, location, and purchase timeline.",
+    title: "Home Goals & Readiness",
+    description: "Goal, budget, location, timeline, and buying signals used when you inquire.",
     fields: [
       {
         key: "home_goal",
@@ -87,6 +99,31 @@ const PROFILE_COMPLETION_SECTIONS = [
         key: "purchase_timeline",
         label: "Purchase Timeline",
         isComplete: (profile) => Boolean(profile?.purchase_timeline),
+      },
+      {
+        key: "realtor_status",
+        label: "Realtor Status",
+        isComplete: (profile) => Boolean(profile?.realtor_status),
+      },
+      {
+        key: "viewing_readiness",
+        label: "Viewing Readiness",
+        isComplete: (profile) => Boolean(profile?.viewing_readiness),
+      },
+      {
+        key: "living_situation",
+        label: "Living Situation",
+        isComplete: (profile) => Boolean(profile?.living_situation),
+      },
+      {
+        key: "offer_readiness",
+        label: "Offer Readiness",
+        isComplete: (profile) => Boolean(profile?.offer_readiness),
+      },
+      {
+        key: "motivation_reason",
+        label: "Search Motivation",
+        isComplete: (profile) => Boolean(profile?.motivation_reason),
       },
     ],
   },
@@ -471,6 +508,18 @@ export default function ClientDashboardPage() {
                 { label: "Home goal", value: formatLabel(profile?.home_goal), Icon: Home },
                 { label: "Location", value: profile?.preferred_location || "Not set", Icon: MapPin },
                 { label: "Timeline", value: formatTimeline(profile?.purchase_timeline), Icon: Calendar },
+                {
+                  label: "Mortgage",
+                  value:
+                    labelForQualificationValue(profile?.mortgage_status, CLIENT_MORTGAGE_STATUS_OPTIONS) || "Not set",
+                  Icon: Landmark,
+                },
+                {
+                  label: "Realtor",
+                  value:
+                    labelForQualificationValue(profile?.realtor_status, CLIENT_REALTOR_STATUS_OPTIONS) || "Not set",
+                  Icon: UserCheck,
+                },
                 { label: "Experience", value: formatLabel(profile?.preferred_experience), Icon: TrendingUp },
               ].map(({ label, value, Icon }) => (
                 <div key={label} className="flex items-center gap-2.5 py-2.5">

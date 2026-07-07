@@ -4,6 +4,60 @@
  * - Public-profile listing snapshots: `inquired_property` on the lead payload.
  */
 
+function normalizeImageUrl(image) {
+  if (typeof image === "string") return image.trim();
+  if (image && typeof image === "object") {
+    return String(image.secure_url || image.url || "").trim();
+  }
+  return "";
+}
+
+/** Stable key for deduping the same asset across URL variants (Cloudinary transforms, http/https). */
+export function imageDedupeKey(image) {
+  if (image && typeof image === "object") {
+    const publicId = String(image.public_id || "").trim();
+    if (publicId) return `pid:${publicId.toLowerCase()}`;
+  }
+  const url = normalizeImageUrl(image);
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname;
+    const uploadIdx = path.indexOf("/upload/");
+    if (uploadIdx >= 0) {
+      let rest = path.slice(uploadIdx + "/upload/".length);
+      rest = rest.replace(/(?:[^/]+\/)*v\d+\//, "");
+      if (rest) return `url:${rest.toLowerCase()}`;
+    }
+    return `url:${path.toLowerCase()}`;
+  } catch {
+    return `url:${url.split("?")[0].toLowerCase()}`;
+  }
+}
+
+/** Dedupe listing photos by asset identity while preserving order. */
+export function normalizeInquiredPropertyImages(images, limit = 8) {
+  const seen = new Set();
+  const normalized = [];
+  for (const image of Array.isArray(images) ? images : []) {
+    const url = normalizeImageUrl(image);
+    const key = imageDedupeKey(image) || url;
+    if (!url || !key || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(url);
+    if (normalized.length >= limit) break;
+  }
+  return normalized;
+}
+
+function sanitizeInquiredPropertySnapshot(property) {
+  if (!property || typeof property !== "object") return property;
+  return {
+    ...property,
+    images: normalizeInquiredPropertyImages(property.images),
+  };
+}
+
 function inquiredPropertyHasDisplayData(property) {
   if (!property || typeof property !== "object") return false;
   if (Array.isArray(property.images) && property.images.length > 0) return true;
@@ -35,14 +89,16 @@ export function listedPropertyInquiryMessage(lead) {
 
 export function inquiredPropertyFromLead(lead) {
   const raw = lead?.inquired_property;
-  if (raw && typeof raw === "object") return raw;
+  if (raw && typeof raw === "object") return sanitizeInquiredPropertySnapshot(raw);
   if (!isClientDashboardPropertyInquiry(lead)) return null;
   const property = lead.property || {};
+  const address = String(property.address || "").trim();
+  const location = String(property.location || property.address || "").trim();
   const snapshot = {
     id: null,
-    title: property.address || property.location || "Listed property",
-    address: property.address || "",
-    location: property.location || property.address || "",
+    title: address || location || "Listed property",
+    address,
+    location,
     expected_price: property.expected_price || property.budget || "",
     property_type: property.property_type || "",
     bedrooms: property.bedrooms != null ? String(property.bedrooms) : "",
@@ -50,7 +106,7 @@ export function inquiredPropertyFromLead(lead) {
     square_footage: property.square_footage != null ? String(property.square_footage) : "",
     listed_by_name: "",
     seller_name: "",
-    images: Array.isArray(property.images) ? property.images : [],
+    images: normalizeInquiredPropertyImages(property.images),
   };
   const hasAny = Object.entries(snapshot).some(([key, value]) => {
     if (key === "images") return value.length > 0;
@@ -83,10 +139,19 @@ export function inquiredPropertyDisplayAddress(property) {
   return String(property.address || property.location || "").trim();
 }
 
+/** Address label only when it adds information beyond the listing title. */
+export function inquiredPropertyDistinctAddress(property) {
+  const address = inquiredPropertyDisplayAddress(property);
+  if (!address) return "";
+  const title = String(property?.title || "").trim();
+  if (title && title.toLowerCase() === address.toLowerCase()) return "";
+  return address;
+}
+
 /** Align public-profile submit payload with backend `normalizeInquiredProperty`. */
 export function buildInquiredPropertyPayload(property, profile) {
   if (!property || typeof property !== "object") return null;
-  const images = Array.isArray(property.images) ? property.images.filter(Boolean).slice(0, 8) : [];
+  const images = normalizeInquiredPropertyImages(property.images);
   const professionalProfile = profile?.professional_profile || {};
   const normalized = {
     id: property.id || null,

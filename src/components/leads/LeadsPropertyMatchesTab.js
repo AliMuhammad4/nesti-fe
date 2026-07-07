@@ -17,6 +17,7 @@ import {
   hasInquiredPropertyContext,
   inquiredPropertyDisplayAddress,
   inquiredPropertyFromLead,
+  normalizeInquiredPropertyImages,
 } from "@/lib/inquiredPropertyUtils";
 import LeadsProfileTab from "@/components/leads/LeadsProfileTab";
 import {
@@ -43,6 +44,7 @@ export default function LeadsPropertyMatchesTab({
 
   const inquiredMode = hasInquiredPropertyContext(lead);
   const inquiredPropertySnapshot = inquiredProperty || inquiredPropertyFromLead(lead);
+  const inquiredPropertyPhotoCount = normalizeInquiredPropertyImages(inquiredPropertySnapshot?.images).length;
   const matchesCopy = getPropertyMatchesCopy(lead, propertyMatchesPayload);
   const selectedLeadKey = String(selectedConversation?.id || selectedConversation?.lead_match_id || "");
   useEffect(() => {
@@ -432,6 +434,7 @@ export default function LeadsPropertyMatchesTab({
                       onOpenMeta={() => {}}
                       onCancelCalendlyAppointment={undefined}
                       cancelCalendlyPending={false}
+                      suppressPropertyPhotos={inquiredPropertyPhotoCount > 0}
                       embedded
                     />
                   </div>
