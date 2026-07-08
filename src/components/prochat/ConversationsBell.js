@@ -114,7 +114,11 @@ export default function ConversationsBell({ enabled = true }) {
   const listQuery = useQuery({
     queryKey: ["prochat-threads", token, isClientUser],
     enabled: Boolean(token) && enabled,
-    queryFn: () => fetchMyProChatThreads({ token, client: isClientUser }),
+    queryFn: () => fetchMyProChatThreads({
+      token,
+      client: isClientUser,
+      includeLeadThreads: !isClientUser,
+    }),
     staleTime: 15_000,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -153,10 +157,10 @@ export default function ConversationsBell({ enabled = true }) {
     });
   };
 
-  const items = useMemo(
-    () => (Array.isArray(listQuery.data?.items) ? listQuery.data.items : []),
-    [listQuery.data?.items],
-  );
+  const items = useMemo(() => {
+    const raw = Array.isArray(listQuery.data?.items) ? listQuery.data.items : [];
+    return isClientUser ? raw.filter((item) => item?.is_lead_thread !== true) : raw;
+  }, [listQuery.data?.items, isClientUser]);
   const validThreadIds = useMemo(
     () => items.map((t) => String(t?.id || "").trim()).filter(Boolean),
     [items],
@@ -165,8 +169,9 @@ export default function ConversationsBell({ enabled = true }) {
 
   useEffect(() => {
     if (!listQuery.isSuccess) return;
+    if (isClientUser) return;
     dispatch(pruneUnread({ threadIds: validThreadIds }));
-  }, [dispatch, listQuery.isSuccess, validThreadIds]);
+  }, [dispatch, isClientUser, listQuery.isSuccess, validThreadIds]);
 
   const unreadTotal = useMemo(
     () =>

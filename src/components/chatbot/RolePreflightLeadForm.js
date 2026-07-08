@@ -77,8 +77,15 @@ const YES_NO = [
 const LAWYER_LEGAL = [
   SELECT_EMPTY,
   { value: "full_closing", label: "Full closing services" },
+  { value: "purchase_closing", label: "Purchase closing" },
+  { value: "sale_closing", label: "Sale closing" },
+  { value: "refinance_legal_work", label: "Refinance legal work" },
+  { value: "agreement_review", label: "Agreement / contract review" },
   { value: "title_transfer", label: "Title transfer" },
   { value: "document_review", label: "Document review" },
+  { value: "mortgage_document_review", label: "Mortgage document review" },
+  { value: "property_dispute_advice", label: "Property dispute / legal advice" },
+  { value: "other", label: "Other legal service" },
 ];
 
 const LAWYER_CONTACT_METHOD = PREFERRED_CONTACT_OPTIONS;

@@ -318,7 +318,7 @@ export default function NotificationsBell({ enabled = true }) {
                             onClick={() => openItem(n)}
                             className="mt-1 block text-[11px] font-semibold text-primary"
                           >
-                            Open chat →
+                            {n.action?.is_lead_thread === true || String(n.action?.lead_id || "").trim() ? "Open inquiry →" : "Open chat →"}
                           </button>
                         ) : n.action?.type === "open_lead" ? (
                           <button

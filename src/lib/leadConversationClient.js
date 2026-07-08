@@ -8,3 +8,12 @@ export async function fetchAllLeadConversationMessages({ token, leadId }) {
     token,
   });
 }
+
+export async function postLeadConversationMessage({ token, leadId, body }) {
+  return apiClient({
+    url: `${API_ENDPOINTS.leads.conversation(leadId)}/message`,
+    method: "POST",
+    token,
+    data: { body },
+  });
+}

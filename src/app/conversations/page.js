@@ -131,7 +131,13 @@ export default function ConversationsPage() {
   const listQuery = useQuery({
     queryKey: ["prochat-threads", token, page, pageSize, isClientUser],
     enabled: Boolean(token) && (canUseProChat || isClientUser),
-    queryFn: () => fetchMyProChatThreads({ token, page, limit: pageSize, client: isClientUser }),
+    queryFn: () => fetchMyProChatThreads({
+      token,
+      page,
+      limit: pageSize,
+      client: isClientUser,
+      includeLeadThreads: !isClientUser,
+    }),
     staleTime: 15_000,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -140,12 +146,20 @@ export default function ConversationsPage() {
   const items = useMemo(() => {
     const raw = Array.isArray(listQuery.data?.items) ? listQuery.data.items : [];
     if (canCreateGroups && !isClientUser) return raw;
-    return raw.filter((t) => String(t.thread_type || "dm") !== "group");
+    return raw.filter((t) => String(t.thread_type || "dm") !== "group" && t?.is_lead_thread !== true);
   }, [listQuery.data?.items, canCreateGroups, isClientUser]);
 
+  const visibleThreadIds = useMemo(
+    () => new Set(items.map((item) => String(item?.id || "").trim()).filter(Boolean)),
+    [items],
+  );
   const unreadTotal = useMemo(
-    () => Object.values(unreadByThread).reduce((sum, n) => sum + Number(n || 0), 0),
-    [unreadByThread],
+    () =>
+      Object.entries(unreadByThread).reduce((sum, [threadId, n]) => {
+        if (!visibleThreadIds.has(String(threadId))) return sum;
+        return sum + Number(n || 0);
+      }, 0),
+    [unreadByThread, visibleThreadIds],
   );
   const pagination = listQuery.data?.pagination || {};
   const totalItems = Number(pagination?.total || 0);
@@ -457,15 +471,20 @@ export default function ConversationsPage() {
                 {items.map((t) => {
                   const tid = String(t.id || "").trim();
                   const isGroup = String(t.thread_type || "dm") === "group";
+                  const isLeadThread = t?.is_lead_thread === true;
                   const other = t.other_user || null;
                   const unread = Number(unreadByThread?.[tid] || 0);
                   const lastTime = t.last_message_at || t.updated_at;
                   const preview = formatProChatMessagePreview(t.last_message_text);
-                  const title = isGroup ? (String(t.title || "").trim() || "Group chat") : displayName(other);
+                  const title = isLeadThread
+                    ? `Legal inquiry - ${displayName(other)}`
+                    : isGroup
+                      ? (String(t.title || "").trim() || "Group chat")
+                      : displayName(other);
                   const emailOrMeta = isGroup
-                    ? `${Number(t.member_count || 0)} members`
+                    ? (isLeadThread ? (other?.email || "Lead inquiry") : `${Number(t.member_count || 0)} members`)
                     : (other?.email || "No email");
-                  const role = isGroup ? "Group" : displayRole(other);
+                  const role = isLeadThread ? displayRole(other) : isGroup ? "Group" : displayRole(other);
                   return (
                     <li
                       key={tid}
@@ -480,14 +499,14 @@ export default function ConversationsPage() {
                       >
                         {/* Fixed avatar lane; left-align so DM starts at the left */}
                         <div className="w-[56px] shrink-0 flex items-center justify-start">
-                          {!isGroup && other?.profile_image ? (
+                          {(!isGroup || isLeadThread) && other?.profile_image ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={other.profile_image}
                               alt=""
                               className="h-10 w-10 rounded-xl object-cover ring-1 ring-border/70"
                             />
-                          ) : !isGroup ? (
+                          ) : !isGroup || isLeadThread ? (
                             <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/[0.10] text-xs font-bold text-primary-dark ring-1 ring-primary/15">
                               {initialsFor(other)}
                             </span>
@@ -504,7 +523,7 @@ export default function ConversationsPage() {
                           </div>
 
                           <div className="inline-flex min-w-0 items-center gap-1 text-[11px] text-text-muted">
-                            {isGroup ? <Users size={12} className="shrink-0" /> : <Mail size={11} className="shrink-0" />}
+                            {isGroup && !isLeadThread ? <Users size={12} className="shrink-0" /> : <Mail size={11} className="shrink-0" />}
                             <span className="truncate">{emailOrMeta}</span>
                           </div>
 

@@ -629,6 +629,7 @@ function LeadWorkspacePageContent() {
             nurtureLogsLoading={nurtureLogsQuery.isLoading}
             deleteLeadMutation={deleteLeadMutation}
             onDeleteClick={() => setShowDeleteConfirm(true)}
+            myUserId={String(authUser?.id || authUser?._id || "").trim()}
             inquiredProperty={inquiredProperty}
           />
         )}

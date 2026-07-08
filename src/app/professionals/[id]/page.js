@@ -3,16 +3,18 @@
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, User, Briefcase } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { fetchProfessionalById } from "@/lib/professionalsClient";
+import { fetchProfessionalById, submitLawyerInquiryFromClient } from "@/lib/professionalsClient";
 import { createOrGetProChatThread } from "@/lib/proChatClient";
 import PersonalCard from "@/components/profile/PersonalCard";
 import BusinessCard from "@/components/profile/BusinessCard";
 import { ClientMatchExplanation } from "@/components/matching/MatchExplanation";
+import LawyerInquiryModal from "@/components/client/LawyerInquiryModal";
 
 function humanizeToken(value) {
   return String(value || "")
@@ -55,6 +57,8 @@ export default function ProfessionalDetailPage() {
   const { isAuthenticated } = useAuthGuard();
   const router = useRouter();
   const { token, user: authUser } = useAppSelector((state) => state.auth);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [submittingInquiry, setSubmittingInquiry] = useState(false);
   const params = useParams();
   const id = String(params?.id || "").trim();
   const myUserId = String(authUser?.id || authUser?._id || "").trim();
@@ -72,6 +76,8 @@ export default function ProfessionalDetailPage() {
   const roleBadgeText = humanizeToken(pro?.professional_type || pro?.role || "").toUpperCase();
   const hasCover = Boolean(pro?.cover_image);
   const isSelf = Boolean(myUserId && String(pro?.id || "") === String(myUserId));
+  const isClientViewer = String(authUser?.role || "").toLowerCase() === "client";
+  const isLawyerProfile = String(pro?.professional_type || pro?.role || "").toLowerCase() === "lawyer";
 
   const startChat = async () => {
     try {
@@ -89,6 +95,24 @@ export default function ProfessionalDetailPage() {
       }
     } catch (e) {
       toast.error(e?.message || "Could not start chat");
+    }
+  };
+
+  const submitInquiry = async (payload) => {
+    try {
+      if (!token || !pro?.id) return;
+      setSubmittingInquiry(true);
+      const response = await submitLawyerInquiryFromClient({
+        token,
+        professionalId: pro.id,
+        payload,
+      });
+      toast.success(response?.message || "Inquiry submitted successfully");
+      setShowInquiryModal(false);
+    } catch (error) {
+      toast.error(error?.message || "Could not submit inquiry");
+    } finally {
+      setSubmittingInquiry(false);
     }
   };
 
@@ -214,14 +238,25 @@ export default function ProfessionalDetailPage() {
                   title="Contact & role"
                   right={
                     !isSelf ? (
-                      <button
-                        type="button"
-                        onClick={startChat}
-                        className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
-                      >
-                        <MessageSquare size={14} />
-                        Chat
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {isClientViewer && isLawyerProfile ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowInquiryModal(true)}
+                            className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
+                          >
+                            Ask this lawyer
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={startChat}
+                          className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
+                        >
+                          <MessageSquare size={14} />
+                          Chat
+                        </button>
+                      </div>
                     ) : null
                   }
                 />
@@ -250,6 +285,16 @@ export default function ProfessionalDetailPage() {
           </>
         )}
       </div>
+      <LawyerInquiryModal
+        open={showInquiryModal}
+        submitting={submittingInquiry}
+        professionalName={name}
+        onClose={() => {
+          if (submittingInquiry) return;
+          setShowInquiryModal(false);
+        }}
+        onSubmit={submitInquiry}
+      />
     </div>
   );
 }

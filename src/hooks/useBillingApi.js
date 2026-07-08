@@ -199,12 +199,12 @@ export function useCancelSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => {
+    mutationFn: ({ reason } = {}) => {
       if (!token) throw new Error("missing or invalid Authorization header");
       return apiClient({
         url: API_ENDPOINTS.billing.subscriptionCancel,
         method: "POST",
-        data: {},
+        data: { reason: String(reason || "").trim() },
         token,
       });
     },

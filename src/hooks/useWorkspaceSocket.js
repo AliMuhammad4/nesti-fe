@@ -85,7 +85,11 @@ export function useWorkspaceSocket(token, queryClient) {
       if (!type) return null;
       if (type === "open_prochat_thread") {
         const tid = String(action?.thread_id || "").trim();
-        return tid ? `/messages/${encodeURIComponent(tid)}` : null;
+        if (!tid) return null;
+        const isLeadThread = action?.is_lead_thread === true || Boolean(String(action?.lead_id || "").trim());
+        return isLeadThread
+          ? `/client-dashboard/inquiries?thread=${encodeURIComponent(tid)}`
+          : `/messages/${encodeURIComponent(tid)}`;
       }
       if (type === "open_lead") {
         const lid = String(action?.lead_match_id || "").trim();
@@ -124,7 +128,9 @@ export function useWorkspaceSocket(token, queryClient) {
 
     const actionLabel = (action) => {
       const type = String(action?.type || "").trim();
-      if (type === "open_prochat_thread") return "Open chat";
+      if (type === "open_prochat_thread") {
+        return action?.is_lead_thread === true || String(action?.lead_id || "").trim() ? "Open inquiry" : "Open chat";
+      }
       if (type === "open_lead") return "Open lead";
       if (type === "open_property") return "View property";
       if (type === "open_referral") return "Open referral";
@@ -215,7 +221,13 @@ export function useWorkspaceSocket(token, queryClient) {
         return;
       }
       const threadId = String(payload?.thread_id || "").trim();
-      if (threadId && pathname === `/messages/${threadId}`) {
+      const isLeadThread = payload?.is_lead_thread === true || Boolean(String(payload?.lead_id || "").trim());
+      const threadHref = isLeadThread && threadId
+        ? `/client-dashboard/inquiries?thread=${encodeURIComponent(threadId)}`
+        : threadId
+          ? `/messages/${encodeURIComponent(threadId)}`
+          : null;
+      if (!isLeadThread && threadId && pathname === `/messages/${threadId}`) {
         return; // already on this chat
       }
       const msg = payload?.message || {};
@@ -240,7 +252,22 @@ export function useWorkspaceSocket(token, queryClient) {
           "A professional";
         const preview = String(msg?.body || "").trim();
         const title = preview ? `${senderName}: ${preview.slice(0, 90)}` : `New message from ${senderName}`;
-        toast.info(title, { autoClose: 6000 });
+        toast.info(
+          <WorkspaceRichToast
+            title={title}
+            actionLabel={threadHref ? (isLeadThread ? "Open inquiry" : "Open chat") : ""}
+            onAction={threadHref ? () => {
+              toast.dismiss();
+              window.location.assign(threadHref);
+            } : undefined}
+          />,
+          {
+            autoClose: threadHref ? 9000 : 6000,
+            closeOnClick: !threadHref,
+            className: threadHref ? "nesti-toast--rich" : "nesti-toast",
+            icon: false,
+          },
+        );
       }
       if (threadId && !isThreadStarted) {
         dispatch(incrementUnread({ threadId }));
@@ -249,9 +276,28 @@ export function useWorkspaceSocket(token, queryClient) {
           [sender?.first_name, sender?.last_name].filter(Boolean).join(" ").trim() ||
           "A professional";
         const preview = String(msg?.body || "").trim() || "Sent an attachment";
-        toast.info(`${senderName}: ${preview.slice(0, 90)}`, { autoClose: 6000 });
+        toast.info(
+          <WorkspaceRichToast
+            title={`${senderName}: ${preview.slice(0, 90)}`}
+            actionLabel={threadHref ? (isLeadThread ? "Open inquiry" : "Open chat") : ""}
+            onAction={threadHref ? () => {
+              toast.dismiss();
+              window.location.assign(threadHref);
+            } : undefined}
+          />,
+          {
+            autoClose: threadHref ? 9000 : 6000,
+            closeOnClick: !threadHref,
+            className: threadHref ? "nesti-toast--rich" : "nesti-toast",
+            icon: false,
+          },
+        );
       }
       queryClient.invalidateQueries({ queryKey: ["prochat-threads"] });
+      queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
+      if (threadId) {
+        queryClient.invalidateQueries({ queryKey: ["inquiry-thread-messages"] });
+      }
     };
 
     socket.on("connect", () => {

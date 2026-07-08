@@ -78,8 +78,10 @@ const EMPLOYMENT_STATUS_OPTIONS = [
 
 const CONTACT_METHOD_OPTIONS = [
   { value: "phone", label: "Phone call" },
-  { value: "sms", label: "SMS / WhatsApp" },
+  { value: "sms", label: "SMS" },
+  { value: "whatsapp", label: "WhatsApp" },
   { value: "email", label: "Email" },
+  { value: "video_call", label: "Video call" },
 ];
 
 const CONTACT_TIME_OPTIONS = [

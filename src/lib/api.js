@@ -189,6 +189,7 @@ export const API_ENDPOINTS = {
     settings: withBaseUrl("/api/client/settings"),
     recommendations: withBaseUrl("/api/client/recommendations"),
     inquiries: withBaseUrl("/api/client/inquiries"),
+    lawyerInquiry: withBaseUrl((professionalId) => `/api/client/professionals/${professionalId}/lawyer-inquiry`),
     subscriptionMe: withBaseUrl("/api/client/subscription/me"),
   },
   proChat: {

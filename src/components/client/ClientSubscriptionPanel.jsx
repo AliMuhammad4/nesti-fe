@@ -495,15 +495,12 @@ export default function ClientSubscriptionPanel({
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-text-muted">
-              Cancel anytime. Access continues until the end of your billing period.
-            </p>
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}
               disabled={loading}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border bg-background-light/60 px-4 py-2 text-sm font-medium text-text-muted transition hover:border-border/90 hover:bg-background-light hover:text-text-body disabled:opacity-60"
+              className="rounded-md px-2 py-1 text-[10px] font-medium text-text-muted/60 transition hover:bg-background-light/80 hover:text-text-muted disabled:opacity-40"
             >
               Cancel subscription
             </button>

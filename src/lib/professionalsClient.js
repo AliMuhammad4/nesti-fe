@@ -34,3 +34,12 @@ export async function fetchProfessionalById({ token, id }) {
     token,
   });
 }
+
+export async function submitLawyerInquiryFromClient({ token, professionalId, payload }) {
+  return apiClient({
+    url: API_ENDPOINTS.client.lawyerInquiry(professionalId),
+    method: "POST",
+    token,
+    data: payload,
+  });
+}

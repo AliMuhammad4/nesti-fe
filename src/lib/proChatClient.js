@@ -144,10 +144,11 @@ function proChatThreadAttachmentsUrl(id, client = false) {
     : `/api/pro-chat/threads/${id}/attachments`;
 }
 
-export async function fetchMyProChatThreads({ token, page = 1, limit = 200, client = false }) {
+export async function fetchMyProChatThreads({ token, page = 1, limit = 200, client = false, includeLeadThreads = true }) {
   const sp = new URLSearchParams();
   sp.set("page", String(Math.max(1, Number(page) || 1)));
   sp.set("limit", String(Math.max(1, Number(limit) || 1)));
+  if (includeLeadThreads === false) sp.set("include_lead_threads", "0");
   return apiClient({
     url: `${proChatThreadsBase(client)}?${sp.toString()}`,
     method: "GET",

@@ -52,6 +52,7 @@ export default function LeadsWorkspacePanels({
   deleteLeadMutation,
   onDeleteClick,
   token,
+  myUserId,
   inquiredProperty = null,
   inquiredSellerLeadDetail = null,
   inquiredSellerConversation = null,
@@ -109,6 +110,9 @@ export default function LeadsWorkspacePanels({
           messages={messages}
           formatMetaEntries={formatMetaEntries}
           onOpenMeta={() => {}}
+          token={token}
+          myUserId={myUserId}
+          leadId={selectedLeadId}
         />
       ) : null}
 

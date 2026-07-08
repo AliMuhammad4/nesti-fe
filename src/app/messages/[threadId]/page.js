@@ -67,6 +67,7 @@ export default function ProMessagesThreadPage() {
 
   const thread = threadQuery.data?.thread || null;
   const isGroup = String(thread?.thread_type || "dm") === "group";
+  const isLeadThread = thread?.is_lead_thread === true || Boolean(String(thread?.lead_id || "").trim());
   const isGroupCreator = Boolean(isGroup && myUserId && String(thread?.created_by || "") === String(myUserId));
   const canReply = Boolean(thread?.can_reply !== false);
   const rejoinRequestStatus = String(thread?.rejoin_request_status || "").trim();
@@ -366,6 +367,11 @@ export default function ProMessagesThreadPage() {
   }, [dispatch, threadId]);
 
   useEffect(() => {
+    if (!isClientUser || !threadId || !isLeadThread) return;
+    router.replace(`/client-dashboard/inquiries?thread=${encodeURIComponent(threadId)}`);
+  }, [isClientUser, isLeadThread, router, threadId]);
+
+  useEffect(() => {
     // Ensure textarea height matches persisted draft (e.g. on fast refresh/back nav).
     requestAnimationFrame(() => autosizeComposer());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -496,6 +502,14 @@ export default function ProMessagesThreadPage() {
   };
 
   if (!isAuthenticated) return null;
+  if (isClientUser && isLeadThread) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center text-sm text-text-muted">
+        <Loader2 size={20} className="mr-2 animate-spin text-primary" />
+        Opening inquiry chat...
+      </div>
+    );
+  }
 
   const settingsModal = (
     <GroupSettingsModal
