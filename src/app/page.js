@@ -2,6 +2,7 @@ import HeroSection from "@/components/sections/HeroSection";
 import AIAssistantsSection from "@/components/sections/AIAssistantsSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
+import NoBrainerSection from "@/components/sections/NoBrainerSection";
 import PricingSection from "@/components/sections/PricingSection";
 import TestimonialsSection from "@/components/sections/TestimonialsSection";
 import CEOFeaturesSection from "@/components/sections/CEOFeaturesSection";
@@ -15,6 +16,7 @@ export default function Home() {
       <AIAssistantsSection />
       <FeaturesSection />
       <HowItWorksSection />
+      <NoBrainerSection />
       <PricingSection />
       <TestimonialsSection />
       <CEOFeaturesSection />
