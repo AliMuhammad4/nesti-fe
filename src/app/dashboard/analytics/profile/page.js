@@ -72,8 +72,6 @@ export default function ProfileAnalyticsPage() {
             Track your public profile performance and visitor engagement.
           </p>
         </div>
-
-        {/* Period Selector */}
         <div className="mb-6 flex gap-2">
           {['daily', 'weekly', 'monthly'].map((p) => (
             <button

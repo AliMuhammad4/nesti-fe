@@ -87,35 +87,36 @@ export default function HeroSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "0px" }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col items-start gap-3 pt-1 sm:flex-row"
+              className="w-full max-w-5xl pt-1"
               suppressHydrationWarning
             >
-              <Link
-                href="#start"
-                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-3 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  Claim My Free Trial
+              <div className="flex flex-col gap-2.5 lg:flex-row lg:items-stretch">
+                <Link
+                  href="#start"
+                  className="group relative inline-flex min-h-[48px] flex-1 items-center justify-between gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary-dark px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(16,185,129,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-12px_rgba(16,185,129,0.75)]"
+                >
+                  <span className="relative z-10 lg:whitespace-nowrap">Claim My Free Trial</span>
                   <ArrowRight
-                    size={18}
-                    className="relative z-10 group-hover:translate-x-1 transition-transform duration-300"
+                    size={17}
+                    className="relative z-10 shrink-0 transition-transform duration-300 group-hover:translate-x-1"
                   />
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
-              </Link>
+                </Link>
 
-              <Link
-                href="/log-in"
-                className="group relative inline-flex items-center justify-center rounded-xl border border-border bg-white px-6 py-3 text-sm font-semibold text-text-heading shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-background-light hover:shadow-md"
-              >
-                <span className="flex items-center gap-2">
-                  See It In Action (1 Min)
+                <Link
+                  href="/log-in"
+                  className="group inline-flex min-h-[48px] flex-1 items-center justify-between gap-3 rounded-2xl border border-border/80 bg-white/90 px-5 py-3 text-sm font-semibold text-text-heading shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white"
+                >
+                  <span className="lg:whitespace-nowrap">See It In Action (1 Min)</span>
                   <ChevronRight
-                    size={18}
-                    className="group-hover:translate-x-0.5 transition-transform duration-300"
+                    size={17}
+                    className="shrink-0 transition-transform duration-300 group-hover:translate-x-0.5"
                   />
-                </span>
-              </Link>
+                </Link>
+
+                <div className="inline-flex min-h-[48px] flex-1 items-center rounded-2xl border border-[#20f5c4]/35 bg-[linear-gradient(135deg,rgba(32,245,196,0.14),rgba(255,255,255,0.92))] px-5 py-3 text-sm font-bold text-primary-dark shadow-sm ring-1 ring-[#20f5c4]/15 backdrop-blur">
+                  <span className="min-w-0 lg:whitespace-nowrap">1,000% ROI with just 1 deal</span>
+                </div>
+              </div>
             </motion.div>
 
             {/* Trust Indicators */}
