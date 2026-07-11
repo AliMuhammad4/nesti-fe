@@ -11,7 +11,7 @@ export default function PricingSection() {
   const displayPlans = sortPlansForDisplay(plans);
 
   return (
-    <section id="pricing" className="relative bg-transparent py-10 md:py-12">
+    <section id="pricing" className="relative scroll-mt-20 bg-transparent py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
         <div className="mx-auto mb-8 max-w-2xl text-center md:mb-9">
           <motion.div

@@ -113,9 +113,12 @@ export default function HeroSection() {
                   />
                 </Link>
 
-                <div className="inline-flex min-h-[48px] flex-1 items-center rounded-2xl border border-[#20f5c4]/35 bg-[linear-gradient(135deg,rgba(32,245,196,0.14),rgba(255,255,255,0.92))] px-5 py-3 text-sm font-bold text-primary-dark shadow-sm ring-1 ring-[#20f5c4]/15 backdrop-blur">
+                <Link
+                  href="#pricing"
+                  className="inline-flex min-h-[48px] flex-1 items-center rounded-2xl border border-[#20f5c4]/35 bg-[linear-gradient(135deg,rgba(32,245,196,0.14),rgba(255,255,255,0.92))] px-5 py-3 text-sm font-bold text-primary-dark shadow-sm ring-1 ring-[#20f5c4]/15 backdrop-blur transition hover:-translate-y-0.5 hover:border-[#20f5c4]/60 hover:shadow-md"
+                >
                   <span className="min-w-0 lg:whitespace-nowrap">1,000% ROI with just 1 deal</span>
-                </div>
+                </Link>
               </div>
             </motion.div>
 
