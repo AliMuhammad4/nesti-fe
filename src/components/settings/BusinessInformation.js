@@ -41,6 +41,21 @@ const LAWYER_CORE_SPECIALIZATION_OPTIONS = [
   "Notary services",
 ];
 
+const MORTGAGE_CORE_SPECIALIZATION_OPTIONS = [
+  "First-time home buyer financing",
+  "Pre-approval guidance",
+  "Refinance strategy",
+  "Self-employed borrowers",
+  "Newcomer mortgage support",
+  "Investment property financing",
+  "Construction / renovation loans",
+  "Debt consolidation refinance",
+  "Credit-challenged borrowers",
+  "High-ratio insured mortgages",
+  "Private / alternative lending",
+  "Commercial mortgage financing",
+];
+
 const WORKING_STYLE_OPTIONS = PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => option.label);
 const WORKING_STYLE_LABEL_TO_VALUE = Object.fromEntries(
   PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => [option.label, option.value]),
@@ -80,6 +95,19 @@ const SPECIALTY_STRENGTH_OPTIONS = [
   "Commercial deal expert",
 ];
 
+const MORTGAGE_SPECIALTY_STRENGTH_OPTIONS = [
+  "Rate shopping expert",
+  "Fast pre-approval turnaround",
+  "Credit repair guidance",
+  "Income document strategist",
+  "Down payment planning",
+  "Investor financing strategy",
+  "Alternative lender access",
+  "Renewal / refinance specialist",
+  "First-time buyer educator",
+  "Debt service optimization",
+];
+
 const PERSONALITY_TAG_OPTIONS = [
   "Friendly & warm",
   "Fast responder",
@@ -97,6 +125,48 @@ const WORKING_STYLE_STRUCTURED_MAP = {
   "Data-driven strategist": "data_driven",
   "Relationship-focused": "relationship_focused",
   "Investor-oriented": "investor_oriented",
+};
+
+const ROLE_BUSINESS_COPY = {
+  mortgage_broker: {
+    serviceAreaHelper: "Add provinces, states, or cities where you arrange financing.",
+    credentialsTitle: "Mortgage experience & credentials",
+    licenseLabel: "Mortgage license number",
+    awardsPlaceholder: "Awards, lender awards, or designations",
+    helpTitle: "Who do you finance best?",
+    helpHelper: "Borrower types, lending programs, and financing strengths used for client matching.",
+    coreLabel: "Mortgage specializations",
+    strengthLabel: "Financing strengths",
+    strengthHelper: "Optional broker differentiators",
+    experienceHelper: "Experience, license details, and broker credentials.",
+    clientExperienceHelper: "How quickly and when borrowers can reach you.",
+  },
+  lawyer: {
+    serviceAreaHelper: "Add provinces, states, or cities where you handle legal files.",
+    credentialsTitle: "Legal experience & credentials",
+    licenseLabel: "Law society / license number",
+    awardsPlaceholder: "Awards, credentials, or recognitions",
+    helpTitle: "Who do you help best?",
+    helpHelper: "Legal matter types and specialty strengths used for client matching.",
+    coreLabel: "Legal specializations",
+    strengthLabel: "Specialty strengths",
+    strengthHelper: "Optional differentiators",
+    experienceHelper: "Experience, license details, and legal credentials.",
+    clientExperienceHelper: "How quickly and when clients can reach you.",
+  },
+  default: {
+    serviceAreaHelper: "Add provinces, states, or cities you serve clients in.",
+    credentialsTitle: "Experience & credentials",
+    licenseLabel: "License number",
+    awardsPlaceholder: "Awards & certs",
+    helpTitle: "Who do you help best?",
+    helpHelper: "Core client types and specialty strengths.",
+    coreLabel: "Core specializations",
+    strengthLabel: "Specialty strengths",
+    strengthHelper: "Optional differentiators",
+    experienceHelper: "",
+    clientExperienceHelper: "How quickly and when clients can reach you.",
+  },
 };
 
 function toSlugValue(value) {
@@ -357,8 +427,17 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
   )
     .trim()
     .toLowerCase();
+  const roleBusinessCopy = ROLE_BUSINESS_COPY[resolvedRole] || ROLE_BUSINESS_COPY.default;
   const coreSpecializationOptions = useMemo(
-    () => (resolvedRole === "lawyer" ? LAWYER_CORE_SPECIALIZATION_OPTIONS : AGENT_CORE_SPECIALIZATION_OPTIONS),
+    () => {
+      if (resolvedRole === "lawyer") return LAWYER_CORE_SPECIALIZATION_OPTIONS;
+      if (resolvedRole === "mortgage_broker") return MORTGAGE_CORE_SPECIALIZATION_OPTIONS;
+      return AGENT_CORE_SPECIALIZATION_OPTIONS;
+    },
+    [resolvedRole],
+  );
+  const specialtyStrengthOptions = useMemo(
+    () => (resolvedRole === "mortgage_broker" ? MORTGAGE_SPECIALTY_STRENGTH_OPTIONS : SPECIALTY_STRENGTH_OPTIONS),
     [resolvedRole],
   );
 
@@ -407,10 +486,10 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
           ? source.languagesSpoken.map(normalizeLanguageLabel).filter(Boolean).slice(0, MAX_LANGUAGES)
           : [],
       );
-      setSpecialtyStrengthTags(mapValuesToChipOptions(SPECIALTY_STRENGTH_OPTIONS, source.specialtyStrengthTags));
+      setSpecialtyStrengthTags(mapValuesToChipOptions(specialtyStrengthOptions, source.specialtyStrengthTags));
       setPersonalityStyleTags(mapValuesToChipOptions(PERSONALITY_TAG_OPTIONS, source.personalityStyleTags));
     },
-    [coreSpecializationOptions],
+    [coreSpecializationOptions, specialtyStrengthOptions],
   );
 
   useEffect(() => {
@@ -604,7 +683,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
 
       <SectionCard
         title="Where do you work?"
-        helper="Add provinces, states, or cities you serve clients in."
+        helper={roleBusinessCopy.serviceAreaHelper}
         required
         right={
           <span className="text-[10px] font-semibold text-text-muted">
@@ -622,7 +701,8 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
       </SectionCard>
 
       <SectionCard
-        title="Experience & credentials"
+        title={roleBusinessCopy.credentialsTitle}
+        helper={roleBusinessCopy.experienceHelper}
         required
       >
         <div className="space-y-2">
@@ -648,7 +728,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
           </div>
           <div className="grid grid-cols-1 gap-x-2 gap-y-1.5 sm:grid-cols-2">
             <label className="block space-y-0.5">
-              <FieldLabel className="text-[11px] font-medium text-text-muted">License number</FieldLabel>
+              <FieldLabel className="text-[11px] font-medium text-text-muted">{roleBusinessCopy.licenseLabel}</FieldLabel>
               <input
                 value={licenseNumber}
                 onChange={(e) => {
@@ -668,7 +748,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
                   setAwards(e.target.value);
                 }}
                 className={compactInputClass}
-                placeholder="Awards & certs"
+                placeholder={roleBusinessCopy.awardsPlaceholder}
               />
             </label>
           </div>
@@ -676,8 +756,8 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
       </SectionCard>
 
       <SectionCard
-        title="Who do you help best?"
-        helper="Core client types and specialty strengths."
+        title={roleBusinessCopy.helpTitle}
+        helper={roleBusinessCopy.helpHelper}
         required
         right={
           <span className="text-[10px] font-semibold text-text-muted">
@@ -687,7 +767,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
       >
         <div className="space-y-4">
           <div>
-            <FieldLabel required>Core specializations</FieldLabel>
+            <FieldLabel required>{roleBusinessCopy.coreLabel}</FieldLabel>
             <div className="mt-2">
               <ChipPicker
                 options={coreSpecializationOptions}
@@ -698,17 +778,17 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
             </div>
           </div>
           <div>
-            <FieldLabel>Specialty strengths</FieldLabel>
+            <FieldLabel>{roleBusinessCopy.strengthLabel}</FieldLabel>
             <div className="mt-2">
               <ChipPicker
-                options={SPECIALTY_STRENGTH_OPTIONS}
+                options={specialtyStrengthOptions}
                 selected={specialtyStrengthTags}
                 onToggle={toggleArrayValue(setSpecialtyStrengthTags)}
                 max={5}
               />
             </div>
             <p className="mt-1.5 text-[10px] text-text-muted">
-              Optional differentiators ({specialtyStrengthTags.length}/5)
+              {roleBusinessCopy.strengthHelper} ({specialtyStrengthTags.length}/5)
             </p>
           </div>
         </div>
@@ -751,7 +831,7 @@ export default function BusinessInformation({ onSaveSuccess } = {}) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Client experience" helper="How quickly and when clients can reach you.">
+      <SectionCard title="Client experience" helper={roleBusinessCopy.clientExperienceHelper}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <FieldLabel>Typical response time</FieldLabel>

@@ -3,14 +3,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { toast } from "react-toastify";
-import { Inbox, Info } from "lucide-react";
+import { Info, Phone, PhoneOff, Video } from "lucide-react";
 import MessageBubble from "@/components/leads/MessageBubble";
 import ThreadComposer from "@/components/prochat/thread/ThreadComposer";
 import ThreadMessagesList from "@/components/prochat/thread/ThreadMessagesList";
-import { SkeletonBlock } from "@/components/ui/ContentSkeletons";
+import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
 import { getSocketOrigin } from "@/lib/api";
-import { uploadProChatThreadAttachment } from "@/lib/proChatClient";
+import { createProChatCallToken, uploadProChatThreadAttachment } from "@/lib/proChatClient";
 import { safeUuid } from "@/components/prochat/thread/proChatThreadUtils";
+
+const EMPTY_CALL_SESSION = {
+  open: false,
+  token: "",
+  serverUrl: "",
+  roomName: "",
+  callType: "voice",
+  connecting: false,
+  ringing: false,
+};
 
 function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery, myUserId }) {
   const scrollRef = useRef(null);
@@ -19,12 +29,21 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
   const typingTimeoutRef = useRef(null);
   const lastTypingSentAt = useRef(0);
   const socketRef = useRef(null);
+  const autoJoinHandledRef = useRef(false);
+  const callOperationRef = useRef(0);
   const [draft, setDraft] = useState("");
   const [draftAttachments, setDraftAttachments] = useState([]);
   const [uploadingAttachments, setUploadingAttachments] = useState([]);
   const [liveMessages, setLiveMessages] = useState([]);
   const [connected, setConnected] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [callSession, setCallSession] = useState(EMPTY_CALL_SESSION);
+  const callSessionRef = useRef(callSession);
+
+  useEffect(() => {
+    callSessionRef.current = callSession;
+  }, [callSession]);
 
   const mergedMessages = useMemo(() => {
     const merged = Array.isArray(messages) ? [...messages] : [];
@@ -85,6 +104,41 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     };
     socket.on("prochat:typing", onTyping);
 
+    const onCallInvite = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      if (callSessionRef.current?.open) return;
+      setIncomingCall({
+        roomName: String(payload.room_name || `prochat:${threadId}`),
+        callType: String(payload.call_type || "voice").toLowerCase() === "video" ? "video" : "voice",
+        callerName: String(payload.sender_name || "Participant"),
+      });
+    };
+    socket.on("prochat:call_invite", onCallInvite);
+
+    const onCallDecline = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      const activeRoom = String(callSessionRef.current?.roomName || "");
+      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      toast.info("Call was declined.");
+      callOperationRef.current += 1;
+      setIncomingCall(null);
+      setCallSession(EMPTY_CALL_SESSION);
+    };
+    socket.on("prochat:call_decline", onCallDecline);
+
+    const onCallEnded = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      const activeRoom = String(callSessionRef.current?.roomName || "");
+      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      setIncomingCall(null);
+      callOperationRef.current += 1;
+      setCallSession(EMPTY_CALL_SESSION);
+    };
+    socket.on("prochat:call_ended", onCallEnded);
+
     socket.on("connect_error", (error) => {
       if (process.env.NODE_ENV === "development") {
         console.warn("[lead-direct-chat] connect_error", error?.message || error);
@@ -94,6 +148,9 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     return () => {
       socket.off("prochat:message", onMessage);
       socket.off("prochat:typing", onTyping);
+      socket.off("prochat:call_invite", onCallInvite);
+      socket.off("prochat:call_decline", onCallDecline);
+      socket.off("prochat:call_ended", onCallEnded);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -116,6 +173,134 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     const socket = socketRef.current;
     if (!socket || !socket.connected || !threadId) return;
     socket.emit("prochat:typing", { thread_id: threadId, is_typing: Boolean(isTyping) });
+  };
+
+  const emitCallSignal = (eventName, payload) => {
+    const socket = socketRef.current;
+    if (!socket || !socket.connected) {
+      return Promise.resolve({ success: false, message: "Chat is not connected." });
+    }
+    return new Promise((resolve) => {
+      socket.timeout(5000).emit(eventName, payload, (error, ack) => {
+        if (error) {
+          resolve({ success: false, message: "Call signaling timed out." });
+          return;
+        }
+        resolve(ack || { success: false, message: "Call signaling failed." });
+      });
+    });
+  };
+
+  const openCallSession = async (callType, roomNameHint = "", { ringing = false } = {}) => {
+    if (!token || !threadId) return null;
+    const operationId = ++callOperationRef.current;
+    const normalizedType = String(callType || "").toLowerCase() === "video" ? "video" : "voice";
+    try {
+      setCallSession((prev) => ({
+        ...prev,
+        open: true,
+        connecting: true,
+        ringing,
+        roomName: roomNameHint,
+        callType: normalizedType,
+      }));
+      const response = await createProChatCallToken({
+        token,
+        id: threadId,
+        callType: normalizedType,
+        roomName: roomNameHint,
+        client: false,
+      });
+      if (callOperationRef.current !== operationId) return null;
+      const roomName = String(response?.room_name || roomNameHint || `prochat:${threadId}`);
+      setCallSession({
+        open: true,
+        token: String(response?.token || ""),
+        serverUrl: String(response?.url || ""),
+        roomName,
+        callType: normalizedType,
+        connecting: false,
+        ringing,
+      });
+      return { roomName };
+    } catch (error) {
+      if (callOperationRef.current !== operationId) return null;
+      setCallSession({ ...EMPTY_CALL_SESSION, callType: normalizedType });
+      toast.error(error?.message || "Could not start call");
+      return null;
+    }
+  };
+
+  const startCall = async (callType) => {
+    if (!socketRef.current?.connected || !connected) {
+      toast.error("Chat is not connected yet. Try again.");
+      return;
+    }
+    const roomName = `prochat:${threadId}:${safeUuid()}`;
+    const started = await openCallSession(callType, roomName, { ringing: true });
+    if (!started) return;
+    const ack = await emitCallSignal("prochat:call_invite", {
+      thread_id: threadId,
+      room_name: started.roomName,
+      call_type: callType,
+    });
+    if (!ack?.success) {
+      setCallSession(EMPTY_CALL_SESSION);
+      toast.error(ack?.message || "Could not notify the other participant.");
+      return;
+    }
+    setIncomingCall(null);
+  };
+
+  const joinIncomingCall = async () => {
+    if (!incomingCall) return;
+    const joined = await openCallSession(incomingCall.callType, incomingCall.roomName, { ringing: false });
+    if (joined) setIncomingCall(null);
+  };
+
+  useEffect(() => {
+    callOperationRef.current += 1;
+    autoJoinHandledRef.current = false;
+    setIncomingCall(null);
+    setCallSession(EMPTY_CALL_SESSION);
+  }, [threadId]);
+
+  useEffect(() => {
+    if (!token || !threadId || autoJoinHandledRef.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("incoming_call") !== "1") return;
+    autoJoinHandledRef.current = true;
+    const callType = String(params.get("call_type") || "voice").toLowerCase() === "video" ? "video" : "voice";
+    const roomName = String(params.get("room_name") || "").trim();
+    void openCallSession(callType, roomName, { ringing: false });
+    params.delete("incoming_call");
+    params.delete("call_type");
+    params.delete("room_name");
+    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState({}, "", next);
+    // openCallSession is stable enough for this one-shot deep link join
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, threadId]);
+
+  const declineIncomingCall = () => {
+    if (!incomingCall) return;
+    emitCallSignal("prochat:call_decline", {
+      thread_id: threadId,
+      room_name: incomingCall.roomName,
+      call_type: incomingCall.callType,
+    });
+    setIncomingCall(null);
+  };
+
+  const closeCallSession = () => {
+    callOperationRef.current += 1;
+    emitCallSignal("prochat:call_ended", {
+      thread_id: threadId,
+      room_name: callSession.roomName || `prochat:${threadId}`,
+      call_type: callSession.callType || "voice",
+    });
+    setCallSession(EMPTY_CALL_SESSION);
   };
 
   const sendMessage = async () => {
@@ -158,74 +343,142 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
   };
 
   return (
-    <>
-      <div
-        ref={scrollRef}
-        className="h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] overflow-y-auto rounded-md border border-border/60 bg-background-light/30 p-3 scroll-smooth"
-      >
-        {messagesQuery.isPending || messagesQuery.isLoading ? (
-          <div className="space-y-2.5" aria-busy="true" aria-label="Loading conversation">
-            {Array.from({ length: 8 }).map((_, idx) => {
-              const inbound = idx % 2 === 0;
-              return (
-                <div key={`direct-conversation-skeleton-${idx}`} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[78%] rounded-xl border border-border/50 bg-white/80 p-2.5 shadow-sm ${inbound ? "rounded-bl-md" : "rounded-br-md"}`}>
-                    <SkeletonBlock className="h-3 w-20" />
-                    <SkeletonBlock className="mt-1.5 h-3 w-56 max-w-[92%]" />
-                    <SkeletonBlock className="mt-1.5 h-3 w-40 max-w-[72%]" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : mergedMessages.length === 0 ? (
-          <div className="flex min-h-[220px] items-center justify-center px-3 py-6">
-            <div className="w-full max-w-sm rounded-xl border border-border/70 bg-white/80 px-5 py-6 text-center shadow-sm">
-              <span className="mx-auto mb-2.5 grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Inbox size={16} />
-              </span>
-              <p className="text-sm font-semibold text-text-heading">No messages yet</p>
-              <p className="mt-1 text-xs text-text-muted">Send the first reply to start a direct conversation with this client.</p>
+    <div className="flex h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-white/95 px-3 py-2.5 backdrop-blur sm:px-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-text-heading">Client conversation</p>
+          <p className="text-[11px] text-text-muted">Reply directly from this lead</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void startCall("voice")}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light"
+            aria-label="Start voice call"
+            title="Start voice call"
+          >
+            <Phone size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void startCall("video")}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light"
+            aria-label="Start video call"
+            title="Start video call"
+          >
+            <Video size={14} />
+          </button>
+          <span className={`text-[11px] font-medium ${connected ? "text-primary" : "text-amber-600"}`}>
+            {connected ? "Connected" : "Connecting..."}
+          </span>
+        </div>
+      </div>
+
+      {incomingCall ? (
+        <div className="shrink-0 border-b border-emerald-200 bg-emerald-50/80 px-3 py-2 sm:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-emerald-800">
+              {incomingCall.callerName} is calling ({incomingCall.callType}).
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void joinIncomingCall()}
+                className="inline-flex h-7 items-center rounded-md border border-emerald-300 bg-white px-2.5 text-[11px] font-semibold text-emerald-700"
+              >
+                Join
+              </button>
+              <button
+                type="button"
+                onClick={declineIncomingCall}
+                className="inline-flex h-7 items-center rounded-md border border-red-200 bg-white px-2.5 text-[11px] font-semibold text-red-600"
+              >
+                <PhoneOff size={11} className="mr-1" />
+                Decline
+              </button>
             </div>
           </div>
-        ) : (
-          <ThreadMessagesList
-            messages={mergedMessages}
-            myUserId={myUserId}
-            isGroup={false}
-            membersById={new Map()}
-            otherUser={null}
-          />
-        )}
-      </div>
-      {otherTyping ? <p className="px-1 text-[11px] font-medium text-text-muted">Client is typing...</p> : null}
-      <div className="rounded-2xl border border-border/70 bg-white p-3 shadow-sm">
-        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-text-muted">
-          <span>Direct client chat</span>
-          <span className={connected ? "text-primary" : "text-amber-600"}>{connected ? "Connected" : "Connecting..."}</span>
         </div>
-        <ThreadComposer
-          token={token}
-          threadId={threadId}
-          draft={draft}
-          setDraft={setDraft}
-          composerRef={composerRef}
-          fileInputRef={fileInputRef}
-          draftAttachments={draftAttachments}
-          setDraftAttachments={setDraftAttachments}
-          uploadingAttachments={uploadingAttachments}
-          setUploadingAttachments={setUploadingAttachments}
-          onUploadAttachment={(args) => uploadProChatThreadAttachment(args)}
-          onSendMessage={sendMessage}
-          onEmitTyping={emitTyping}
-          typingTimeoutRef={typingTimeoutRef}
-          lastTypingSentAt={lastTypingSentAt}
-          autosizeComposer={autosizeComposer}
-          toast={toast}
-          disabled={!threadId}
-        />
+      ) : null}
+
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
+        <div className="flex min-h-full w-full flex-col justify-end">
+          {messagesQuery.isPending || messagesQuery.isLoading ? (
+            <p className="py-6 text-center text-xs text-text-muted">Loading messages…</p>
+          ) : mergedMessages.length === 0 ? (
+            <div className="py-6 text-center text-xs text-text-muted">
+              No messages yet. Say hello.
+            </div>
+          ) : (
+            <div className="flex w-full flex-col gap-3">
+              <ThreadMessagesList
+                messages={mergedMessages}
+                myUserId={myUserId}
+                isGroup={false}
+                membersById={new Map()}
+                otherUser={null}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </>
+
+      <div className="shrink-0 border-t border-primary/10 bg-primary/[0.035] px-3 py-3 backdrop-blur sm:px-5">
+        <div className="w-full rounded-2xl border border-white/60 bg-white/35 p-2.5 shadow-sm backdrop-blur-md sm:p-3">
+          {otherTyping ? (
+            <div className="mb-2 flex items-center gap-2 text-xs text-text-muted">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-primary/[0.10] text-[10px] font-bold text-primary-dark ring-1 ring-primary/15">
+                …
+              </span>
+              <span className="truncate">Client is typing</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-text-muted/60 animate-bounce" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-text-muted/60 animate-bounce [animation-delay:120ms]" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-text-muted/60 animate-bounce [animation-delay:240ms]" />
+              </span>
+            </div>
+          ) : null}
+          <ThreadComposer
+            token={token}
+            threadId={threadId}
+            draft={draft}
+            setDraft={setDraft}
+            composerRef={composerRef}
+            fileInputRef={fileInputRef}
+            draftAttachments={draftAttachments}
+            setDraftAttachments={setDraftAttachments}
+            uploadingAttachments={uploadingAttachments}
+            setUploadingAttachments={setUploadingAttachments}
+            onUploadAttachment={(args) => uploadProChatThreadAttachment(args)}
+            onSendMessage={sendMessage}
+            onEmitTyping={emitTyping}
+            typingTimeoutRef={typingTimeoutRef}
+            lastTypingSentAt={lastTypingSentAt}
+            autosizeComposer={autosizeComposer}
+            toast={toast}
+            disabled={!threadId}
+          />
+        </div>
+      </div>
+
+      <ProChatCallModal
+        open={callSession.open}
+        token={callSession.token}
+        serverUrl={callSession.serverUrl}
+        callType={callSession.callType}
+        connecting={callSession.connecting}
+        ringing={callSession.ringing}
+        title="Client conversation"
+        onClose={closeCallSession}
+        onRingTimeout={() => {
+          toast.info("No answer.");
+          closeCallSession();
+        }}
+        onAnswered={() => {
+          setCallSession((current) => ({ ...current, ringing: false }));
+        }}
+      />
+    </div>
   );
 }
 
@@ -254,18 +507,18 @@ export default function LeadsConversationTab({
   }, [messages, messagesQuery.isLoading, selectedConversation?.id]);
 
   return (
-    <div className="rounded-md border border-border bg-white shadow-sm p-4 space-y-3">
+    <div className="space-y-3">
       {selectedConversation ? (
         <>
           {formatMetaEntries(messageMeta).length > 0 ? (
-            <div className="flex items-center justify-between p-3 rounded-md bg-indigo-50 border border-indigo-100/50">
-              <div className="text-xs font-bold text-indigo-700/80 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            <div className="flex items-center justify-between rounded-2xl border border-indigo-100/50 bg-indigo-50 p-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-indigo-700/80">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 Latest AI Message Insights
               </div>
               <button
                 onClick={() => onOpenMeta("Latest AI Message Insights", messageMeta)}
-                className="p-1.5 rounded-md bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm"
+                className="rounded-xl border border-indigo-200 bg-white p-1.5 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50"
               >
                 <Info size={14} />
               </button>
@@ -282,58 +535,42 @@ export default function LeadsConversationTab({
               myUserId={myUserId}
             />
           ) : (
-            <div
-              ref={scrollRef}
-              className="h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] overflow-y-auto rounded-md border border-border/60 bg-background-light/30 p-3 space-y-2.5 scroll-smooth"
-            >
-              {messagesQuery.isPending || messagesQuery.isLoading ? (
-                <div className="space-y-2.5" aria-busy="true" aria-label="Loading conversation">
-                  {Array.from({ length: 8 }).map((_, idx) => {
-                    const inbound = idx % 2 === 0;
-                    return (
-                      <div
-                        key={`conversation-skeleton-${idx}`}
-                        className={`flex ${inbound ? "justify-start" : "justify-end"}`}
-                      >
-                        <div
-                          className={`max-w-[78%] rounded-xl border border-border/50 bg-white/80 p-2.5 shadow-sm ${
-                            inbound ? "rounded-bl-md" : "rounded-br-md"
-                          }`}
-                        >
-                          <SkeletonBlock className="h-3 w-20" />
-                          <SkeletonBlock className="mt-1.5 h-3 w-56 max-w-[92%]" />
-                          <SkeletonBlock className="mt-1.5 h-3 w-40 max-w-[72%]" />
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="flex h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-white/95 px-3 py-2.5 backdrop-blur sm:px-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-text-heading">Lead conversation</p>
+                  <p className="text-[11px] text-text-muted">Chat history for this lead</p>
                 </div>
-              ) : messagesQuery.isError ? (
-                <div className="text-sm text-red-600">Failed to load messages.</div>
-              ) : messages.length === 0 ? (
-                <div className="flex min-h-[220px] items-center justify-center px-3 py-6">
-                  <div className="w-full max-w-sm rounded-xl border border-border/70 bg-white/80 px-5 py-6 text-center shadow-sm">
-                    <span className="mx-auto mb-2.5 grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                      <Inbox size={16} />
-                    </span>
-                    <p className="text-sm font-semibold text-text-heading">No messages yet</p>
-                    <p className="mt-1 text-xs text-text-muted">
-                      {emptyState?.action || "Conversation messages will appear here once this lead starts chatting."}
-                    </p>
-                  </div>
+              </div>
+              <div
+                ref={scrollRef}
+                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5"
+              >
+                <div className="flex min-h-full w-full flex-col justify-end">
+                  {messagesQuery.isPending || messagesQuery.isLoading ? (
+                    <p className="py-6 text-center text-xs text-text-muted">Loading messages…</p>
+                  ) : messagesQuery.isError ? (
+                    <p className="py-6 text-center text-xs text-red-600">Failed to load messages.</p>
+                  ) : messages.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-text-muted">
+                      {emptyState?.action || "No messages yet. Conversation will appear here once this lead starts chatting."}
+                    </div>
+                  ) : (
+                    <div className="flex w-full flex-col gap-3">
+                      {messages.map((message, index) => (
+                        <MessageBubble key={`${index}-${message?.id || "msg"}`} message={message} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                messages.map((message, index) => (
-                  <MessageBubble key={`${index}-${message?.id || "msg"}`} message={message} />
-                ))
-              )}
+              </div>
             </div>
           )}
         </>
       ) : (
-        <div className="flex min-h-[220px] items-center justify-center px-3 py-6">
-          <div className="w-full max-w-sm rounded-xl border border-border/70 bg-background-light/40 px-5 py-6 text-center shadow-sm">
-            <span className="mx-auto mb-2.5 grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+        <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08] px-3 py-6">
+          <div className="w-full max-w-sm px-5 py-6 text-center">
+            <span className="mx-auto mb-2.5 grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
               <Info size={16} />
             </span>
             <p className="text-sm font-semibold text-text-heading">Choose a lead to load conversation</p>

@@ -69,7 +69,7 @@ function visibleIntent(value) {
 
 function displayNotificationType(display) {
   const detailsType = String(display?.details?.type || "").trim();
-  if (detailsType === "lawyer_inquiry") return "lead_created";
+  if (detailsType === "lawyer_inquiry" || detailsType === "mortgage_broker_inquiry") return "lead_created";
   if (detailsType === "property_inquiry") return "property_inquiry_created";
   return display?.notification_type || "";
 }
@@ -94,7 +94,8 @@ function money(value) {
 }
 
 function LawyerInquiryDetails({ details }) {
-  if (!details || String(details?.type || "") !== "lawyer_inquiry") return null;
+  const type = String(details?.type || "");
+  if (!details || (type !== "lawyer_inquiry" && type !== "mortgage_broker_inquiry")) return null;
 
   return (
     <div className="mt-4 rounded-xl border border-border/70 bg-background-light/45 px-3 py-2.5">
@@ -307,7 +308,8 @@ export default function NotificationDetailModal({ notification, onClose }) {
   const isPropertyListingNotification =
     String(display?.notification_type || "").trim() === "new_property_for_sale" ||
     String(display?.action?.type || "").trim() === "open_property";
-  const isLawyerInquiryNotification = String(display?.details?.type || "").trim() === "lawyer_inquiry";
+  const detailsType = String(display?.details?.type || "").trim();
+  const isLawyerInquiryNotification = detailsType === "lawyer_inquiry" || detailsType === "mortgage_broker_inquiry";
   const propertyPreview = display?.action?.property_preview || null;
 
   return createPortal(

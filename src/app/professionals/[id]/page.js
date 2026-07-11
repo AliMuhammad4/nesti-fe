@@ -2,19 +2,27 @@
 
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, User, Briefcase } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { fetchProfessionalById, submitLawyerInquiryFromClient } from "@/lib/professionalsClient";
+import {
+  fetchProfessionalById,
+  submitAgentInquiryFromClient,
+  submitLawyerInquiryFromClient,
+  submitMortgageBrokerInquiryFromClient,
+  uploadAgentInquiryPropertyImages,
+} from "@/lib/professionalsClient";
 import { createOrGetProChatThread } from "@/lib/proChatClient";
 import PersonalCard from "@/components/profile/PersonalCard";
 import BusinessCard from "@/components/profile/BusinessCard";
 import { ClientMatchExplanation } from "@/components/matching/MatchExplanation";
+import AgentInquiryModal from "@/components/client/AgentInquiryModal";
 import LawyerInquiryModal from "@/components/client/LawyerInquiryModal";
+import MortgageBrokerInquiryModal from "@/components/client/MortgageBrokerInquiryModal";
 
 function humanizeToken(value) {
   return String(value || "")
@@ -56,6 +64,7 @@ function SectionHeader({ icon: Icon, title, right = null }) {
 export default function ProfessionalDetailPage() {
   const { isAuthenticated } = useAuthGuard();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token, user: authUser } = useAppSelector((state) => state.auth);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [submittingInquiry, setSubmittingInquiry] = useState(false);
@@ -77,7 +86,11 @@ export default function ProfessionalDetailPage() {
   const hasCover = Boolean(pro?.cover_image);
   const isSelf = Boolean(myUserId && String(pro?.id || "") === String(myUserId));
   const isClientViewer = String(authUser?.role || "").toLowerCase() === "client";
-  const isLawyerProfile = String(pro?.professional_type || pro?.role || "").toLowerCase() === "lawyer";
+  const professionalRole = String(pro?.professional_type || pro?.role || "").toLowerCase();
+  const isAgentProfile = professionalRole === "agent";
+  const isLawyerProfile = professionalRole === "lawyer";
+  const isMortgageBrokerProfile = professionalRole === "mortgage_broker" || professionalRole === "broker";
+  const canSubmitProfessionalInquiry = isClientViewer && (isAgentProfile || isLawyerProfile || isMortgageBrokerProfile);
 
   const startChat = async () => {
     try {
@@ -102,12 +115,18 @@ export default function ProfessionalDetailPage() {
     try {
       if (!token || !pro?.id) return;
       setSubmittingInquiry(true);
-      const response = await submitLawyerInquiryFromClient({
+      const submitter = isMortgageBrokerProfile
+        ? submitMortgageBrokerInquiryFromClient
+        : isAgentProfile
+          ? submitAgentInquiryFromClient
+          : submitLawyerInquiryFromClient;
+      const response = await submitter({
         token,
         professionalId: pro.id,
         payload,
       });
       toast.success(response?.message || "Inquiry submitted successfully");
+      queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
       setShowInquiryModal(false);
     } catch (error) {
       toast.error(error?.message || "Could not submit inquiry");
@@ -239,13 +258,13 @@ export default function ProfessionalDetailPage() {
                   right={
                     !isSelf ? (
                       <div className="flex items-center gap-2">
-                        {isClientViewer && isLawyerProfile ? (
+                        {canSubmitProfessionalInquiry ? (
                           <button
                             type="button"
                             onClick={() => setShowInquiryModal(true)}
                             className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
                           >
-                            Ask this lawyer
+                            {isMortgageBrokerProfile ? "Ask this broker" : isAgentProfile ? "Ask this agent" : "Ask this lawyer"}
                           </button>
                         ) : null}
                         <button
@@ -285,16 +304,42 @@ export default function ProfessionalDetailPage() {
           </>
         )}
       </div>
-      <LawyerInquiryModal
-        open={showInquiryModal}
-        submitting={submittingInquiry}
-        professionalName={name}
-        onClose={() => {
-          if (submittingInquiry) return;
-          setShowInquiryModal(false);
-        }}
-        onSubmit={submitInquiry}
-      />
+      {isMortgageBrokerProfile ? (
+        <MortgageBrokerInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      ) : isAgentProfile ? (
+        <AgentInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          token={token}
+          uploadPropertyImages={uploadAgentInquiryPropertyImages}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      ) : (
+        <LawyerInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      )}
     </div>
   );
 }

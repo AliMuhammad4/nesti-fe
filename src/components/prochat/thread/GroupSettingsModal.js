@@ -5,6 +5,23 @@ import { createPortal } from "react-dom";
 import { Check, Loader2, Plus, Trash2, Users, X } from "lucide-react";
 import { displayName, initialsFor } from "@/components/prochat/thread/proChatThreadUtils";
 
+function displayRole(u) {
+  const raw = String(u?.professional_type || u?.role || "").trim();
+  if (!raw) return "Professional";
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function matchPercent(u) {
+  const raw = u?.ai_match_score ?? u?.match_score ?? u?.score;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
 export default function GroupSettingsModal({
   open,
   isGroup,
@@ -130,6 +147,9 @@ export default function GroupSettingsModal({
                           const id = String(p?.id || "").trim();
                           const isSelected = selectedAdd.has(id);
                           const already = participantIdSet.has(id) || membersById.has(id);
+                          const roleLabel = displayRole(p);
+                          const secondary = p?.company_name || p?.email || "";
+                          const score = matchPercent(p);
                           return (
                             <li key={id}>
                               <button
@@ -154,8 +174,15 @@ export default function GroupSettingsModal({
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm font-bold text-text-heading">{displayName(p)}</div>
-                                  <div className="mt-0.5 truncate text-xs text-text-muted">{p?.email || ""}</div>
+                                  <div className="mt-0.5 truncate text-xs text-text-muted">
+                                    {secondary ? `${secondary} · ${roleLabel}` : roleLabel}
+                                  </div>
                                 </div>
+                                {score != null ? (
+                                  <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[11px] font-black text-primary-dark">
+                                    {score}% match
+                                  </span>
+                                ) : null}
                                 <span
                                   className={`grid h-8 w-8 place-items-center rounded-lg border ${
                                     already

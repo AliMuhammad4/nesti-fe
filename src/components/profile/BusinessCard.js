@@ -6,6 +6,13 @@ import { formatBusinessInfoForDisplay } from "@/lib/profileFieldDisplay";
 
 const hasAny = (...vals) => vals.some((v) => v !== undefined && v !== null && v !== "");
 
+function normalizeRole(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
 function ChipRow({ label, items }) {
   if (!items?.length) return null;
   return (
@@ -26,7 +33,10 @@ function ChipRow({ label, items }) {
 }
 
 export default function BusinessCard({ businessInfo }) {
+  const rawRole = normalizeRole(businessInfo?.professionalType);
+  const isMortgageBroker = rawRole === "mortgage_broker";
   const b = formatBusinessInfoForDisplay(businessInfo);
+  const valueLabel = isMortgageBroker ? "Typical Loan Size" : "Avg Sale Price";
 
   const chipSections = [
     { label: "Specializations", items: b.specializations || [] },
@@ -40,7 +50,7 @@ export default function BusinessCard({ businessInfo }) {
     { label: "Professional Type", value: b.professionalType, icon: Briefcase },
     { label: "License Number", value: b.licenseNumber, icon: BadgeCheck },
     { label: "Experience", value: b.experience, icon: Layers },
-    { label: "Avg Sale Price", value: b.avgSalePrice, icon: CreditCard },
+    { label: valueLabel, value: b.avgSalePrice, icon: CreditCard },
     { label: "Response Time", value: b.responseTime, icon: MessageSquare },
     { label: "Availability", value: b.availability, icon: MapPin },
     ...(hasAny(b.companyName) ? [{ label: "Company Name", value: b.companyName, icon: Briefcase }] : []),

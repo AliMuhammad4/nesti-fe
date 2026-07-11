@@ -42,12 +42,14 @@ function toastBodyPreview(payload) {
 export function useWorkspaceSocket(token, queryClient) {
   const dispatch = useAppDispatch();
   const myUserId = useAppSelector((s) => s.auth.user?.id || s.auth.user?._id || "");
+  const myRole = String(useAppSelector((s) => s.auth.user?.role || "")).toLowerCase();
   useEffect(() => {
     if (!token || !queryClient) return;
     const pathname =
       typeof window !== "undefined" ? String(window.location?.pathname || "") : "";
     const isProfessionalPublicPage =
       pathname.startsWith("/p/") || pathname.startsWith("/professional/");
+    const isClientUser = myRole === "client";
     const origin = getSocketOrigin();
     if (!origin) {
       if (process.env.NODE_ENV === "development") {
@@ -221,12 +223,89 @@ export function useWorkspaceSocket(token, queryClient) {
         return;
       }
       const threadId = String(payload?.thread_id || "").trim();
-      const isLeadThread = payload?.is_lead_thread === true || Boolean(String(payload?.lead_id || "").trim());
-      const threadHref = isLeadThread && threadId
-        ? `/client-dashboard/inquiries?thread=${encodeURIComponent(threadId)}`
+      const leadId = String(payload?.lead_id || "").trim();
+      const isLeadThread = payload?.is_lead_thread === true || Boolean(leadId);
+      const inboxKind = String(payload?.kind || "").trim();
+      const threadHref = isLeadThread
+        ? isClientUser && threadId
+          ? `/client-dashboard/inquiries?thread=${encodeURIComponent(threadId)}`
+          : leadId
+            ? `/leads/${encodeURIComponent(leadId)}?tab=conversation`
+            : threadId
+              ? `/messages/${encodeURIComponent(threadId)}`
+              : null
         : threadId
           ? `/messages/${encodeURIComponent(threadId)}`
           : null;
+
+      if (inboxKind === "call_decline" || inboxKind === "call_ended") {
+        const roomName = String(payload?.call?.room_name || "").trim();
+        if (roomName) toast.dismiss(`incoming-call:${roomName}`);
+        return;
+      }
+
+      if (inboxKind === "call_invite") {
+        const call = payload?.call || {};
+        const callerId = String(call?.user_id || "").trim();
+        if (myUserId && callerId && String(callerId) === String(myUserId)) return;
+        const callerName = String(call?.sender_name || "Someone").trim() || "Someone";
+        const callType = String(call?.call_type || "voice").toLowerCase() === "video" ? "video" : "voice";
+        const roomName = String(call?.room_name || "").trim();
+        const onLeadConversation =
+          leadId &&
+          typeof window !== "undefined" &&
+          window.location?.pathname === `/leads/${leadId}` &&
+          String(new URLSearchParams(window.location.search).get("tab") || "") === "conversation";
+        const onInquiryThread =
+          isClientUser &&
+          threadId &&
+          typeof window !== "undefined" &&
+          window.location?.pathname.startsWith("/client-dashboard/inquiries") &&
+          String(new URLSearchParams(window.location.search).get("thread") || "") === threadId;
+        const onMessagesThread =
+          !isLeadThread &&
+          threadId &&
+          typeof window !== "undefined" &&
+          window.location?.pathname === `/messages/${threadId}`;
+        if (onLeadConversation || onInquiryThread || onMessagesThread) {
+          return;
+        }
+        toast.info(
+          <WorkspaceRichToast
+            title={`${callerName} is calling (${callType})`}
+            actionLabel={threadHref ? "Join call" : ""}
+            onAction={
+              threadHref
+                ? () => {
+                    toast.dismiss();
+                    const callParams =
+                      `incoming_call=1&call_type=${encodeURIComponent(callType)}` +
+                      `&room_name=${encodeURIComponent(roomName)}`;
+                    const joinHref = threadHref.includes("?")
+                      ? `${threadHref}&${callParams}`
+                      : `${threadHref}?${callParams}`;
+                    window.location.assign(joinHref);
+                  }
+                : undefined
+            }
+          />,
+          {
+            toastId: `incoming-call:${roomName}`,
+            autoClose: 15000,
+            closeOnClick: !threadHref,
+            className: threadHref ? "nesti-toast--rich" : "nesti-toast",
+            icon: false,
+          },
+        );
+        queryClient.invalidateQueries({ queryKey: ["prochat-threads"] });
+        queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
+        if (leadId) {
+          queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+          queryClient.invalidateQueries({ queryKey: ["lead-messages", leadId] });
+        }
+        return;
+      }
+
       if (!isLeadThread && threadId && pathname === `/messages/${threadId}`) {
         return; // already on this chat
       }
@@ -279,7 +358,7 @@ export function useWorkspaceSocket(token, queryClient) {
         toast.info(
           <WorkspaceRichToast
             title={`${senderName}: ${preview.slice(0, 90)}`}
-            actionLabel={threadHref ? (isLeadThread ? "Open inquiry" : "Open chat") : ""}
+            actionLabel={threadHref ? (isLeadThread ? (isClientUser ? "Open inquiry" : "Open lead") : "Open chat") : ""}
             onAction={threadHref ? () => {
               toast.dismiss();
               window.location.assign(threadHref);
@@ -331,5 +410,5 @@ export function useWorkspaceSocket(token, queryClient) {
       socket.off("disconnect");
       socket.disconnect();
     };
-  }, [token, queryClient, dispatch, myUserId]);
+  }, [token, queryClient, dispatch, myUserId, myRole]);
 }

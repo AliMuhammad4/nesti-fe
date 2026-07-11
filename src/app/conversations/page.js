@@ -8,7 +8,7 @@ import { ArrowUpRight, Check, Clock3, Inbox, Loader2, Mail, MessageSquare, Plus,
 import { useAppDispatch, useAppSelector } from "@/store";
 import { createProChatGroupThread, fetchMyProChatThreads } from "@/lib/proChatClient";
 import { clearUnread } from "@/store/proChatSlice";
-import { fetchProfessionals } from "@/lib/professionalsClient";
+import { fetchClientRecommendations, fetchProfessionals } from "@/lib/professionalsClient";
 import useDynamicTablePageSize from "@/hooks/useDynamicTablePageSize";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
@@ -36,13 +36,20 @@ function displayName(u) {
 }
 
 function displayRole(u) {
-  const raw = String(u?.role || "").trim();
+  const raw = String(u?.professional_type || u?.role || "").trim();
   if (!raw) return "Professional";
   return raw
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function matchPercent(u) {
+  const raw = u?.ai_match_score ?? u?.match_score ?? u?.score;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 function initialsFor(u) {
@@ -146,7 +153,7 @@ export default function ConversationsPage() {
   const items = useMemo(() => {
     const raw = Array.isArray(listQuery.data?.items) ? listQuery.data.items : [];
     if (canCreateGroups && !isClientUser) return raw;
-    return raw.filter((t) => String(t.thread_type || "dm") !== "group" && t?.is_lead_thread !== true);
+    return raw.filter((t) => (isClientUser || String(t.thread_type || "dm") !== "group") && t?.is_lead_thread !== true);
   }, [listQuery.data?.items, canCreateGroups, isClientUser]);
 
   const visibleThreadIds = useMemo(
@@ -192,14 +199,34 @@ export default function ConversationsPage() {
   const modalRef = useRef(null);
 
   const profQuery = useQuery({
-    queryKey: ["prochat-group-professionals", token, search],
-    enabled: Boolean(token) && createOpen && !isClientUser,
-    queryFn: () => fetchProfessionals({ token, search, page: 1, limit: 12 }),
+    queryKey: ["prochat-group-professionals", token, search, isClientUser],
+    enabled: Boolean(token) && createOpen,
+    queryFn: () => (
+      isClientUser
+        ? fetchClientRecommendations({ token, search, page: 1, limit: 20 })
+        : fetchProfessionals({ token, search, page: 1, limit: 12 })
+    ),
     staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
 
-  const profItems = Array.isArray(profQuery.data?.items) ? profQuery.data.items : [];
+  const profItems = useMemo(() => {
+    const raw = Array.isArray(profQuery.data?.items) ? profQuery.data.items : [];
+    const q = String(search || "").trim().toLowerCase();
+    if (!isClientUser || !q) return raw;
+    return raw.filter((p) => {
+      const haystack = [
+        p?.full_name,
+        p?.first_name,
+        p?.last_name,
+        p?.email,
+        p?.company_name,
+        p?.professional_type,
+        p?.role,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [profQuery.data?.items, isClientUser, search]);
 
   const toggleSelect = useCallback((p) => {
     const id = String(p?.id || "").trim();
@@ -230,6 +257,7 @@ export default function ConversationsPage() {
         token,
         title: groupTitle,
         participant_ids: selectedIds,
+        client: isClientUser,
       });
       const tid = String(res?.thread?.id || "").trim();
       setCreateOpen(false);
@@ -290,7 +318,9 @@ export default function ConversationsPage() {
                   </div>
 
                   <div>
-                    <div className="mb-1 text-xs font-semibold text-text-muted">Add professionals</div>
+                    <div className="mb-1 text-xs font-semibold text-text-muted">
+                      {isClientUser ? "Add recommended professionals" : "Add professionals"}
+                    </div>
                     <div className="flex items-center gap-2 rounded-xl border border-border bg-background-light px-3 py-2">
                       <Search size={16} className="text-text-muted" />
                       <input
@@ -308,13 +338,18 @@ export default function ConversationsPage() {
                         <Loader2 size={22} className="animate-spin" />
                       </div>
                     ) : profItems.length === 0 ? (
-                      <div className="px-4 py-10 text-center text-sm text-text-muted">No professionals found.</div>
+                      <div className="px-4 py-10 text-center text-sm text-text-muted">
+                        {isClientUser ? "No recommended professionals found." : "No professionals found."}
+                      </div>
                     ) : (
                       <ul className="divide-y divide-border/60">
                         {profItems.map((p) => {
                           const id = String(p?.id || "").trim();
                           const isSelected = selected.has(id);
                           const nm = String(p?.full_name || "").trim() || String(p?.email || "").trim() || "Professional";
+                          const roleLabel = displayRole(p);
+                          const secondary = p?.company_name || p?.email || "";
+                          const score = matchPercent(p);
                           return (
                             <li key={id}>
                               <button
@@ -336,8 +371,15 @@ export default function ConversationsPage() {
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm font-bold text-text-heading">{nm}</div>
-                                  <div className="mt-0.5 truncate text-xs text-text-muted">{p?.email || ""}</div>
+                                  <div className="mt-0.5 truncate text-xs text-text-muted">
+                                    {secondary ? `${secondary} · ${roleLabel}` : roleLabel}
+                                  </div>
                                 </div>
+                                {score != null ? (
+                                  <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[11px] font-black text-primary-dark">
+                                    {score}% match
+                                  </span>
+                                ) : null}
                                 <span
                                   className={`grid h-8 w-8 place-items-center rounded-lg border ${
                                     isSelected
@@ -407,7 +449,7 @@ export default function ConversationsPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {canCreateGroups && !isClientUser ? (
+              {(canCreateGroups || isClientUser) ? (
                 <button
                   type="button"
                   onClick={() => setCreateOpen(true)}

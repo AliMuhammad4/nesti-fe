@@ -9,7 +9,10 @@ import {
   ArrowLeft,
   Loader2,
   LogOut,
+  Phone,
+  PhoneOff,
   Settings2,
+  Video,
 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -25,10 +28,11 @@ import {
   requestProChatGroupRejoin,
   resolveProChatGroupRejoinRequest,
   updateProChatGroupThread,
+  createProChatCallToken,
   uploadProChatThreadAttachment,
 } from "@/lib/proChatClient";
 import { clearUnread } from "@/store/proChatSlice";
-import { fetchProfessionals } from "@/lib/professionalsClient";
+import { fetchClientRecommendations, fetchProfessionals } from "@/lib/professionalsClient";
 import GroupAvatarStack from "@/components/prochat/thread/GroupAvatarStack";
 import GroupSettingsModal from "@/components/prochat/thread/GroupSettingsModal";
 import ThreadMessagesList from "@/components/prochat/thread/ThreadMessagesList";
@@ -40,6 +44,7 @@ import {
   safeUuid,
   validateProChatAttachmentLimits,
 } from "@/components/prochat/thread/proChatThreadUtils";
+import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
 
 export default function ProMessagesThreadPage() {
   const { isAuthenticated } = useAuthGuard();
@@ -131,17 +136,37 @@ export default function ProMessagesThreadPage() {
   }, [settingsOpen, isGroupCreator, settingsTab]);
 
   const profQuery = useQuery({
-    queryKey: ["prochat-group-add-search", token, memberSearch],
-    enabled: Boolean(token) && settingsOpen && isGroup && !isClientUser,
-    queryFn: () => fetchProfessionals({ token, search: memberSearch, all: true }),
+    queryKey: ["prochat-group-add-search", token, memberSearch, isClientUser],
+    enabled: Boolean(token) && settingsOpen && isGroup && isGroupCreator,
+    queryFn: () => (
+      isClientUser
+        ? fetchClientRecommendations({ token, search: memberSearch, page: 1, limit: 20 })
+        : fetchProfessionals({ token, search: memberSearch, all: true })
+    ),
     staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
-  const profItems = Array.isArray(profQuery.data?.items) ? profQuery.data.items : [];
+  const profItems = useMemo(() => {
+    const raw = Array.isArray(profQuery.data?.items) ? profQuery.data.items : [];
+    const q = String(memberSearch || "").trim().toLowerCase();
+    if (!isClientUser || !q) return raw;
+    return raw.filter((p) => {
+      const haystack = [
+        p?.full_name,
+        p?.first_name,
+        p?.last_name,
+        p?.email,
+        p?.company_name,
+        p?.professional_type,
+        p?.role,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [profQuery.data?.items, isClientUser, memberSearch]);
   const rejoinRequestsQuery = useQuery({
-    queryKey: ["prochat-group-rejoin-requests", token, threadId],
+    queryKey: ["prochat-group-rejoin-requests", token, threadId, isClientUser],
     enabled: Boolean(token && threadId && isGroup && isGroupCreator),
-    queryFn: () => fetchProChatGroupRejoinRequests({ token, id: threadId }),
+    queryFn: () => fetchProChatGroupRejoinRequests({ token, id: threadId, client: isClientUser }),
     staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
@@ -175,7 +200,7 @@ export default function ProMessagesThreadPage() {
     }
     try {
       setSaving(true);
-      await updateProChatGroupThread({ token, id: threadId, title: titleDraft });
+      await updateProChatGroupThread({ token, id: threadId, title: titleDraft, client: isClientUser });
       refreshThread();
       toast.success("Group updated");
     } catch (e) {
@@ -199,7 +224,7 @@ export default function ProMessagesThreadPage() {
     }
     try {
       setSaving(true);
-      await addProChatGroupMembers({ token, id: threadId, participant_ids: selectedAddIds });
+      await addProChatGroupMembers({ token, id: threadId, participant_ids: selectedAddIds, client: isClientUser });
       setSelectedAdd(new Map());
       setMemberSearch("");
       setSettingsTab("members");
@@ -226,7 +251,7 @@ export default function ProMessagesThreadPage() {
     }
     try {
       setSaving(true);
-      await removeProChatGroupMember({ token, id: threadId, userId });
+      await removeProChatGroupMember({ token, id: threadId, userId, client: isClientUser });
       refreshThread();
       toast.success("Member removed");
     } catch (e) {
@@ -245,7 +270,7 @@ export default function ProMessagesThreadPage() {
     if (!token || !threadId) return;
     try {
       setSaving(true);
-      await leaveProChatGroup({ token, id: threadId });
+      await leaveProChatGroup({ token, id: threadId, client: isClientUser });
       toast.success("You left the group");
       refreshThread();
       queryClient.invalidateQueries({ queryKey: ["prochat-group-rejoin-requests", token, threadId] });
@@ -264,7 +289,7 @@ export default function ProMessagesThreadPage() {
     }
     try {
       setSaving(true);
-      await deleteProChatGroupThread({ token, id: threadId });
+      await deleteProChatGroupThread({ token, id: threadId, client: isClientUser });
       toast.success("Group deleted");
       queryClient.removeQueries({ queryKey: ["prochat-thread", token, threadId] });
       queryClient.removeQueries({ queryKey: ["prochat-messages", token, threadId] });
@@ -287,7 +312,7 @@ export default function ProMessagesThreadPage() {
     if (!token || !threadId) return;
     try {
       setSaving(true);
-      await requestProChatGroupRejoin({ token, id: threadId });
+      await requestProChatGroupRejoin({ token, id: threadId, client: isClientUser });
       toast.success("Rejoin request sent to the group creator.");
       refreshThread();
     } catch (e) {
@@ -301,7 +326,7 @@ export default function ProMessagesThreadPage() {
     if (!token || !threadId || !userId) return;
     try {
       setSaving(true);
-      await resolveProChatGroupRejoinRequest({ token, id: threadId, userId, action });
+      await resolveProChatGroupRejoinRequest({ token, id: threadId, userId, action, client: isClientUser });
       toast.success(action === "approve" ? "Rejoin request approved." : "Rejoin request rejected.");
       refreshThread();
       queryClient.invalidateQueries({ queryKey: ["prochat-group-rejoin-requests", token, threadId] });
@@ -316,12 +341,29 @@ export default function ProMessagesThreadPage() {
   const [liveMessages, setLiveMessages] = useState([]);
   const [otherTyping, setOtherTyping] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [callSession, setCallSession] = useState({
+    open: false,
+    token: "",
+    serverUrl: "",
+    roomName: "",
+    callType: "voice",
+    connecting: false,
+    ringing: false,
+  });
   const socketRef = useRef(null);
+  const autoJoinHandledRef = useRef(false);
+  const callOperationRef = useRef(0);
+  const callSessionRef = useRef(callSession);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const composerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const lastTypingSentAt = useRef(0);
+
+  useEffect(() => {
+    callSessionRef.current = callSession;
+  }, [callSession]);
 
   const messages = useMemo(() => {
     const fromApi = Array.isArray(messagesQuery.data?.items) ? messagesQuery.data.items : [];
@@ -365,6 +407,20 @@ export default function ProMessagesThreadPage() {
   useEffect(() => {
     if (threadId) dispatch(clearUnread({ threadId }));
   }, [dispatch, threadId]);
+
+  useEffect(() => {
+    callOperationRef.current += 1;
+    autoJoinHandledRef.current = false;
+    setIncomingCall(null);
+    setCallSession({
+      open: false,
+      token: "",
+      serverUrl: "",
+      roomName: "",
+      callType: "voice",
+      connecting: false,
+    });
+  }, [threadId]);
 
   useEffect(() => {
     if (!isClientUser || !threadId || !isLeadThread) return;
@@ -420,6 +476,57 @@ export default function ProMessagesThreadPage() {
     };
     socket.on("prochat:typing", onTyping);
 
+    const onCallInvite = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      if (callSessionRef.current?.open) return;
+      setIncomingCall({
+        roomName: String(payload.room_name || `prochat:${threadId}`),
+        callType: String(payload.call_type || "voice").toLowerCase() === "video" ? "video" : "voice",
+        callerName: String(payload.sender_name || "Participant"),
+      });
+    };
+    socket.on("prochat:call_invite", onCallInvite);
+
+    const onCallDecline = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      const activeRoom = String(callSessionRef.current?.roomName || "");
+      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      toast.info("Call was declined.");
+      callOperationRef.current += 1;
+      setIncomingCall(null);
+      setCallSession({
+        open: false,
+        token: "",
+        serverUrl: "",
+        roomName: "",
+        callType: "voice",
+        connecting: false,
+        ringing: false,
+      });
+    };
+    socket.on("prochat:call_decline", onCallDecline);
+
+    const onCallEnded = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      if (myUserId && String(payload.user_id) === String(myUserId)) return;
+      const activeRoom = String(callSessionRef.current?.roomName || "");
+      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      setIncomingCall(null);
+      callOperationRef.current += 1;
+      setCallSession({
+        open: false,
+        token: "",
+        serverUrl: "",
+        roomName: "",
+        callType: "voice",
+        connecting: false,
+        ringing: false,
+      });
+    };
+    socket.on("prochat:call_ended", onCallEnded);
+
     socket.on("connect_error", (err) => {
       if (process.env.NODE_ENV === "development") {
         console.warn("[prochat] connect_error", err?.message || err);
@@ -429,6 +536,9 @@ export default function ProMessagesThreadPage() {
     return () => {
       socket.off("prochat:message", onMsg);
       socket.off("prochat:typing", onTyping);
+      socket.off("prochat:call_invite", onCallInvite);
+      socket.off("prochat:call_decline", onCallDecline);
+      socket.off("prochat:call_ended", onCallEnded);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -498,6 +608,150 @@ export default function ProMessagesThreadPage() {
         });
       }
       requestAnimationFrame(() => scrollToBottom("smooth"));
+    });
+  };
+
+  const emitCallSignal = (eventName, payload) => {
+    const socket = socketRef.current;
+    if (!socket || !socket.connected) {
+      return Promise.resolve({ success: false, message: "Chat is not connected." });
+    }
+    return new Promise((resolve) => {
+      socket.timeout(5000).emit(eventName, payload, (error, ack) => {
+        if (error) {
+          resolve({ success: false, message: "Call signaling timed out." });
+          return;
+        }
+        resolve(ack || { success: false, message: "Call signaling failed." });
+      });
+    });
+  };
+
+  const openCallSession = async (callType, roomNameHint = "", { ringing = false } = {}) => {
+    if (!token || !threadId) return;
+    const operationId = ++callOperationRef.current;
+    const normalizedType = String(callType || "").toLowerCase() === "video" ? "video" : "voice";
+    try {
+      setCallSession((prev) => ({
+        ...prev,
+        open: true,
+        connecting: true,
+        ringing,
+        roomName: roomNameHint,
+        callType: normalizedType,
+      }));
+      const response = await createProChatCallToken({
+        token,
+        id: threadId,
+        callType: normalizedType,
+        roomName: roomNameHint,
+        client: isClientUser,
+      });
+      if (callOperationRef.current !== operationId) return null;
+      const roomName = String(response?.room_name || roomNameHint || `prochat:${threadId}`);
+      setCallSession({
+        open: true,
+        token: String(response?.token || ""),
+        serverUrl: String(response?.url || ""),
+        roomName,
+        callType: normalizedType,
+        connecting: false,
+        ringing,
+      });
+      return { roomName };
+    } catch (error) {
+      if (callOperationRef.current !== operationId) return null;
+      setCallSession({
+        open: false,
+        token: "",
+        serverUrl: "",
+        roomName: "",
+        callType: normalizedType,
+        connecting: false,
+        ringing: false,
+      });
+      toast.error(error?.message || "Could not start call");
+      return null;
+    }
+  };
+
+  const startCall = async (callType) => {
+    if (!socketRef.current?.connected) {
+      toast.error("Chat is not connected yet. Try again.");
+      return;
+    }
+    const roomName = `prochat:${threadId}:${safeUuid()}`;
+    const started = await openCallSession(callType, roomName, { ringing: true });
+    if (!started) return;
+    const ack = await emitCallSignal("prochat:call_invite", {
+      thread_id: threadId,
+      room_name: started.roomName,
+      call_type: callType,
+    });
+    if (!ack?.success) {
+      setCallSession({
+        open: false,
+        token: "",
+        serverUrl: "",
+        roomName: "",
+        callType: "voice",
+        connecting: false,
+        ringing: false,
+      });
+      toast.error(ack?.message || "Could not notify the other participant.");
+      return;
+    }
+    setIncomingCall(null);
+  };
+
+  const joinIncomingCall = async () => {
+    if (!incomingCall) return;
+    const joined = await openCallSession(incomingCall.callType, incomingCall.roomName, { ringing: false });
+    if (joined) setIncomingCall(null);
+  };
+
+  useEffect(() => {
+    if (!token || !threadId || autoJoinHandledRef.current || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("incoming_call") !== "1") return;
+    autoJoinHandledRef.current = true;
+    const callType = String(params.get("call_type") || "voice").toLowerCase() === "video" ? "video" : "voice";
+    const roomName = String(params.get("room_name") || "").trim();
+    void openCallSession(callType, roomName, { ringing: false });
+    params.delete("incoming_call");
+    params.delete("call_type");
+    params.delete("room_name");
+    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState({}, "", next);
+    // This is a one-shot deep-link join.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, threadId]);
+
+  const declineIncomingCall = () => {
+    if (!incomingCall) return;
+    emitCallSignal("prochat:call_decline", {
+      thread_id: threadId,
+      room_name: incomingCall.roomName,
+      call_type: incomingCall.callType,
+    });
+    setIncomingCall(null);
+  };
+
+  const closeCallSession = () => {
+    callOperationRef.current += 1;
+    emitCallSignal("prochat:call_ended", {
+      thread_id: threadId,
+      room_name: callSession.roomName || `prochat:${threadId}`,
+      call_type: callSession.callType || "voice",
+    });
+    setCallSession({
+      open: false,
+      token: "",
+      serverUrl: "",
+      roomName: "",
+      callType: "voice",
+      connecting: false,
+      ringing: false,
     });
   };
 
@@ -581,6 +835,28 @@ export default function ProMessagesThreadPage() {
           </div>
           <div className="flex items-center justify-end">
             <div className="flex items-center gap-2">
+              {canReply ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void startCall("voice")}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-text-heading transition hover:bg-background-light"
+                    aria-label="Start voice call"
+                    title="Start voice call"
+                  >
+                    <Phone size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void startCall("video")}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-text-heading transition hover:bg-background-light"
+                    aria-label="Start video call"
+                    title="Start video call"
+                  >
+                    <Video size={14} />
+                  </button>
+                </>
+              ) : null}
               {isGroup && canReply && !isGroupCreator ? (
                 <button
                   type="button"
@@ -608,6 +884,33 @@ export default function ProMessagesThreadPage() {
           </div>
         </div>
       </div>
+
+      {incomingCall ? (
+        <div className="border-b border-emerald-200 bg-emerald-50/80 px-3 py-2 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-emerald-800">
+              {incomingCall.callerName} is calling ({incomingCall.callType}).
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void joinIncomingCall()}
+                className="inline-flex h-8 items-center rounded-lg border border-emerald-300 bg-white px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              >
+                Join
+              </button>
+              <button
+                type="button"
+                onClick={declineIncomingCall}
+                className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+              >
+                <PhoneOff size={12} className="mr-1" />
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         ref={scrollRef}
@@ -695,6 +998,23 @@ export default function ProMessagesThreadPage() {
         </div>
       </div>
       {settingsModal}
+      <ProChatCallModal
+        open={callSession.open}
+        token={callSession.token}
+        serverUrl={callSession.serverUrl}
+        callType={callSession.callType}
+        connecting={callSession.connecting}
+        ringing={callSession.ringing}
+        title={headerTitle}
+        onClose={closeCallSession}
+        onRingTimeout={() => {
+          toast.info("No answer.");
+          closeCallSession();
+        }}
+        onAnswered={() => {
+          setCallSession((current) => ({ ...current, ringing: false }));
+        }}
+      />
     </div>
   );
 }

@@ -13,17 +13,23 @@ export async function createOrGetProChatThread({ token, other_user_id, client = 
   });
 }
 
-export async function createProChatGroupThread({ token, title, participant_ids }) {
+export async function createProChatGroupThread({ token, title, participant_ids, client = false }) {
   return apiClient({
-    url: API_ENDPOINTS?.proChat?.groups || "/api/pro-chat/groups",
+    url: client
+      ? API_ENDPOINTS?.proChat?.clientGroups || "/api/pro-chat/client/groups"
+      : API_ENDPOINTS?.proChat?.groups || "/api/pro-chat/groups",
     method: "POST",
     token,
     data: { title, participant_ids },
   });
 }
 
-export async function updateProChatGroupThread({ token, id, title }) {
-  const url = API_ENDPOINTS?.proChat?.groupDetail ? API_ENDPOINTS.proChat.groupDetail(id) : `/api/pro-chat/groups/${id}`;
+export async function updateProChatGroupThread({ token, id, title, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupDetail
+      ? API_ENDPOINTS.proChat.clientGroupDetail(id)
+      : `/api/pro-chat/client/groups/${id}`
+    : API_ENDPOINTS?.proChat?.groupDetail ? API_ENDPOINTS.proChat.groupDetail(id) : `/api/pro-chat/groups/${id}`;
   return apiClient({
     url,
     method: "PATCH",
@@ -32,8 +38,12 @@ export async function updateProChatGroupThread({ token, id, title }) {
   });
 }
 
-export async function deleteProChatGroupThread({ token, id }) {
-  const url = API_ENDPOINTS?.proChat?.groupDelete
+export async function deleteProChatGroupThread({ token, id, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupDelete
+      ? API_ENDPOINTS.proChat.clientGroupDelete(id)
+      : `/api/pro-chat/client/groups/${id}`
+    : API_ENDPOINTS?.proChat?.groupDelete
     ? API_ENDPOINTS.proChat.groupDelete(id)
     : `/api/pro-chat/groups/${id}`;
   return apiClient({
@@ -43,8 +53,12 @@ export async function deleteProChatGroupThread({ token, id }) {
   });
 }
 
-export async function addProChatGroupMembers({ token, id, participant_ids }) {
-  const url = API_ENDPOINTS?.proChat?.groupMembers ? API_ENDPOINTS.proChat.groupMembers(id) : `/api/pro-chat/groups/${id}/members`;
+export async function addProChatGroupMembers({ token, id, participant_ids, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupMembers
+      ? API_ENDPOINTS.proChat.clientGroupMembers(id)
+      : `/api/pro-chat/client/groups/${id}/members`
+    : API_ENDPOINTS?.proChat?.groupMembers ? API_ENDPOINTS.proChat.groupMembers(id) : `/api/pro-chat/groups/${id}/members`;
   return apiClient({
     url,
     method: "POST",
@@ -53,8 +67,12 @@ export async function addProChatGroupMembers({ token, id, participant_ids }) {
   });
 }
 
-export async function removeProChatGroupMember({ token, id, userId }) {
-  const url = API_ENDPOINTS?.proChat?.groupMember
+export async function removeProChatGroupMember({ token, id, userId, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupMember
+      ? API_ENDPOINTS.proChat.clientGroupMember(id, userId)
+      : `/api/pro-chat/client/groups/${id}/members/${userId}`
+    : API_ENDPOINTS?.proChat?.groupMember
     ? API_ENDPOINTS.proChat.groupMember(id, userId)
     : `/api/pro-chat/groups/${id}/members/${userId}`;
   return apiClient({
@@ -64,8 +82,12 @@ export async function removeProChatGroupMember({ token, id, userId }) {
   });
 }
 
-export async function leaveProChatGroup({ token, id }) {
-  const url = API_ENDPOINTS?.proChat?.groupLeave ? API_ENDPOINTS.proChat.groupLeave(id) : `/api/pro-chat/groups/${id}/leave`;
+export async function leaveProChatGroup({ token, id, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupLeave
+      ? API_ENDPOINTS.proChat.clientGroupLeave(id)
+      : `/api/pro-chat/client/groups/${id}/leave`
+    : API_ENDPOINTS?.proChat?.groupLeave ? API_ENDPOINTS.proChat.groupLeave(id) : `/api/pro-chat/groups/${id}/leave`;
   return apiClient({
     url,
     method: "POST",
@@ -73,8 +95,12 @@ export async function leaveProChatGroup({ token, id }) {
   });
 }
 
-export async function requestProChatGroupRejoin({ token, id }) {
-  const url = API_ENDPOINTS?.proChat?.groupRejoinRequest
+export async function requestProChatGroupRejoin({ token, id, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupRejoinRequest
+      ? API_ENDPOINTS.proChat.clientGroupRejoinRequest(id)
+      : `/api/pro-chat/client/groups/${id}/rejoin-request`
+    : API_ENDPOINTS?.proChat?.groupRejoinRequest
     ? API_ENDPOINTS.proChat.groupRejoinRequest(id)
     : `/api/pro-chat/groups/${id}/rejoin-request`;
   return apiClient({
@@ -84,8 +110,12 @@ export async function requestProChatGroupRejoin({ token, id }) {
   });
 }
 
-export async function fetchProChatGroupRejoinRequests({ token, id }) {
-  const url = API_ENDPOINTS?.proChat?.groupRejoinRequests
+export async function fetchProChatGroupRejoinRequests({ token, id, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupRejoinRequests
+      ? API_ENDPOINTS.proChat.clientGroupRejoinRequests(id)
+      : `/api/pro-chat/client/groups/${id}/rejoin-requests`
+    : API_ENDPOINTS?.proChat?.groupRejoinRequests
     ? API_ENDPOINTS.proChat.groupRejoinRequests(id)
     : `/api/pro-chat/groups/${id}/rejoin-requests`;
   return apiClient({
@@ -95,9 +125,13 @@ export async function fetchProChatGroupRejoinRequests({ token, id }) {
   });
 }
 
-export async function resolveProChatGroupRejoinRequest({ token, id, userId, action }) {
+export async function resolveProChatGroupRejoinRequest({ token, id, userId, action, client = false }) {
   const safeAction = action === "approve" ? "approve" : "reject";
-  const url = API_ENDPOINTS?.proChat?.groupRejoinResolve
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientGroupRejoinResolve
+      ? API_ENDPOINTS.proChat.clientGroupRejoinResolve(id, userId, safeAction)
+      : `/api/pro-chat/client/groups/${id}/rejoin-requests/${userId}/${safeAction}`
+    : API_ENDPOINTS?.proChat?.groupRejoinResolve
     ? API_ENDPOINTS.proChat.groupRejoinResolve(id, userId, safeAction)
     : `/api/pro-chat/groups/${id}/rejoin-requests/${userId}/${safeAction}`;
   return apiClient({
@@ -185,6 +219,31 @@ export async function uploadProChatThreadAttachment({ token, id, file, client = 
     method: "POST",
     token,
     data: fd,
+  });
+}
+
+export async function createProChatCallToken({
+  token,
+  id,
+  callType = "voice",
+  roomName = "",
+  client = false,
+}) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientThreadCallToken
+      ? API_ENDPOINTS.proChat.clientThreadCallToken(id)
+      : `/api/pro-chat/client/threads/${id}/call-token`
+    : API_ENDPOINTS?.proChat?.threadCallToken
+      ? API_ENDPOINTS.proChat.threadCallToken(id)
+      : `/api/pro-chat/threads/${id}/call-token`;
+  return apiClient({
+    url,
+    method: "POST",
+    token,
+    data: {
+      call_type: String(callType || "").toLowerCase() === "video" ? "video" : "voice",
+      room_name: String(roomName || "").trim() || undefined,
+    },
   });
 }
 

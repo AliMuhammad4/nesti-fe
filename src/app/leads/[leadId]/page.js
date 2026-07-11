@@ -45,7 +45,6 @@ import {
   getActionConversationId,
   getPropertyMatchesTabLabel,
   normalizeLeadId,
-  isDirectInquiryLead,
   normalizeList,
   sanitizeInternalReturnPath,
 } from "@/lib/leadsPageUtils";
@@ -297,17 +296,13 @@ function LeadWorkspacePageContent() {
     if (Array.isArray(d)) return d;
     return normalizeList(d);
   }, [propertyMatchesQuery.data]);
-  const hideConversationTab = useMemo(() => isDirectInquiryLead(leadDetail), [leadDetail]);
   const visibleWorkspaceTabs = useMemo(() => {
-    let tabs = filterLeadWorkspaceTabsForPlan(roleFilteredTabs, hasFeature);
-    if (hideConversationTab) {
-      tabs = tabs.filter((tab) => tab.id !== "conversation");
-    }
+    const tabs = filterLeadWorkspaceTabsForPlan(roleFilteredTabs, hasFeature);
     const propertyMatchesLabel = getPropertyMatchesTabLabel(leadDetail);
     return tabs.map((tab) =>
       tab.id === "property_matches" ? { ...tab, label: propertyMatchesLabel } : tab,
     );
-  }, [roleFilteredTabs, hideConversationTab, leadDetail, hasFeature]);
+  }, [roleFilteredTabs, leadDetail, hasFeature]);
 
   const defaultVisibleTab = visibleWorkspaceTabs[0]?.id || defaultWorkspaceTab;
 
