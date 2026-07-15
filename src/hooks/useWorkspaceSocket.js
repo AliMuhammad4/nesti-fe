@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { activateCallWithRetry } from "@/lib/callActivation";
 import { toast } from "react-toastify";
 import { getSocketOrigin } from "@/lib/api";
 import WorkspaceRichToast from "@/components/ui/WorkspaceRichToast";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { incrementUnread } from "@/store/proChatSlice";
+import {
+  isBrowserCallBusy,
+  wasIncomingCallHandled,
+} from "@/lib/callNotifications";
+import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
 
 /** Short copy for socket toasts — full text stays in the notifications panel. */
 function toastBodyPreview(payload) {
@@ -39,12 +45,40 @@ function toastBodyPreview(payload) {
  * DevTools: Chrome’s “Socket” filter only lists WebSocket frames. Socket.IO may briefly use
  * polling (XHR) first — filter “All” or search `socket.io` if you don’t see a WS row yet.
  */
-export function useWorkspaceSocket(token, queryClient) {
+export function useWorkspaceSocket(
+  token,
+  queryClient,
+  { callBusy = false, socketRef = null } = {},
+) {
+  const [incomingCall, setIncomingCall] = useState(null);
+  const callBusyRef = useRef(callBusy);
   const dispatch = useAppDispatch();
   const myUserId = useAppSelector((s) => s.auth.user?.id || s.auth.user?._id || "");
   const myRole = String(useAppSelector((s) => s.auth.user?.role || "")).toLowerCase();
+
   useEffect(() => {
-    if (!token || !queryClient) return;
+    callBusyRef.current = callBusy;
+  }, [callBusy]);
+
+  useEffect(() => {
+    const clearHandledCall = (event) => {
+      const roomName = String(event?.detail?.roomName || "");
+      if (!roomName) return;
+      setIncomingCall((current) =>
+        String(current?.call?.roomName || "") === roomName ? null : current,
+      );
+    };
+    window.addEventListener("nesti:incoming-call-handled", clearHandledCall);
+    return () => {
+      window.removeEventListener("nesti:incoming-call-handled", clearHandledCall);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!token || !queryClient) {
+      setIncomingCall(null);
+      return;
+    }
     const pathname =
       typeof window !== "undefined" ? String(window.location?.pathname || "") : "";
     const isProfessionalPublicPage =
@@ -69,6 +103,7 @@ export function useWorkspaceSocket(token, queryClient) {
       reconnectionAttempts: 10,
       reconnectionDelay: 1500,
     });
+    if (socketRef) socketRef.current = socket;
 
     const refreshNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -237,66 +272,153 @@ export function useWorkspaceSocket(token, queryClient) {
         : threadId
           ? `/messages/${encodeURIComponent(threadId)}`
           : null;
+      const currentPath =
+        typeof window !== "undefined" ? String(window.location?.pathname || "") : "";
+      const currentParams =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const isActiveThreadSurface = Boolean(
+        threadId &&
+          (currentPath === `/messages/${threadId}` ||
+            (isClientUser &&
+              currentPath.startsWith("/client-dashboard/inquiries") &&
+              String(currentParams?.get("thread") || "") === threadId) ||
+            (leadId &&
+              currentPath === `/leads/${leadId}` &&
+              String(currentParams?.get("tab") || "") === "conversation")),
+      );
+
+      const inboxCall = payload?.call || {};
+      const isMultipartyParticipantUpdate =
+        inboxKind === "call_participant" ||
+        (inboxKind === "call_decline" && inboxCall?.call_scope === "multiparty");
+      if (isMultipartyParticipantUpdate) {
+        queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
+        if (inboxCall?.room_name) {
+          window.dispatchEvent(
+            new CustomEvent("nesti:prochat-call-participant", {
+              detail: inboxCall,
+            }),
+          );
+        }
+        return;
+      }
 
       if (inboxKind === "call_decline" || inboxKind === "call_ended") {
+        queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
         const roomName = String(payload?.call?.room_name || "").trim();
-        if (roomName) toast.dismiss(`incoming-call:${roomName}`);
+        if (roomName) {
+          toast.dismiss(`incoming-call:${roomName}`);
+          setIncomingCall((current) =>
+            String(current?.call?.roomName || "") === roomName ? null : current,
+          );
+          window.dispatchEvent(
+            new CustomEvent("nesti:active-call-ended", {
+              detail: { roomName },
+            }),
+          );
+        }
         return;
       }
 
       if (inboxKind === "call_invite") {
+        queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
+        // Conversation surfaces own their call socket and modal; rendering the
+        // global copy as well would create two answer/decline controls.
+        if (isActiveThreadSurface) return;
         const call = payload?.call || {};
         const callerId = String(call?.user_id || "").trim();
         if (myUserId && callerId && String(callerId) === String(myUserId)) return;
         const callerName = String(call?.sender_name || "Someone").trim() || "Someone";
         const callType = String(call?.call_type || "voice").toLowerCase() === "video" ? "video" : "voice";
         const roomName = String(call?.room_name || "").trim();
-        const onLeadConversation =
-          leadId &&
-          typeof window !== "undefined" &&
-          window.location?.pathname === `/leads/${leadId}` &&
-          String(new URLSearchParams(window.location.search).get("tab") || "") === "conversation";
-        const onInquiryThread =
-          isClientUser &&
-          threadId &&
-          typeof window !== "undefined" &&
-          window.location?.pathname.startsWith("/client-dashboard/inquiries") &&
-          String(new URLSearchParams(window.location.search).get("thread") || "") === threadId;
-        const onMessagesThread =
-          !isLeadThread &&
-          threadId &&
-          typeof window !== "undefined" &&
-          window.location?.pathname === `/messages/${threadId}`;
-        if (onLeadConversation || onInquiryThread || onMessagesThread) {
+        if (wasIncomingCallHandled(roomName)) return;
+        const decline = () =>
+          new Promise((resolve) => {
+            socket.timeout(5000).emit(
+              "prochat:call_decline",
+              {
+                thread_id: threadId,
+                room_name: roomName,
+                call_type: callType,
+              },
+              (error, ack) => {
+                if (error || !ack?.success) {
+                  toast.error(ack?.message || "Could not decline the call.");
+                  resolve(false);
+                  return;
+                }
+                setIncomingCall(null);
+                resolve(true);
+              },
+            );
+          });
+        const end = () =>
+          new Promise((resolve) => {
+            socket.timeout(5000).emit(
+              call?.call_scope === "multiparty"
+                ? "prochat:call_leave"
+                : "prochat:call_ended",
+              {
+                thread_id: threadId,
+                room_name: roomName,
+                call_type: callType,
+              },
+              (error, ack) => resolve(!error && Boolean(ack?.success || ack?.code === "call_not_found")),
+            );
+          });
+        const active = () =>
+          activateCallWithRetry({
+            emit: (eventName, eventPayload) =>
+              new Promise((resolve) => {
+                socket.timeout(5000).emit(
+                  eventName,
+                  eventPayload,
+                  (error, ack) =>
+                    resolve(
+                      error
+                        ? { success: false, code: "signal_timeout" }
+                        : ack || { success: false },
+                    ),
+                );
+              }),
+            payload: {
+              thread_id: threadId,
+              room_name: roomName,
+              call_type: callType,
+            },
+          }).then((result) => Boolean(result?.success));
+        const nextIncomingCall = {
+          call: {
+            callerName,
+            callType,
+            roomName,
+            threadId,
+            client: isClientUser,
+            callScope: call?.call_scope === "multiparty" ? "multiparty" : "direct",
+            participantStates: Array.isArray(call?.participant_states)
+              ? call.participant_states
+              : [],
+            expiresAt: Date.now() + 85_000,
+          },
+          dismiss: () => setIncomingCall(null),
+          onDecline: decline,
+          onEnd: end,
+          onActive: active,
+        };
+        if (callBusyRef.current || isBrowserCallBusy(roomName)) {
+          void decline();
           return;
         }
-        toast.info(
-          <WorkspaceRichToast
-            title={`${callerName} is calling (${callType})`}
-            actionLabel={threadHref ? "Join call" : ""}
-            onAction={
-              threadHref
-                ? () => {
-                    toast.dismiss();
-                    const callParams =
-                      `incoming_call=1&call_type=${encodeURIComponent(callType)}` +
-                      `&room_name=${encodeURIComponent(roomName)}`;
-                    const joinHref = threadHref.includes("?")
-                      ? `${threadHref}&${callParams}`
-                      : `${threadHref}?${callParams}`;
-                    window.location.assign(joinHref);
-                  }
-                : undefined
-            }
-          />,
-          {
-            toastId: `incoming-call:${roomName}`,
-            autoClose: 15000,
-            closeOnClick: !threadHref,
-            className: threadHref ? "nesti-toast--rich" : "nesti-toast",
-            icon: false,
-          },
-        );
+        void warmLiveKitHost();
+        void prewarmCallMedia({ video: callType === "video" });
+        setIncomingCall((current) => {
+          const currentRoom = String(current?.call?.roomName || "");
+          if (currentRoom && currentRoom !== roomName) {
+            void decline();
+            return current;
+          }
+          return nextIncomingCall;
+        });
         queryClient.invalidateQueries({ queryKey: ["prochat-threads"] });
         queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
         if (leadId) {
@@ -306,8 +428,13 @@ export function useWorkspaceSocket(token, queryClient) {
         return;
       }
 
-      if (!isLeadThread && threadId && pathname === `/messages/${threadId}`) {
-        return; // already on this chat
+      if (isActiveThreadSurface) {
+        queryClient.invalidateQueries({ queryKey: ["prochat-threads"] });
+        queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
+        if (threadId) {
+          queryClient.invalidateQueries({ queryKey: ["inquiry-thread-messages"] });
+        }
+        return;
       }
       const msg = payload?.message || {};
       const kind = String(msg?.kind || "").trim();
@@ -379,6 +506,29 @@ export function useWorkspaceSocket(token, queryClient) {
       }
     };
 
+    const dispatchCallLifecycle = (eventName) => (payload) => {
+      if (typeof window === "undefined" || !payload?.room_name) return;
+      window.dispatchEvent(
+        new CustomEvent(eventName, {
+          detail: payload,
+        }),
+      );
+    };
+    const onCallAccepted = dispatchCallLifecycle("nesti:prochat-call-accepted");
+    const onCallParticipant = dispatchCallLifecycle("nesti:prochat-call-participant");
+    const onCallEnded = dispatchCallLifecycle("nesti:prochat-call-ended");
+    const onCallArtifactsReady = (payload) => {
+      const callId = String(payload?.call_id || "").trim();
+      queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
+      queryClient.invalidateQueries({ queryKey: ["prochat-call-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["prochat-call-artifacts"] });
+      queryClient.invalidateQueries({ queryKey: ["prochat-call-transcript"] });
+      queryClient.invalidateQueries({ queryKey: ["prochat-call-minutes"] });
+      toast.success("Meeting notes are ready.", {
+        toastId: `call-artifacts-ready:${callId || "latest"}`,
+      });
+    };
+
     socket.on("connect", () => {
       if (process.env.NODE_ENV === "development") {
         console.info("[workspace-socket] connected", { origin, id: socket.id, transport: socket.io.engine?.transport?.name });
@@ -389,6 +539,10 @@ export function useWorkspaceSocket(token, queryClient) {
     socket.on("notifications:item", onNotify);
     socket.on("workspace:lead", onLead);
     socket.on("prochat:inbox", onProChatInbox);
+    socket.on("prochat:call_accepted", onCallAccepted);
+    socket.on("prochat:call_participant", onCallParticipant);
+    socket.on("prochat:call_ended", onCallEnded);
+    socket.on("prochat:call_artifacts_ready", onCallArtifactsReady);
 
     socket.on("connect_error", (err) => {
       if (process.env.NODE_ENV === "development") {
@@ -402,13 +556,20 @@ export function useWorkspaceSocket(token, queryClient) {
     });
 
     return () => {
+      if (socketRef?.current === socket) socketRef.current = null;
       socket.off("connect");
       socket.off("workspace:ready", refreshNotifications);
       socket.off("notifications:item", onNotify);
       socket.off("workspace:lead", onLead);
       socket.off("prochat:inbox", onProChatInbox);
+      socket.off("prochat:call_accepted", onCallAccepted);
+      socket.off("prochat:call_participant", onCallParticipant);
+      socket.off("prochat:call_ended", onCallEnded);
+      socket.off("prochat:call_artifacts_ready", onCallArtifactsReady);
       socket.off("disconnect");
       socket.disconnect();
     };
-  }, [token, queryClient, dispatch, myUserId, myRole]);
+  }, [token, queryClient, dispatch, myUserId, myRole, socketRef]);
+
+  return incomingCall;
 }

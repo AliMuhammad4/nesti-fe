@@ -224,6 +224,16 @@ export const API_ENDPOINTS = {
     clientThreadMessages: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}/messages`),
     clientThreadAttachments: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}/attachments`),
     clientThreadCallToken: withBaseUrl((id) => `/api/pro-chat/client/threads/${id}/call-token`),
+    calls: withBaseUrl("/api/pro-chat/calls"),
+    callDetail: withBaseUrl((id) => `/api/pro-chat/calls/${id}`),
+    callArtifacts: withBaseUrl((id) => `/api/pro-chat/calls/${id}/artifacts`),
+    callTranscript: withBaseUrl((id) => `/api/pro-chat/calls/${id}/transcript`),
+    callMinutes: withBaseUrl((id) => `/api/pro-chat/calls/${id}/minutes`),
+    clientCalls: withBaseUrl("/api/pro-chat/client/calls"),
+    clientCallDetail: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}`),
+    clientCallArtifacts: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/artifacts`),
+    clientCallTranscript: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/transcript`),
+    clientCallMinutes: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/minutes`),
   },
 };
 

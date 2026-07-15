@@ -26,6 +26,7 @@ import {
   Inbox,
   Send,
   MessageSquare,
+  PhoneCall,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -44,6 +45,7 @@ const PRIMARY_ITEMS = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", href: "/leads", icon: Users },
   { id: "conversations", label: "Conversations", href: "/conversations", icon: MessageSquare },
+  { id: "call-history", label: "Call History", href: "/call-history", icon: PhoneCall },
   { id: "referrals", label: "Referrals", href: "/referrals?direction=inbound", icon: Handshake },
   { id: "clients", label: "Clients", href: "/clients", icon: UserRound },
   { id: "professionals", label: "Professionals", href: "/professionals", icon: Building2 },
@@ -162,6 +164,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
     const hrefs = [
       "/dashboard",
       "/leads",
+      "/call-history",
       "/referrals?direction=inbound",
       "/clients",
       "/professionals",

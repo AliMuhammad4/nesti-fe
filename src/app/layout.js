@@ -3,6 +3,7 @@ import { Inter, Poppins } from "next/font/google";
 
 import Providers from "./providers";
 import AppChromeShell from "./AppChromeShell";
+import CallTranscriptionConsentModal from "@/components/prochat/calls/CallTranscriptionConsentModal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
       >
         <Providers>
           <AppChromeShell>{children}</AppChromeShell>
+          <CallTranscriptionConsentModal />
         </Providers>
       </body>
     </html>

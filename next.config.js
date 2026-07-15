@@ -91,13 +91,16 @@ const nextConfig = {
     const connectSrc = isDev
       ? "connect-src 'self' http: https: ws: wss:;"
       : "connect-src 'self' https: wss:;";
+    const imageSrc = isDev
+      ? "img-src 'self' data: blob: http: https:;"
+      : "img-src 'self' data: blob: https:;";
     return [
       {
         source: "/:path*",
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; base-uri 'self'; object-src 'self' data: blob:; frame-src https://calendly.com https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; ${connectSrc} form-action 'self'`,
+            value: `default-src 'self'; base-uri 'self'; object-src 'self' data: blob:; frame-src https://calendly.com https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; ${imageSrc} font-src 'self' data: https:; ${connectSrc} form-action 'self'`,
           },
           {
             key: "Strict-Transport-Security",

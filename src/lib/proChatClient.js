@@ -2,6 +2,93 @@
 
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
 
+export async function fetchProChatCallRecords({
+  token,
+  client = false,
+  page = 1,
+  limit = 12,
+  status = "",
+  callType = "",
+  from = "",
+  to = "",
+}) {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (status) params.set("status", status);
+  if (callType) params.set("call_type", callType);
+  if (from) params.set("from", /^\d{4}-\d{2}-\d{2}$/.test(from) ? `${from}T00:00:00.000` : from);
+  if (to) params.set("to", /^\d{4}-\d{2}-\d{2}$/.test(to) ? `${to}T23:59:59.999` : to);
+  const base = client
+    ? API_ENDPOINTS?.proChat?.clientCalls || "/api/pro-chat/client/calls"
+    : API_ENDPOINTS?.proChat?.calls || "/api/pro-chat/calls";
+  return apiClient({
+    url: `${base}?${params.toString()}`,
+    method: "GET",
+    token,
+  });
+}
+
+export async function fetchProChatCallRecord({ token, callId, client = false }) {
+  const url = client
+    ? API_ENDPOINTS?.proChat?.clientCallDetail?.(callId) ||
+      `/api/pro-chat/client/calls/${callId}`
+    : API_ENDPOINTS?.proChat?.callDetail?.(callId) ||
+      `/api/pro-chat/calls/${callId}`;
+  return apiClient({ url, method: "GET", token });
+}
+
+function callArtifactUrl(kind, callId, client = false) {
+  const key = client
+    ? {
+        artifacts: "clientCallArtifacts",
+        transcript: "clientCallTranscript",
+        minutes: "clientCallMinutes",
+      }[kind]
+    : {
+        artifacts: "callArtifacts",
+        transcript: "callTranscript",
+        minutes: "callMinutes",
+      }[kind];
+  const configured = API_ENDPOINTS?.proChat?.[key];
+  if (configured) return configured(callId);
+  return `/api/pro-chat/${client ? "client/" : ""}calls/${callId}/${kind}`;
+}
+
+export function fetchProChatCallArtifacts({ token, callId, client = false }) {
+  return apiClient({
+    url: callArtifactUrl("artifacts", callId, client),
+    method: "GET",
+    token,
+  });
+}
+
+export function fetchProChatCallTranscript({
+  token,
+  callId,
+  client = false,
+  page = 1,
+  limit = 100,
+}) {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, Number(page) || 1)),
+    limit: String(Math.max(1, Number(limit) || 100)),
+  });
+  return apiClient({
+    url: `${callArtifactUrl("transcript", callId, client)}?${params.toString()}`,
+    method: "GET",
+    token,
+  });
+}
+
+export function fetchProChatCallMinutes({ token, callId, client = false }) {
+  return apiClient({
+    url: callArtifactUrl("minutes", callId, client),
+    method: "GET",
+    token,
+  });
+}
+
 export async function createOrGetProChatThread({ token, other_user_id, client = false }) {
   return apiClient({
     url: client
@@ -227,7 +314,9 @@ export async function createProChatCallToken({
   id,
   callType = "voice",
   roomName = "",
+  action,
   client = false,
+  transcriptionConsent = false,
 }) {
   const url = client
     ? API_ENDPOINTS?.proChat?.clientThreadCallToken
@@ -243,6 +332,8 @@ export async function createProChatCallToken({
     data: {
       call_type: String(callType || "").toLowerCase() === "video" ? "video" : "voice",
       room_name: String(roomName || "").trim() || undefined,
+      action: String(action || "").trim().toLowerCase(),
+      transcription_consent: transcriptionConsent === true,
     },
   });
 }

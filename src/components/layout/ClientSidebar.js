@@ -18,6 +18,7 @@ import {
   ClipboardList,
   MessageSquare,
   Target,
+  PhoneCall,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -296,6 +297,36 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               }
             />
             <span className="min-w-0 truncate">Inquiries</span>
+          </Link>
+
+          <Link
+            href="/client-dashboard/calls"
+            onClick={() => {
+              setSettingsOpen(false);
+              onCloseMobile?.();
+            }}
+            className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
+              isSectionNavActive(pathname, "/client-dashboard/calls")
+                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+            }`}
+            aria-current={isSectionNavActive(pathname, "/client-dashboard/calls") ? "page" : undefined}
+            onMouseEnter={() => {
+              if (!shouldPrefetch) return;
+              router.prefetch("/client-dashboard/calls");
+            }}
+          >
+            {isSectionNavActive(pathname, "/client-dashboard/calls") ? (
+              <span
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                aria-hidden
+              />
+            ) : null}
+            <NavIconTile
+              Icon={PhoneCall}
+              variant={isSectionNavActive(pathname, "/client-dashboard/calls") ? "active" : "idle"}
+            />
+            <span className="min-w-0 truncate">Call History</span>
           </Link>
         </div>
 

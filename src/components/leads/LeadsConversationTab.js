@@ -3,14 +3,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { toast } from "react-toastify";
-import { Info, Phone, PhoneOff, Video } from "lucide-react";
+import { Info, Phone, Video } from "lucide-react";
 import MessageBubble from "@/components/leads/MessageBubble";
 import ThreadComposer from "@/components/prochat/thread/ThreadComposer";
 import ThreadMessagesList from "@/components/prochat/thread/ThreadMessagesList";
 import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
+import IncomingCallModal from "@/components/prochat/calls/IncomingCallModal";
+import OutgoingCallNotesModal from "@/components/prochat/calls/OutgoingCallNotesModal";
 import { getSocketOrigin } from "@/lib/api";
 import { createProChatCallToken, uploadProChatThreadAttachment } from "@/lib/proChatClient";
 import { safeUuid } from "@/components/prochat/thread/proChatThreadUtils";
+import {
+  acquireCallStartLock,
+  claimIncomingCall,
+  clearBrowserCallActive,
+  isBrowserCallBusy,
+  markIncomingCallHandled,
+  markBrowserCallActive,
+  releaseIncomingCallClaim,
+  resolveIncomingCallAcrossTabs,
+} from "@/lib/callNotifications";
+import {
+  consumeCallTranscriptionConsent,
+  rememberCallTranscriptionConsent,
+  resetCallTranscriptionConsent,
+} from "@/lib/callTranscriptionConsent";
+import { activateCallSessionWhenReady } from "@/lib/callActivation";
+import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
 
 const EMPTY_CALL_SESSION = {
   open: false,
@@ -20,9 +39,20 @@ const EMPTY_CALL_SESSION = {
   callType: "voice",
   connecting: false,
   ringing: false,
+  peerConnecting: false,
+  participantStates: [],
+  transcriptionStatus: "pending",
 };
 
-function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery, myUserId }) {
+function LeadDirectChatPanel({
+  token,
+  threadId,
+  leadId,
+  messages,
+  messagesQuery,
+  myUserId,
+  participantName,
+}) {
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -31,6 +61,7 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
   const socketRef = useRef(null);
   const autoJoinHandledRef = useRef(false);
   const callOperationRef = useRef(0);
+  const startCallPendingRef = useRef(false);
   const [draft, setDraft] = useState("");
   const [draftAttachments, setDraftAttachments] = useState([]);
   const [uploadingAttachments, setUploadingAttachments] = useState([]);
@@ -38,12 +69,32 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
   const [connected, setConnected] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [outgoingCallPrep, setOutgoingCallPrep] = useState(null);
+  const [startingCall, setStartingCall] = useState(false);
   const [callSession, setCallSession] = useState(EMPTY_CALL_SESSION);
   const callSessionRef = useRef(callSession);
+  const incomingCallRef = useRef(incomingCall);
+  const pendingInviteRef = useRef(null);
 
   useEffect(() => {
     callSessionRef.current = callSession;
   }, [callSession]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    const onHandledElsewhere = (event) => {
+      const roomName = String(event?.detail?.roomName || "");
+      if (!roomName || String(incomingCallRef.current?.roomName || "") !== roomName) return;
+      callOperationRef.current += 1;
+      setIncomingCall(null);
+    };
+    window.addEventListener("nesti:incoming-call-handled", onHandledElsewhere);
+    return () =>
+      window.removeEventListener("nesti:incoming-call-handled", onHandledElsewhere);
+  }, []);
 
   const mergedMessages = useMemo(() => {
     const merged = Array.isArray(messages) ? [...messages] : [];
@@ -107,11 +158,32 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     const onCallInvite = (payload) => {
       if (!payload || String(payload.thread_id) !== String(threadId)) return;
       if (myUserId && String(payload.user_id) === String(myUserId)) return;
-      if (callSessionRef.current?.open) return;
+      const roomName = String(payload.room_name || `prochat:${threadId}`);
+      const currentIncomingRoom = String(incomingCallRef.current?.roomName || "");
+      if (currentIncomingRoom === roomName) return;
+      if (callSessionRef.current?.open || currentIncomingRoom) {
+        socket.emit("prochat:call_decline", {
+          thread_id: threadId,
+          room_name: roomName,
+          call_type: payload.call_type || "voice",
+        });
+        return;
+      }
+      markIncomingCallHandled(payload.room_name);
+      toast.dismiss(`incoming-call:${String(payload.room_name || "")}`);
+      const callType =
+        String(payload.call_type || "voice").toLowerCase() === "video" ? "video" : "voice";
+      void warmLiveKitHost();
+      void prewarmCallMedia({ video: callType === "video" });
       setIncomingCall({
-        roomName: String(payload.room_name || `prochat:${threadId}`),
-        callType: String(payload.call_type || "voice").toLowerCase() === "video" ? "video" : "voice",
+        roomName,
+        callType,
         callerName: String(payload.sender_name || "Participant"),
+        participantStates: Array.isArray(payload.participant_states)
+          ? payload.participant_states
+          : [],
+        transcriptionStatus: payload.transcription_status || "pending",
+        expiresAt: Date.now() + 85_000,
       });
     };
     socket.on("prochat:call_invite", onCallInvite);
@@ -120,21 +192,78 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
       if (!payload || String(payload.thread_id) !== String(threadId)) return;
       if (myUserId && String(payload.user_id) === String(myUserId)) return;
       const activeRoom = String(callSessionRef.current?.roomName || "");
-      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      const incomingRoom = String(incomingCallRef.current?.roomName || "");
+      const eventRoom = String(payload.room_name || "");
+      if (eventRoom !== activeRoom && eventRoom !== incomingRoom) return;
       toast.info("Call was declined.");
       callOperationRef.current += 1;
+      clearBrowserCallActive(eventRoom);
       setIncomingCall(null);
       setCallSession(EMPTY_CALL_SESSION);
     };
     socket.on("prochat:call_decline", onCallDecline);
 
+    const onCallAccepted = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      const eventRoom = String(payload.room_name || "");
+      setCallSession((current) =>
+        current.open && eventRoom && String(current.roomName || "") === eventRoom
+          ? { ...current, ringing: false, peerConnecting: false }
+          : current,
+      );
+    };
+    socket.on("prochat:call_accepted", onCallAccepted);
+
+    const onCallParticipant = (payload) => {
+      if (!payload || String(payload.thread_id) !== String(threadId)) return;
+      const eventRoom = String(payload.room_name || "");
+      const activeRoom = String(callSessionRef.current?.roomName || "");
+      const incomingRoom = String(incomingCallRef.current?.roomName || "");
+      if (!eventRoom || (eventRoom !== activeRoom && eventRoom !== incomingRoom)) return;
+      const participantStates = Array.isArray(payload.participant_states)
+        ? payload.participant_states
+        : [];
+      const peerJoined = participantStates.some(
+        (participant) =>
+          String(participant?.user_id || "") !== String(myUserId) &&
+          participant?.status === "joined",
+      );
+      setIncomingCall((current) =>
+        current && String(current.roomName || "") === eventRoom
+          ? {
+              ...current,
+              participantStates,
+              transcriptionStatus:
+                payload.transcription_status || current.transcriptionStatus,
+            }
+          : current,
+      );
+      setCallSession((current) =>
+        current.open && String(current.roomName || "") === eventRoom
+          ? {
+              ...current,
+              participantStates,
+              transcriptionStatus:
+                payload.transcription_status || current.transcriptionStatus,
+              ringing: current.ringing && !peerJoined,
+              peerConnecting: peerJoined ? false : current.peerConnecting,
+            }
+          : current,
+      );
+    };
+    socket.on("prochat:call_participant", onCallParticipant);
+
     const onCallEnded = (payload) => {
       if (!payload || String(payload.thread_id) !== String(threadId)) return;
       if (myUserId && String(payload.user_id) === String(myUserId)) return;
       const activeRoom = String(callSessionRef.current?.roomName || "");
-      if (activeRoom && String(payload.room_name || "") !== activeRoom) return;
+      const incomingRoom = String(incomingCallRef.current?.roomName || "");
+      const eventRoom = String(payload.room_name || "");
+      if (eventRoom !== activeRoom && eventRoom !== incomingRoom) return;
       setIncomingCall(null);
       callOperationRef.current += 1;
+      clearBrowserCallActive(eventRoom);
+      resolveIncomingCallAcrossTabs(eventRoom, "ended");
       setCallSession(EMPTY_CALL_SESSION);
     };
     socket.on("prochat:call_ended", onCallEnded);
@@ -146,10 +275,20 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     });
 
     return () => {
+      const active = callSessionRef.current;
+      if (active?.open && active.roomName && socket.connected) {
+        socket.emit("prochat:call_ended", {
+          thread_id: threadId,
+          room_name: active.roomName,
+          call_type: active.callType || "voice",
+        });
+      }
       socket.off("prochat:message", onMessage);
       socket.off("prochat:typing", onTyping);
       socket.off("prochat:call_invite", onCallInvite);
       socket.off("prochat:call_decline", onCallDecline);
+      socket.off("prochat:call_accepted", onCallAccepted);
+      socket.off("prochat:call_participant", onCallParticipant);
       socket.off("prochat:call_ended", onCallEnded);
       socket.disconnect();
       socketRef.current = null;
@@ -191,10 +330,38 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     });
   };
 
+  useEffect(() => {
+    const endActiveCall = () => {
+      const active = callSessionRef.current;
+      const socket = socketRef.current;
+      clearBrowserCallActive(active?.roomName);
+      if (!active?.open || !active.roomName || !socket?.connected) return;
+      socket.emit("prochat:call_ended", {
+        thread_id: threadId,
+        room_name: active.roomName,
+        call_type: active.callType || "voice",
+      });
+    };
+    window.addEventListener("pagehide", endActiveCall);
+    return () => {
+      window.removeEventListener("pagehide", endActiveCall);
+      endActiveCall();
+    };
+  }, [threadId]);
+
   const openCallSession = async (callType, roomNameHint = "", { ringing = false } = {}) => {
     if (!token || !threadId) return null;
+    const normalizedType =
+      String(callType || "").toLowerCase() === "video" ? "video" : "voice";
+    void warmLiveKitHost();
+    void prewarmCallMedia({ video: normalizedType === "video" });
+    const transcriptionConsent = await consumeCallTranscriptionConsent();
+    if (isBrowserCallBusy(roomNameHint)) {
+      toast.info("Another call is already in progress.");
+      return null;
+    }
+    markBrowserCallActive(roomNameHint);
     const operationId = ++callOperationRef.current;
-    const normalizedType = String(callType || "").toLowerCase() === "video" ? "video" : "voice";
     try {
       setCallSession((prev) => ({
         ...prev,
@@ -209,10 +376,23 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
         id: threadId,
         callType: normalizedType,
         roomName: roomNameHint,
+        action: ringing ? "start" : "join",
         client: false,
+        transcriptionConsent,
       });
-      if (callOperationRef.current !== operationId) return null;
+      if (callOperationRef.current !== operationId) {
+        if (ringing && response?.room_name) {
+          void emitCallSignal("prochat:call_ended", {
+            thread_id: threadId,
+            room_name: response.room_name,
+            call_type: normalizedType,
+          });
+        }
+        clearBrowserCallActive(roomNameHint);
+        return null;
+      }
       const roomName = String(response?.room_name || roomNameHint || `prochat:${threadId}`);
+      markBrowserCallActive(roomName);
       setCallSession({
         open: true,
         token: String(response?.token || ""),
@@ -221,9 +401,14 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
         callType: normalizedType,
         connecting: false,
         ringing,
+        participantStates: Array.isArray(response?.participant_states)
+          ? response.participant_states
+          : [],
+        transcriptionStatus: response?.transcription_status || "pending",
       });
       return { roomName };
     } catch (error) {
+      clearBrowserCallActive(roomNameHint);
       if (callOperationRef.current !== operationId) return null;
       setCallSession({ ...EMPTY_CALL_SESSION, callType: normalizedType });
       toast.error(error?.message || "Could not start call");
@@ -231,36 +416,144 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     }
   };
 
-  const startCall = async (callType) => {
+  const startCall = (callType) => {
+    if (
+      startCallPendingRef.current ||
+      callSessionRef.current?.open ||
+      incomingCallRef.current
+    ) {
+      return;
+    }
     if (!socketRef.current?.connected || !connected) {
       toast.error("Chat is not connected yet. Try again.");
       return;
     }
-    const roomName = `prochat:${threadId}:${safeUuid()}`;
-    const started = await openCallSession(callType, roomName, { ringing: true });
-    if (!started) return;
-    const ack = await emitCallSignal("prochat:call_invite", {
-      thread_id: threadId,
-      room_name: started.roomName,
-      call_type: callType,
+    resetCallTranscriptionConsent();
+    setOutgoingCallPrep({
+      callType: String(callType || "").toLowerCase() === "video" ? "video" : "voice",
     });
+  };
+
+  const cancelOutgoingCall = () => {
+    setOutgoingCallPrep(null);
+    resetCallTranscriptionConsent();
+  };
+
+  const confirmOutgoingCall = async (notesConsent) => {
+    const callType = outgoingCallPrep?.callType;
+    if (!callType) return;
+    rememberCallTranscriptionConsent(notesConsent);
+    setOutgoingCallPrep(null);
+    if (
+      startCallPendingRef.current ||
+      callSessionRef.current?.open ||
+      incomingCallRef.current
+    ) {
+      return;
+    }
+    if (!socketRef.current?.connected || !connected) {
+      toast.error("Chat is not connected yet. Try again.");
+      return;
+    }
+    startCallPendingRef.current = true;
+    setStartingCall(true);
+    const release = await acquireCallStartLock(threadId);
+    if (!release) {
+      startCallPendingRef.current = false;
+      setStartingCall(false);
+      return;
+    }
+    try {
+      const roomName = `prochat:${threadId}:${safeUuid()}`;
+      const started = await openCallSession(callType, roomName, { ringing: true });
+      if (!started) return;
+      const invite = {
+        thread_id: threadId,
+        room_name: started.roomName,
+        call_type: callType,
+      };
+      pendingInviteRef.current = invite;
+      if (callType === "voice") {
+        pendingInviteRef.current = null;
+        const ack = await emitCallSignal("prochat:call_invite", invite);
+        if (!ack?.success) {
+          clearBrowserCallActive(invite.room_name);
+          void emitCallSignal("prochat:call_ended", invite);
+          setCallSession(EMPTY_CALL_SESSION);
+          toast.error(ack?.message || "Could not notify the other participant.");
+          return;
+        }
+      }
+      setIncomingCall(null);
+    } finally {
+      release();
+      startCallPendingRef.current = false;
+      setStartingCall(false);
+    }
+  };
+
+  const handleCallConnected = async () => {
+    const invite = pendingInviteRef.current;
+    if (!invite) {
+      return;
+    }
+    pendingInviteRef.current = null;
+    const ack = await emitCallSignal("prochat:call_invite", invite);
     if (!ack?.success) {
+      clearBrowserCallActive(invite.room_name);
+      void emitCallSignal("prochat:call_ended", {
+        thread_id: invite.thread_id,
+        room_name: invite.room_name,
+        call_type: invite.call_type,
+      });
       setCallSession(EMPTY_CALL_SESSION);
       toast.error(ack?.message || "Could not notify the other participant.");
       return;
     }
-    setIncomingCall(null);
+  };
+
+  const handleCallActivate = () => {
+    activateCallSessionWhenReady({
+      emit: emitCallSignal,
+      getSession: () => callSessionRef.current,
+      threadId,
+    });
   };
 
   const joinIncomingCall = async () => {
     if (!incomingCall) return;
-    const joined = await openCallSession(incomingCall.callType, incomingCall.roomName, { ringing: false });
-    if (joined) setIncomingCall(null);
+    const call = incomingCallRef.current || incomingCall;
+    setIncomingCall(null);
+    setCallSession((previous) => ({
+      ...previous,
+      open: true,
+      connecting: true,
+      ringing: false,
+      roomName: call.roomName,
+      callType: call.callType,
+      participantStates: call.participantStates || [],
+      transcriptionStatus: call.transcriptionStatus || "pending",
+    }));
+    const claimed = await claimIncomingCall(call.roomName);
+    if (!claimed) {
+      resetCallTranscriptionConsent();
+      setCallSession(EMPTY_CALL_SESSION);
+      return;
+    }
+    const joined = await openCallSession(call.callType, call.roomName, { ringing: false });
+    if (joined) {
+      resolveIncomingCallAcrossTabs(call.roomName, "answered");
+    } else {
+      releaseIncomingCallClaim(call.roomName);
+      resetCallTranscriptionConsent();
+    }
   };
 
   useEffect(() => {
     callOperationRef.current += 1;
     autoJoinHandledRef.current = false;
+    startCallPendingRef.current = false;
+    setStartingCall(false);
     setIncomingCall(null);
     setCallSession(EMPTY_CALL_SESSION);
   }, [threadId]);
@@ -273,32 +566,48 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     autoJoinHandledRef.current = true;
     const callType = String(params.get("call_type") || "voice").toLowerCase() === "video" ? "video" : "voice";
     const roomName = String(params.get("room_name") || "").trim();
-    void openCallSession(callType, roomName, { ringing: false });
-    params.delete("incoming_call");
-    params.delete("call_type");
-    params.delete("room_name");
-    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-    window.history.replaceState({}, "", next);
+    void openCallSession(callType, roomName, { ringing: false }).then((joined) => {
+      if (!joined) {
+        autoJoinHandledRef.current = false;
+        return;
+      }
+      params.delete("incoming_call");
+      params.delete("call_type");
+      params.delete("room_name");
+      const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, "", next);
+    });
     // openCallSession is stable enough for this one-shot deep link join
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, threadId]);
 
-  const declineIncomingCall = () => {
+  const declineIncomingCall = async () => {
     if (!incomingCall) return;
-    emitCallSignal("prochat:call_decline", {
+    const ack = await emitCallSignal("prochat:call_decline", {
       thread_id: threadId,
       room_name: incomingCall.roomName,
       call_type: incomingCall.callType,
     });
+    if (!ack?.success) {
+      toast.error(ack?.message || "Could not decline the call.");
+      return;
+    }
+    resolveIncomingCallAcrossTabs(incomingCall.roomName, "declined");
     setIncomingCall(null);
   };
 
   const closeCallSession = () => {
     callOperationRef.current += 1;
-    emitCallSignal("prochat:call_ended", {
+    pendingInviteRef.current = null;
+    clearBrowserCallActive(callSession.roomName);
+    void emitCallSignal("prochat:call_ended", {
       thread_id: threadId,
       room_name: callSession.roomName || `prochat:${threadId}`,
       call_type: callSession.callType || "voice",
+    }).then((ack) => {
+      if (!ack?.success && ack?.code !== "call_not_found") {
+        toast.warning(ack?.message || "The call closed locally, but the end signal was not confirmed.");
+      }
     });
     setCallSession(EMPTY_CALL_SESSION);
   };
@@ -346,14 +655,15 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
     <div className="flex h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-white/95 px-3 py-2.5 backdrop-blur sm:px-4">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text-heading">Client conversation</p>
+          <p className="truncate text-sm font-semibold text-text-heading">{participantName}</p>
           <p className="text-[11px] text-text-muted">Reply directly from this lead</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => void startCall("voice")}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light"
+            disabled={startingCall || callSession.open || Boolean(incomingCall)}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Start voice call"
             title="Start voice call"
           >
@@ -362,7 +672,8 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
           <button
             type="button"
             onClick={() => void startCall("video")}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light"
+            disabled={startingCall || callSession.open || Boolean(incomingCall)}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-white text-text-heading transition hover:bg-background-light disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Start video call"
             title="Start video call"
           >
@@ -374,32 +685,25 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
         </div>
       </div>
 
-      {incomingCall ? (
-        <div className="shrink-0 border-b border-emerald-200 bg-emerald-50/80 px-3 py-2 sm:px-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium text-emerald-800">
-              {incomingCall.callerName} is calling ({incomingCall.callType}).
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void joinIncomingCall()}
-                className="inline-flex h-7 items-center rounded-md border border-emerald-300 bg-white px-2.5 text-[11px] font-semibold text-emerald-700"
-              >
-                Join
-              </button>
-              <button
-                type="button"
-                onClick={declineIncomingCall}
-                className="inline-flex h-7 items-center rounded-md border border-red-200 bg-white px-2.5 text-[11px] font-semibold text-red-600"
-              >
-                <PhoneOff size={11} className="mr-1" />
-                Decline
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <IncomingCallModal
+        call={incomingCall}
+        onAnswer={joinIncomingCall}
+        onDecline={declineIncomingCall}
+        onExpire={() => {
+          if (incomingCall?.roomName) {
+            resolveIncomingCallAcrossTabs(incomingCall.roomName, "expired");
+          }
+          setIncomingCall(null);
+        }}
+      />
+      <OutgoingCallNotesModal
+        open={Boolean(outgoingCallPrep)}
+        callType={outgoingCallPrep?.callType || "voice"}
+        title={participantName}
+        pending={startingCall}
+        onCancel={cancelOutgoingCall}
+        onStart={(notesConsent) => void confirmOutgoingCall(notesConsent)}
+      />
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
         <div className="flex min-h-full w-full flex-col justify-end">
@@ -468,14 +772,23 @@ function LeadDirectChatPanel({ token, threadId, leadId, messages, messagesQuery,
         callType={callSession.callType}
         connecting={callSession.connecting}
         ringing={callSession.ringing}
-        title="Client conversation"
+        peerConnecting={callSession.peerConnecting}
+        participantStates={callSession.participantStates}
+        transcriptionStatus={callSession.transcriptionStatus}
+        title={participantName}
         onClose={closeCallSession}
+        onConnected={handleCallConnected}
+        onActivateCall={handleCallActivate}
         onRingTimeout={() => {
           toast.info("No answer.");
           closeCallSession();
         }}
         onAnswered={() => {
-          setCallSession((current) => ({ ...current, ringing: false }));
+          setCallSession((current) => ({
+            ...current,
+            ringing: false,
+            peerConnecting: false,
+          }));
         }}
       />
     </div>
@@ -498,6 +811,13 @@ export default function LeadsConversationTab({
   const directThreadId = String(directChat?.thread_id || "").trim();
   const canReplyDirectly = Boolean(directChat?.available && directChat?.can_reply && directThreadId);
   const emptyState = messagesQuery.data?.empty_state || null;
+  const participantName =
+    String(
+      selectedConversation?.contact?.full_name ||
+        selectedConversation?.name ||
+        selectedConversation?.visitor_name ||
+        "",
+    ).trim() || "Client";
 
   useEffect(() => {
     if (!messages.length || messagesQuery.isLoading) return;
@@ -533,6 +853,7 @@ export default function LeadsConversationTab({
               messages={messages}
               messagesQuery={messagesQuery}
               myUserId={myUserId}
+              participantName={participantName}
             />
           ) : (
             <div className="flex h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -95,31 +94,34 @@ export default function FeaturedProfessionalsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "0px" }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-lg hover:border-primary/30"
+              className="group relative flex h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-lg"
             >
               <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-primary/10 to-transparent" />
               
-              <div className="relative">
+              <div className="relative flex h-full w-full flex-col">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="relative h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary/20 to-primary/10 ring-2 ring-primary/20">
-                      {professional.publicProfile?.slug ? (
-                        <Image
-                          src={`${process.env.NEXT_PUBLIC_API_URL}/api/public/${professional.publicProfile.slug}/avatar`}
-                          alt={professional.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
+                      <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-primary">
+                        {professional.name?.charAt(0)?.toUpperCase() || "P"}
+                      </div>
+                      {professional.profile_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={professional.profile_image}
+                          alt={`${professional.name || "Professional"} profile`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
                         />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-primary">
-                          {professional.name?.charAt(0)?.toUpperCase()}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{professional.name}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{professional.role?.replace('_', ' ')}</p>
+                      <p className="text-sm capitalize text-gray-500">
+                        {professional.role?.replaceAll("_", " ")}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -157,22 +159,21 @@ export default function FeaturedProfessionalsSection() {
                   </div>
                 )}
 
-                {professional.publicProfile?.slug ? (
-                  <Link
-                    href={`/${professional.publicProfile.slug}`}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-all group-hover:gap-3"
-                  >
-                    View Profile
-                    <ArrowRight size={14} />
-                  </Link>
-                ) : (
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400"
-                  >
-                    Profile Coming Soon
-                  </button>
-                )}
+                <div className="mt-auto pt-2">
+                  {professional.publicProfile?.slug ? (
+                    <Link
+                      href={`/professional/${encodeURIComponent(professional.publicProfile.slug)}`}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-all group-hover:gap-3"
+                    >
+                      View Profile
+                      <ArrowRight size={14} />
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400">
+                      Profile Coming Soon
+                    </span>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
