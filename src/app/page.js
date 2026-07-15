@@ -14,14 +14,13 @@ export default function Home() {
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-white via-primary/[0.08] to-white">
       <HeroSection />
-      <FeaturedProfessionalsSection />
+      <CEOFeaturesSection />
       <AIAssistantsSection />
       <FeaturesSection />
       <HowItWorksSection />
       <NoBrainerSection />
       <PricingSection />
       <TestimonialsSection />
-      <CEOFeaturesSection />
       <OnboardingSection />
       <PageCta
         compact

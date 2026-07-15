@@ -62,8 +62,26 @@ h6 {
     display: none;
   }
 
+  .press-logo-fade {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+  }
+
   .press-logo-track {
-    animation: press-logo-marquee 70s linear infinite;
+    animation: press-logo-marquee 55s linear infinite;
+    will-change: transform;
   }
 
   .press-logo-track:hover {
@@ -85,7 +103,7 @@ h6 {
   }
 
   to {
-    transform: translateX(calc(-50% - 0.5rem));
+    transform: translateX(-50%);
   }
 }
 
