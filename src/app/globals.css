@@ -80,7 +80,7 @@ h6 {
   }
 
   .press-logo-track {
-    animation: press-logo-marquee 55s linear infinite;
+    animation: press-logo-marquee 30s linear infinite;
     will-change: transform;
   }
 
