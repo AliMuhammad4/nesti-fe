@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useParticipants } from "@livekit/components-react";
 import { Loader2, UserPlus, X } from "lucide-react";
 import { participantNotesChoiceLabel } from "@/lib/callTranscriptionConsent";
 
@@ -13,10 +14,17 @@ export default function CallPeoplePanel({
   onInviteParticipant,
 }) {
   const [invitingUserId, setInvitingUserId] = useState("");
+  const liveParticipants = useParticipants();
   const memberById = new Map(
     (Array.isArray(members) ? members : []).map((member) => [
       String(member?.id || member?._id || ""),
       member,
+    ]),
+  );
+  const liveNameById = new Map(
+    (Array.isArray(liveParticipants) ? liveParticipants : []).map((participant) => [
+      String(participant?.identity || ""),
+      String(participant?.name || "").trim(),
     ]),
   );
   const normalizedParticipantStates = (Array.isArray(participantStates) ? participantStates : [])
@@ -51,6 +59,8 @@ export default function CallPeoplePanel({
           const name =
             member?.full_name ||
             [member?.first_name, member?.last_name].filter(Boolean).join(" ") ||
+            String(participant.full_name || participant.name || "").trim() ||
+            liveNameById.get(participant.user_id) ||
             (participant.user_id === String(myUserId) ? "You" : "Participant");
           const canReinvite =
             isHost &&

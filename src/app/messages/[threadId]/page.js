@@ -14,9 +14,9 @@ import {
   Video,
 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useThreadCallSession } from "@/hooks/prochat/useThreadCallSession";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { getSocketOrigin } from "@/lib/api";
-import { activateCallSessionWhenReady } from "@/lib/callActivation";
 import {
   addProChatGroupMembers,
   deleteProChatGroupThread,
@@ -28,7 +28,6 @@ import {
   requestProChatGroupRejoin,
   resolveProChatGroupRejoinRequest,
   updateProChatGroupThread,
-  createProChatCallToken,
   uploadProChatThreadAttachment,
 } from "@/lib/proChatClient";
 import { clearUnread } from "@/store/proChatSlice";
@@ -44,25 +43,7 @@ import {
   safeUuid,
   validateProChatAttachmentLimits,
 } from "@/components/prochat/thread/proChatThreadUtils";
-import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
-import IncomingCallModal from "@/components/prochat/calls/IncomingCallModal";
-import OutgoingCallNotesModal from "@/components/prochat/calls/OutgoingCallNotesModal";
-import {
-  acquireCallStartLock,
-  claimIncomingCall,
-  clearBrowserCallActive,
-  isBrowserCallBusy,
-  markIncomingCallHandled,
-  markBrowserCallActive,
-  releaseIncomingCallClaim,
-  resolveIncomingCallAcrossTabs,
-} from "@/lib/callNotifications";
-import {
-  consumeCallTranscriptionConsent,
-  rememberCallTranscriptionConsent,
-  resetCallTranscriptionConsent,
-} from "@/lib/callTranscriptionConsent";
-import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
+import ThreadCallModals from "@/components/prochat/calls/ThreadCallModals";
 
 export default function ProMessagesThreadPage() {
   const { isAuthenticated } = useAuthGuard();
@@ -359,43 +340,24 @@ export default function ProMessagesThreadPage() {
   const [liveMessages, setLiveMessages] = useState([]);
   const [otherTyping, setOtherTyping] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [outgoingCallPrep, setOutgoingCallPrep] = useState(null);
-  const [startingCall, setStartingCall] = useState(false);
-  const [callSession, setCallSession] = useState({
-    open: false,
-    token: "",
-    serverUrl: "",
-    roomName: "",
-    callType: "voice",
-    connecting: false,
-    ringing: false,
-    peerConnecting: false,
-    callScope: "direct",
-    isHost: false,
-    participantStates: [],
-    transcriptionStatus: "pending",
-  });
   const socketRef = useRef(null);
-  const autoJoinHandledRef = useRef(false);
-  const callOperationRef = useRef(0);
-  const startCallPendingRef = useRef(false);
-  const callSessionRef = useRef(callSession);
-  const incomingCallRef = useRef(incomingCall);
-  const pendingInviteRef = useRef(null);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const composerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const lastTypingSentAt = useRef(0);
 
-  useEffect(() => {
-    callSessionRef.current = callSession;
-  }, [callSession]);
-
-  useEffect(() => {
-    incomingCallRef.current = incomingCall;
-  }, [incomingCall]);
+  const call = useThreadCallSession({
+    token,
+    threadId,
+    myUserId,
+    socketRef,
+    connected,
+    client: isClientUser,
+    enableMultiparty: true,
+    requireConnectedFlag: false,
+    title: "",
+  });
 
   const messages = useMemo(() => {
     const fromApi = Array.isArray(messagesQuery.data?.items) ? messagesQuery.data.items : [];
@@ -439,39 +401,6 @@ export default function ProMessagesThreadPage() {
   useEffect(() => {
     if (threadId) dispatch(clearUnread({ threadId }));
   }, [dispatch, threadId]);
-
-  useEffect(() => {
-    callOperationRef.current += 1;
-    autoJoinHandledRef.current = false;
-    setIncomingCall(null);
-    setCallSession({
-      open: false,
-      token: "",
-      serverUrl: "",
-      roomName: "",
-      callType: "voice",
-      connecting: false,
-      ringing: false,
-      callScope: "direct",
-      isHost: false,
-      participantStates: [],
-      transcriptionStatus: "pending",
-    });
-    startCallPendingRef.current = false;
-    setStartingCall(false);
-  }, [threadId]);
-
-  useEffect(() => {
-    const onHandledElsewhere = (event) => {
-      const roomName = String(event?.detail?.roomName || "");
-      if (!roomName || String(incomingCallRef.current?.roomName || "") !== roomName) return;
-      callOperationRef.current += 1;
-      setIncomingCall(null);
-    };
-    window.addEventListener("nesti:incoming-call-handled", onHandledElsewhere);
-    return () =>
-      window.removeEventListener("nesti:incoming-call-handled", onHandledElsewhere);
-  }, []);
 
   useEffect(() => {
     if (!isClientUser || !threadId || !isLeadThread) return;
@@ -536,127 +465,30 @@ export default function ProMessagesThreadPage() {
     socket.on("prochat:typing", onTyping);
 
     const onCallInvite = (payload) => {
-      if (!payload || String(payload.thread_id) !== String(threadId)) return;
-      if (myUserId && String(payload.user_id) === String(myUserId)) return;
-      const roomName = String(payload.room_name || `prochat:${threadId}`);
-      const currentIncomingRoom = String(incomingCallRef.current?.roomName || "");
-      if (currentIncomingRoom === roomName) return;
-      if (callSessionRef.current?.open || currentIncomingRoom) {
-        socket.emit("prochat:call_decline", {
-          thread_id: threadId,
-          room_name: roomName,
-          call_type: payload.call_type || "voice",
-        });
-        return;
-      }
-      markIncomingCallHandled(payload.room_name);
-      toast.dismiss(`incoming-call:${String(payload.room_name || "")}`);
-      const callType =
-        String(payload.call_type || "voice").toLowerCase() === "video" ? "video" : "voice";
-      void warmLiveKitHost();
-      void prewarmCallMedia({ video: callType === "video" });
-      setIncomingCall({
-        roomName,
-        callType,
-        callerName: String(payload.sender_name || "Participant"),
-        callScope: payload.call_scope === "multiparty" ? "multiparty" : "direct",
-        participantStates: Array.isArray(payload.participant_states)
-          ? payload.participant_states
-          : [],
-        expiresAt: Date.now() + 85_000,
-      });
+      if (payload?.user_id && String(payload.user_id) === String(myUserId)) return;
+      call.onCallInvite(payload);
     };
     socket.on("prochat:call_invite", onCallInvite);
 
     const onCallDecline = (payload) => {
-      if (!payload || String(payload.thread_id) !== String(threadId)) return;
-      if (myUserId && String(payload.user_id) === String(myUserId)) return;
-      const activeRoom = String(callSessionRef.current?.roomName || "");
-      const incomingRoom = String(incomingCallRef.current?.roomName || "");
-      const eventRoom = String(payload.room_name || "");
-      if (eventRoom !== activeRoom && eventRoom !== incomingRoom) return;
-      toast.info("Call was declined.");
-      callOperationRef.current += 1;
-      clearBrowserCallActive(eventRoom);
-      setIncomingCall(null);
-      setCallSession({
-        open: false,
-        token: "",
-        serverUrl: "",
-        roomName: "",
-        callType: "voice",
-        connecting: false,
-        ringing: false,
-      });
+      if (payload?.user_id && String(payload.user_id) === String(myUserId)) return;
+      call.onCallDecline(payload);
     };
     socket.on("prochat:call_decline", onCallDecline);
 
     const onCallAccepted = (payload) => {
-      if (!payload || String(payload.thread_id) !== String(threadId)) return;
-      const eventRoom = String(payload.room_name || "");
-      setCallSession((current) =>
-        current.open && eventRoom && String(current.roomName || "") === eventRoom
-          ? { ...current, ringing: false, peerConnecting: false }
-          : current,
-      );
+      call.onCallAccepted(payload);
     };
     socket.on("prochat:call_accepted", onCallAccepted);
 
     const onCallParticipant = (payload) => {
-      if (!payload || String(payload.thread_id) !== String(threadId)) return;
-      const eventRoom = String(payload.room_name || "");
-      const activeRoom = String(callSessionRef.current?.roomName || "");
-      const incomingRoom = String(incomingCallRef.current?.roomName || "");
-      if (eventRoom !== activeRoom && eventRoom !== incomingRoom) return;
-      const participantStates = Array.isArray(payload.participant_states)
-        ? payload.participant_states
-        : [];
-      const peerJoined = participantStates.some(
-        (participant) =>
-          String(participant?.user_id || "") !== String(myUserId) &&
-          participant?.status === "joined",
-      );
-      setIncomingCall((current) =>
-        current && String(current.roomName || "") === eventRoom
-          ? { ...current, participantStates }
-          : current,
-      );
-      setCallSession((current) =>
-        current.open && String(current.roomName || "") === eventRoom
-          ? {
-              ...current,
-              callScope: payload.call_scope === "multiparty" ? "multiparty" : current.callScope,
-              participantStates,
-              transcriptionStatus:
-                payload.transcription_status || current.transcriptionStatus,
-              ringing: current.ringing && !peerJoined,
-              peerConnecting: peerJoined ? false : current.peerConnecting,
-            }
-          : current,
-      );
+      call.onCallParticipant(payload);
     };
     socket.on("prochat:call_participant", onCallParticipant);
 
     const onCallEnded = (payload) => {
-      if (!payload || String(payload.thread_id) !== String(threadId)) return;
-      if (myUserId && String(payload.user_id) === String(myUserId)) return;
-      const activeRoom = String(callSessionRef.current?.roomName || "");
-      const incomingRoom = String(incomingCallRef.current?.roomName || "");
-      const eventRoom = String(payload.room_name || "");
-      if (eventRoom !== activeRoom && eventRoom !== incomingRoom) return;
-      setIncomingCall(null);
-      callOperationRef.current += 1;
-      clearBrowserCallActive(eventRoom);
-      resolveIncomingCallAcrossTabs(eventRoom, "ended");
-      setCallSession({
-        open: false,
-        token: "",
-        serverUrl: "",
-        roomName: "",
-        callType: "voice",
-        connecting: false,
-        ringing: false,
-      });
+      if (payload?.user_id && String(payload.user_id) === String(myUserId)) return;
+      call.onCallEnded(payload);
     };
     socket.on("prochat:call_ended", onCallEnded);
 
@@ -667,19 +499,7 @@ export default function ProMessagesThreadPage() {
     });
 
     return () => {
-      const active = callSessionRef.current;
-      if (active?.open && active.roomName && socket.connected) {
-        socket.emit(
-          active.callScope === "multiparty" && !active.isHost
-            ? "prochat:call_leave"
-            : "prochat:call_ended",
-          {
-            thread_id: threadId,
-            room_name: active.roomName,
-            call_type: active.callType || "voice",
-          },
-        );
-      }
+      call.endActiveCall();
       socket.off("prochat:message", onMsg);
       socket.off("prochat:typing", onTyping);
       socket.off("prochat:call_invite", onCallInvite);
@@ -690,7 +510,17 @@ export default function ProMessagesThreadPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, threadId, myUserId]);
+  }, [
+    token,
+    threadId,
+    myUserId,
+    call.onCallInvite,
+    call.onCallDecline,
+    call.onCallAccepted,
+    call.onCallParticipant,
+    call.onCallEnded,
+    call.endActiveCall,
+  ]);
 
   const emitTyping = (isTyping) => {
     const socket = socketRef.current;
@@ -757,384 +587,6 @@ export default function ProMessagesThreadPage() {
       }
       requestAnimationFrame(() => scrollToBottom("smooth"));
     });
-  };
-
-  const emitCallSignal = (eventName, payload) => {
-    const socket = socketRef.current;
-    if (!socket || !socket.connected) {
-      return Promise.resolve({ success: false, message: "Chat is not connected." });
-    }
-    return new Promise((resolve) => {
-      socket.timeout(5000).emit(eventName, payload, (error, ack) => {
-        if (error) {
-          resolve({ success: false, message: "Call signaling timed out." });
-          return;
-        }
-        resolve(ack || { success: false, message: "Call signaling failed." });
-      });
-    });
-  };
-
-  useEffect(() => {
-    const endActiveCall = () => {
-      const active = callSessionRef.current;
-      const socket = socketRef.current;
-      clearBrowserCallActive(active?.roomName);
-      if (!active?.open || !active.roomName || !socket?.connected) return;
-      socket.emit(
-        active.callScope === "multiparty" && !active.isHost
-          ? "prochat:call_leave"
-          : "prochat:call_ended",
-        {
-          thread_id: threadId,
-          room_name: active.roomName,
-          call_type: active.callType || "voice",
-        },
-      );
-    };
-    window.addEventListener("pagehide", endActiveCall);
-    return () => {
-      window.removeEventListener("pagehide", endActiveCall);
-      endActiveCall();
-    };
-  }, [threadId]);
-
-  const openCallSession = async (callType, roomNameHint = "", { ringing = false } = {}) => {
-    if (!token || !threadId) return;
-    const normalizedType =
-      String(callType || "").toLowerCase() === "video" ? "video" : "voice";
-    void warmLiveKitHost();
-    void prewarmCallMedia({ video: normalizedType === "video" });
-    const transcriptionConsent = await consumeCallTranscriptionConsent();
-    if (isBrowserCallBusy(roomNameHint)) {
-      toast.info("Another call is already in progress.");
-      return null;
-    }
-    markBrowserCallActive(roomNameHint);
-    const operationId = ++callOperationRef.current;
-    try {
-      setCallSession((prev) => ({
-        ...prev,
-        open: true,
-        connecting: true,
-        ringing,
-        roomName: roomNameHint,
-        callType: normalizedType,
-        isHost: ringing,
-      }));
-      const response = await createProChatCallToken({
-        token,
-        id: threadId,
-        callType: normalizedType,
-        roomName: roomNameHint,
-        action: ringing ? "start" : "join",
-        client: isClientUser,
-        transcriptionConsent,
-      });
-      if (callOperationRef.current !== operationId) {
-        if (ringing && response?.room_name) {
-          void emitCallSignal("prochat:call_ended", {
-            thread_id: threadId,
-            room_name: response.room_name,
-            call_type: normalizedType,
-          });
-        }
-        clearBrowserCallActive(roomNameHint);
-        return null;
-      }
-      const roomName = String(response?.room_name || roomNameHint || `prochat:${threadId}`);
-      markBrowserCallActive(roomName);
-      setCallSession({
-        open: true,
-        token: String(response?.token || ""),
-        serverUrl: String(response?.url || ""),
-        roomName,
-        callType: normalizedType,
-        connecting: false,
-        ringing,
-        callScope: response?.call_scope === "multiparty" ? "multiparty" : "direct",
-        isHost: ringing,
-        participantStates: Array.isArray(response?.participant_states)
-          ? response.participant_states
-          : [],
-        transcriptionStatus: response?.transcription_status || "pending",
-      });
-      return { roomName };
-    } catch (error) {
-      clearBrowserCallActive(roomNameHint);
-      if (callOperationRef.current !== operationId) return null;
-      setCallSession({
-        open: false,
-        token: "",
-        serverUrl: "",
-        roomName: "",
-        callType: normalizedType,
-        connecting: false,
-        ringing: false,
-      });
-      toast.error(error?.message || "Could not start call");
-      return null;
-    }
-  };
-
-  const startCall = (callType) => {
-    if (
-      startCallPendingRef.current ||
-      callSessionRef.current?.open ||
-      incomingCallRef.current
-    ) {
-      return;
-    }
-    if (!socketRef.current?.connected) {
-      toast.error("Chat is not connected yet. Try again.");
-      return;
-    }
-    resetCallTranscriptionConsent();
-    setOutgoingCallPrep({
-      callType: String(callType || "").toLowerCase() === "video" ? "video" : "voice",
-    });
-  };
-
-  const cancelOutgoingCall = () => {
-    setOutgoingCallPrep(null);
-    resetCallTranscriptionConsent();
-  };
-
-  const confirmOutgoingCall = async (notesConsent) => {
-    const callType = outgoingCallPrep?.callType;
-    if (!callType) return;
-    rememberCallTranscriptionConsent(notesConsent);
-    setOutgoingCallPrep(null);
-    if (
-      startCallPendingRef.current ||
-      callSessionRef.current?.open ||
-      incomingCallRef.current
-    ) {
-      return;
-    }
-    if (!socketRef.current?.connected) {
-      toast.error("Chat is not connected yet. Try again.");
-      return;
-    }
-    startCallPendingRef.current = true;
-    setStartingCall(true);
-    const release = await acquireCallStartLock(threadId);
-    if (!release) {
-      startCallPendingRef.current = false;
-      setStartingCall(false);
-      return;
-    }
-    try {
-      const roomName = `prochat:${threadId}:${safeUuid()}`;
-      const started = await openCallSession(callType, roomName, { ringing: true });
-      if (!started) return;
-      const invite = {
-        thread_id: threadId,
-        room_name: started.roomName,
-        call_type: callType,
-      };
-      pendingInviteRef.current = invite;
-      if (callType === "voice") {
-        pendingInviteRef.current = null;
-        const ack = await emitCallSignal("prochat:call_invite", invite);
-        if (!ack?.success) {
-          clearBrowserCallActive(invite.room_name);
-          void emitCallSignal("prochat:call_ended", invite);
-          setCallSession({
-            open: false,
-            token: "",
-            serverUrl: "",
-            roomName: "",
-            callType: "voice",
-            connecting: false,
-            ringing: false,
-          });
-          toast.error(ack?.message || "Could not notify the other participant.");
-          return;
-        }
-        setCallSession((current) => ({
-          ...current,
-          callScope: ack?.call?.call_scope === "multiparty" ? "multiparty" : current.callScope,
-          participantStates: Array.isArray(ack?.call?.participant_states)
-            ? ack.call.participant_states
-            : current.participantStates,
-        }));
-      }
-      setIncomingCall(null);
-    } finally {
-      release();
-      startCallPendingRef.current = false;
-      setStartingCall(false);
-    }
-  };
-
-  const handleCallConnected = async () => {
-    const invite = pendingInviteRef.current;
-    if (!invite) {
-      return;
-    }
-    pendingInviteRef.current = null;
-    const ack = await emitCallSignal("prochat:call_invite", invite);
-    if (!ack?.success) {
-      clearBrowserCallActive(invite.room_name);
-      void emitCallSignal("prochat:call_ended", {
-        thread_id: invite.thread_id,
-        room_name: invite.room_name,
-        call_type: invite.call_type,
-      });
-      setCallSession({
-        open: false,
-        token: "",
-        serverUrl: "",
-        roomName: "",
-        callType: "voice",
-        connecting: false,
-        ringing: false,
-      });
-      toast.error(ack?.message || "Could not notify the other participant.");
-      return;
-    }
-    setCallSession((current) => ({
-      ...current,
-      callScope: ack?.call?.call_scope === "multiparty" ? "multiparty" : current.callScope,
-      participantStates: Array.isArray(ack?.call?.participant_states)
-        ? ack.call.participant_states
-        : current.participantStates,
-    }));
-  };
-
-  const handleCallActivate = () => {
-    activateCallSessionWhenReady({
-      emit: emitCallSignal,
-      getSession: () => callSessionRef.current,
-      threadId,
-    });
-  };
-
-  const joinIncomingCall = async () => {
-    if (!incomingCall) return;
-    const call = incomingCallRef.current || incomingCall;
-    setIncomingCall(null);
-    setCallSession((previous) => ({
-      ...previous,
-      open: true,
-      connecting: true,
-      ringing: false,
-      roomName: call.roomName,
-      callType: call.callType,
-      callScope: call.callScope || "direct",
-      participantStates: call.participantStates || [],
-      transcriptionStatus: call.transcriptionStatus || "pending",
-    }));
-    const claimed = await claimIncomingCall(call.roomName);
-    if (!claimed) {
-      resetCallTranscriptionConsent();
-      setCallSession({
-        open: false,
-        token: "",
-        serverUrl: "",
-        roomName: "",
-        callType: "voice",
-        connecting: false,
-        ringing: false,
-      });
-      return;
-    }
-    const joined = await openCallSession(call.callType, call.roomName, { ringing: false });
-    if (joined) {
-      resolveIncomingCallAcrossTabs(call.roomName, "answered");
-    } else {
-      releaseIncomingCallClaim(call.roomName);
-      resetCallTranscriptionConsent();
-    }
-  };
-
-  useEffect(() => {
-    if (!token || !threadId || autoJoinHandledRef.current || typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("incoming_call") !== "1") return;
-    autoJoinHandledRef.current = true;
-    const callType = String(params.get("call_type") || "voice").toLowerCase() === "video" ? "video" : "voice";
-    const roomName = String(params.get("room_name") || "").trim();
-    void openCallSession(callType, roomName, { ringing: false }).then((joined) => {
-      if (!joined) {
-        autoJoinHandledRef.current = false;
-        return;
-      }
-      params.delete("incoming_call");
-      params.delete("call_type");
-      params.delete("room_name");
-      const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-      window.history.replaceState({}, "", next);
-    });
-    // This is a one-shot deep-link join.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, threadId]);
-
-  const declineIncomingCall = async () => {
-    if (!incomingCall) return;
-    const ack = await emitCallSignal("prochat:call_decline", {
-      thread_id: threadId,
-      room_name: incomingCall.roomName,
-      call_type: incomingCall.callType,
-    });
-    if (!ack?.success) {
-      toast.error(ack?.message || "Could not decline the call.");
-      return;
-    }
-    resolveIncomingCallAcrossTabs(incomingCall.roomName, "declined");
-    setIncomingCall(null);
-  };
-
-  const closeCallSession = () => {
-    callOperationRef.current += 1;
-    pendingInviteRef.current = null;
-    clearBrowserCallActive(callSession.roomName);
-    const signal =
-      callSession.callScope === "multiparty" && !callSession.isHost
-        ? "prochat:call_leave"
-        : "prochat:call_ended";
-    void emitCallSignal(signal, {
-      thread_id: threadId,
-      room_name: callSession.roomName || `prochat:${threadId}`,
-      call_type: callSession.callType || "voice",
-    }).then((ack) => {
-      if (!ack?.success && ack?.code !== "call_not_found") {
-        toast.warning(ack?.message || "The call closed locally, but the end signal was not confirmed.");
-      }
-    });
-    setCallSession({
-      open: false,
-      token: "",
-      serverUrl: "",
-      roomName: "",
-      callType: "voice",
-      connecting: false,
-      ringing: false,
-    });
-  };
-
-  const inviteCallParticipant = async (targetUserId) => {
-    const active = callSessionRef.current;
-    if (!active?.isHost || active.callScope !== "multiparty") return false;
-    const ack = await emitCallSignal("prochat:call_invite", {
-      thread_id: threadId,
-      room_name: active.roomName,
-      call_type: active.callType,
-      target_user_id: targetUserId,
-    });
-    if (!ack?.success) {
-      toast.error(ack?.message || "Could not invite this participant.");
-      return false;
-    }
-    setCallSession((current) => ({
-      ...current,
-      participantStates: Array.isArray(ack?.call?.participant_states)
-        ? ack.call.participant_states
-        : current.participantStates,
-    }));
-    toast.success("Invitation sent.");
-    return true;
   };
 
   if (!isAuthenticated) return null;
@@ -1221,8 +673,8 @@ export default function ProMessagesThreadPage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => void startCall("voice")}
-                    disabled={startingCall || callSession.open || Boolean(incomingCall)}
+                    onClick={() => void call.startCall("voice")}
+                    disabled={call.startingCall || call.callSession.open || Boolean(call.incomingCall)}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-text-heading transition hover:bg-background-light disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Start voice call"
                     title="Start voice call"
@@ -1231,8 +683,8 @@ export default function ProMessagesThreadPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void startCall("video")}
-                    disabled={startingCall || callSession.open || Boolean(incomingCall)}
+                    onClick={() => void call.startCall("video")}
+                    disabled={call.startingCall || call.callSession.open || Boolean(call.incomingCall)}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-text-heading transition hover:bg-background-light disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Start video call"
                     title="Start video call"
@@ -1269,24 +721,11 @@ export default function ProMessagesThreadPage() {
         </div>
       </div>
 
-      <IncomingCallModal
-        call={incomingCall}
-        onAnswer={joinIncomingCall}
-        onDecline={declineIncomingCall}
-        onExpire={() => {
-          if (incomingCall?.roomName) {
-            resolveIncomingCallAcrossTabs(incomingCall.roomName, "expired");
-          }
-          setIncomingCall(null);
-        }}
-      />
-      <OutgoingCallNotesModal
-        open={Boolean(outgoingCallPrep)}
-        callType={outgoingCallPrep?.callType || "voice"}
+      <ThreadCallModals
+        call={call}
         title={headerTitle}
-        pending={startingCall}
-        onCancel={cancelOutgoingCall}
-        onStart={(notesConsent) => void confirmOutgoingCall(notesConsent)}
+        members={members}
+        myUserId={myUserId}
       />
 
       <div
@@ -1375,37 +814,6 @@ export default function ProMessagesThreadPage() {
         </div>
       </div>
       {settingsModal}
-      <ProChatCallModal
-        open={callSession.open}
-        token={callSession.token}
-        serverUrl={callSession.serverUrl}
-        callType={callSession.callType}
-        connecting={callSession.connecting}
-        ringing={callSession.ringing}
-        peerConnecting={callSession.peerConnecting}
-        callScope={callSession.callScope}
-        isHost={callSession.isHost}
-        participantStates={callSession.participantStates}
-        transcriptionStatus={callSession.transcriptionStatus}
-        members={members}
-        myUserId={myUserId}
-        onInviteParticipant={inviteCallParticipant}
-        title={headerTitle}
-        onClose={closeCallSession}
-        onConnected={handleCallConnected}
-        onActivateCall={handleCallActivate}
-        onRingTimeout={() => {
-          toast.info("No answer.");
-          closeCallSession();
-        }}
-        onAnswered={() => {
-          setCallSession((current) => ({
-            ...current,
-            ringing: false,
-            peerConnecting: false,
-          }));
-        }}
-      />
     </div>
   );
 }

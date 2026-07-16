@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { NotebookPen, X } from "lucide-react";
 
 import {
+  CALL_TRANSCRIPTION_CONSENT_CANCEL_EVENT,
   CALL_TRANSCRIPTION_CONSENT_EVENT,
 } from "@/lib/callTranscriptionConsent";
 
@@ -29,9 +30,14 @@ export default function CallTranscriptionConsentModal() {
       if (typeof resolve !== "function") return;
       setRequest((current) => current || { resolve });
     };
+    const cancel = () => setRequest(null);
 
     window.addEventListener(CALL_TRANSCRIPTION_CONSENT_EVENT, open);
-    return () => window.removeEventListener(CALL_TRANSCRIPTION_CONSENT_EVENT, open);
+    window.addEventListener(CALL_TRANSCRIPTION_CONSENT_CANCEL_EVENT, cancel);
+    return () => {
+      window.removeEventListener(CALL_TRANSCRIPTION_CONSENT_EVENT, open);
+      window.removeEventListener(CALL_TRANSCRIPTION_CONSENT_CANCEL_EVENT, cancel);
+    };
   }, []);
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export default function CallTranscriptionConsentModal() {
           type="button"
           onClick={() => choose(false)}
           className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-          aria-label="Continue without notes"
+          aria-label="Continue without minutes"
         >
           <X size={16} />
         </button>
@@ -104,10 +110,10 @@ export default function CallTranscriptionConsentModal() {
             <NotebookPen size={17} aria-hidden="true" />
           </div>
           <h2 id="call-notes-title" className="pr-7 text-base font-semibold tracking-tight text-slate-900">
-            Allow call notes?
+            Allow minutes of meeting?
           </h2>
           <p id="call-notes-description" className="mt-1.5 text-sm leading-5 text-slate-600">
-            Nesti Notetaker will transcribe your speech and create notes for this call.
+            Nesti will transcribe your speech and create minutes of meeting for this call.
           </p>
         </div>
 
@@ -126,7 +132,7 @@ export default function CallTranscriptionConsentModal() {
               onClick={() => choose(true)}
               className="min-h-10 flex-1 rounded-full bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
             >
-              Allow notes
+              Allow minutes
             </button>
           </div>
         </div>

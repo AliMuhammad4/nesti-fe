@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Camera, CheckCircle2, Loader2, Mic, RefreshCw, Video } from "lucide-react";
+import {
+  getPrewarmedMediaStream,
+  prewarmCallMedia,
+  releasePrewarmedCallMedia,
+} from "@/lib/liveKitCallPrep";
 import { VIDEO_PREVIEW_TIMEOUT_MS } from "./livekitParticipants";
 
 export default function VideoPreview({ title, onStart, onCancel }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const handoffRef = useRef(false);
   const onCancelRef = useRef(onCancel);
   const [previewState, setPreviewState] = useState("loading");
   const [previewError, setPreviewError] = useState("");
@@ -18,22 +23,20 @@ export default function VideoPreview({ title, onStart, onCancel }) {
     onCancelRef.current = onCancel;
   }, [onCancel]);
 
-  const stopPreview = () => {
-    for (const track of streamRef.current?.getTracks?.() || []) track.stop();
-    streamRef.current = null;
+  const detachPreview = () => {
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
   const startPreview = async () => {
-    stopPreview();
+    detachPreview();
     setPreviewState("loading");
     setPreviewError("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      streamRef.current = stream;
+      await prewarmCallMedia({ video: true });
+      const stream = getPrewarmedMediaStream();
+      if (!stream) {
+        throw new Error("preview_unavailable");
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -50,9 +53,14 @@ export default function VideoPreview({ title, onStart, onCancel }) {
   };
 
   useEffect(() => {
+    handoffRef.current = false;
     void startPreview();
-    return stopPreview;
-    // Preview initializes once for this call setup screen.
+    return () => {
+      detachPreview();
+      if (!handoffRef.current) {
+        releasePrewarmedCallMedia();
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,20 +70,20 @@ export default function VideoPreview({ title, onStart, onCancel }) {
       setSecondsRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
     const interval = window.setInterval(update, 250);
     const timeout = window.setTimeout(() => {
-      stopPreview();
+      releasePrewarmedCallMedia();
       onCancelRef.current?.();
     }, VIDEO_PREVIEW_TIMEOUT_MS);
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-    // The deadline is fixed when this preview mounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const beginCall = () => {
     const cameraEnabled = previewState === "ready";
-    stopPreview();
+    handoffRef.current = true;
+    detachPreview();
     onStart?.({ cameraEnabled });
   };
 
@@ -139,7 +147,7 @@ export default function VideoPreview({ title, onStart, onCancel }) {
         <button
           type="button"
           onClick={() => {
-            stopPreview();
+            releasePrewarmedCallMedia();
             onCancel?.();
           }}
           className="h-10 rounded-full border border-white/15 px-5 text-sm font-semibold text-slate-200 hover:bg-white/10"

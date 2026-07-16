@@ -13,7 +13,7 @@ export default function IncomingCallModal({ call, onAnswer, onDecline, onExpire 
   useEffect(() => {
     setAction("");
     setNotesConsent(false);
-  }, [call?.roomName]);
+  }, [call?.roomName, call?.expiresAt, call?.inviteOccurredAt]);
 
   useEffect(() => {
     if (!call?.roomName || action || typeof window === "undefined") return undefined;
@@ -24,7 +24,7 @@ export default function IncomingCallModal({ call, onAnswer, onDecline, onExpire 
       await onExpire?.();
     }, Math.max(0, deadline - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [action, call?.expiresAt, call?.roomName, onDecline, onExpire]);
+  }, [action, call?.expiresAt, call?.inviteOccurredAt, call?.roomName, onDecline, onExpire]);
 
   useEffect(() => {
     if (!call?.roomName || action || typeof window === "undefined") return undefined;
@@ -76,7 +76,7 @@ export default function IncomingCallModal({ call, onAnswer, onDecline, onExpire 
         void audioContext.close();
       }
     };
-  }, [action, call?.roomName]);
+  }, [action, call?.expiresAt, call?.inviteOccurredAt, call?.roomName]);
 
   if (!call || action === "expired" || typeof document === "undefined") return null;
   const isVideo = String(call.callType || "").toLowerCase() === "video";

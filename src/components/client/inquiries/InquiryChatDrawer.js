@@ -3,9 +3,7 @@
 import { createPortal } from "react-dom";
 import { Loader2, MessageSquare, Phone, Video, X } from "lucide-react";
 import { toast } from "react-toastify";
-import IncomingCallModal from "@/components/prochat/calls/IncomingCallModal";
-import OutgoingCallNotesModal from "@/components/prochat/calls/OutgoingCallNotesModal";
-import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
+import ThreadCallModals from "@/components/prochat/calls/ThreadCallModals";
 import ThreadComposer from "@/components/prochat/thread/ThreadComposer";
 import ThreadMessagesList from "@/components/prochat/thread/ThreadMessagesList";
 import { useInquiryConversation } from "@/hooks/prochat/useInquiryConversation";
@@ -20,6 +18,7 @@ export default function InquiryChatDrawer({ item, token, myUserId, onClose }) {
     ? inquirySubject(item, item.property || null, professional)
     : "";
   const conversation = useInquiryConversation({ item, token, myUserId });
+  const callTitle = professional.full_name || title;
 
   if (!item || !conversation.mounted) return null;
 
@@ -90,20 +89,7 @@ export default function InquiryChatDrawer({ item, token, myUserId, onClose }) {
           </div>
         </div>
 
-        <IncomingCallModal
-          call={conversation.incomingCall}
-          onAnswer={conversation.joinIncomingCall}
-          onDecline={conversation.declineIncomingCall}
-          onExpire={conversation.expireIncomingCall}
-        />
-        <OutgoingCallNotesModal
-          open={Boolean(conversation.outgoingCallPrep)}
-          callType={conversation.outgoingCallPrep?.callType || "voice"}
-          title={professional.full_name || title}
-          pending={conversation.startingCall}
-          onCancel={conversation.cancelOutgoingCall}
-          onStart={(notesConsent) => void conversation.confirmOutgoingCall(notesConsent)}
-        />
+        <ThreadCallModals call={conversation} title={callTitle} myUserId={myUserId} />
 
         <div
           ref={conversation.scrollRef}
@@ -171,27 +157,6 @@ export default function InquiryChatDrawer({ item, token, myUserId, onClose }) {
           />
         </div>
       </aside>
-
-      <ProChatCallModal
-        open={conversation.callSession.open}
-        token={conversation.callSession.token}
-        serverUrl={conversation.callSession.serverUrl}
-        callType={conversation.callSession.callType}
-        connecting={conversation.callSession.connecting}
-        ringing={conversation.callSession.ringing}
-        peerConnecting={conversation.callSession.peerConnecting}
-        participantStates={conversation.callSession.participantStates}
-        transcriptionStatus={conversation.callSession.transcriptionStatus}
-        title={professional.full_name || title}
-        onClose={conversation.closeCallSession}
-        onConnected={conversation.handleCallConnected}
-        onActivateCall={conversation.handleCallActivate}
-        onRingTimeout={() => {
-          toast.info("No answer.");
-          conversation.closeCallSession();
-        }}
-        onAnswered={conversation.handleCallAnswered}
-      />
     </div>,
     document.body,
   );

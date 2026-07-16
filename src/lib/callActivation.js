@@ -1,4 +1,5 @@
-const RETRY_DELAYS_MS = [0, 100, 200];
+const RETRY_DELAYS_MS = [0, 100, 200, 400];
+const RETRYABLE_CODES = new Set(["media_not_ready", "signal_timeout", "not_connected"]);
 
 function wait(delayMs) {
   return new Promise((resolve) => window.setTimeout(resolve, delayMs));
@@ -15,7 +16,7 @@ export async function activateCallWithRetry({
     if (!isCurrent()) return { success: false, code: "call_closed" };
     lastResult = await emit("prochat:call_active", payload);
     if (lastResult?.success) return lastResult;
-    if (lastResult?.code !== "media_not_ready") return lastResult;
+    if (!RETRYABLE_CODES.has(String(lastResult?.code || ""))) return lastResult;
   }
   return lastResult || { success: false, code: "media_not_ready" };
 }

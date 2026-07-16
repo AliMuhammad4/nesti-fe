@@ -36,10 +36,23 @@ function dispatchHandled(roomName, action = "handled") {
   );
 }
 
+function handledEntry(action = "handled", at = Date.now()) {
+  return { at: Number(at) || Date.now(), action: String(action || "handled") };
+}
+
+function readHandledEntry(value) {
+  if (value == null) return null;
+  if (typeof value === "number") return handledEntry("handled", value);
+  return handledEntry(value.action, value.at);
+}
+
 function receiveCoordinationMessage(message) {
   if (!message || message.sender === tabId) return;
   if (message.type === "incoming-handled" && message.roomName) {
-    handledRooms.set(String(message.roomName), Number(message.at) || Date.now());
+    handledRooms.set(
+      String(message.roomName),
+      handledEntry(message.action || "handled", message.at),
+    );
     dispatchHandled(String(message.roomName), message.action);
   }
 }
@@ -80,26 +93,27 @@ function publish(message) {
 
 function cleanupHandledRooms() {
   const cutoff = Date.now() - HANDLED_TTL_MS;
-  for (const [roomName, handledAt] of handledRooms.entries()) {
-    if (handledAt < cutoff) handledRooms.delete(roomName);
+  for (const [roomName, value] of handledRooms.entries()) {
+    const entry = readHandledEntry(value);
+    if (!entry || entry.at < cutoff) handledRooms.delete(roomName);
   }
 }
 
-export function markIncomingCallHandled(roomName) {
+export function markIncomingCallHandled(roomName, action = "shown") {
   const normalized = String(roomName || "").trim();
   if (!normalized) return;
   cleanupHandledRooms();
-  handledRooms.set(normalized, Date.now());
+  handledRooms.set(normalized, handledEntry(action));
   if (typeof window !== "undefined") {
     initializeCoordination();
-    dispatchHandled(normalized);
+    dispatchHandled(normalized, action);
   }
 }
 
 export function resolveIncomingCallAcrossTabs(roomName, action = "handled") {
   const normalized = String(roomName || "").trim();
   if (!normalized) return;
-  markIncomingCallHandled(normalized);
+  markIncomingCallHandled(normalized, action);
   publish({ type: "incoming-handled", roomName: normalized, action });
 }
 
@@ -177,25 +191,52 @@ export async function acquireCallStartLock(threadId) {
   };
 }
 
+function readActiveRooms() {
+  const raw = readStored(storageKey("active", "browser"));
+  // Legacy single-room shape → map
+  if (raw?.roomName) {
+    return {
+      [String(raw.roomName)]: {
+        owner: String(raw.owner || ""),
+        updatedAt: Number(raw.updatedAt || 0),
+      },
+    };
+  }
+  if (raw?.rooms && typeof raw.rooms === "object") return { ...raw.rooms };
+  return {};
+}
+
+function writeActiveRooms(rooms) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      storageKey("active", "browser"),
+      JSON.stringify({ rooms, updatedAt: Date.now() }),
+    );
+  } catch {
+    // Component-local session guards remain available without storage.
+  }
+}
+
 export function isBrowserCallBusy(exceptRoomName = "") {
-  const active = readStored(storageKey("active", "browser"));
-  if (!active?.roomName) return false;
-  if (Date.now() - Number(active.updatedAt || 0) >= ACTIVE_CALL_TTL_MS) return false;
-  return String(active.roomName) !== String(exceptRoomName || "");
+  const except = String(exceptRoomName || "").trim();
+  const rooms = readActiveRooms();
+  const now = Date.now();
+  for (const [roomName, meta] of Object.entries(rooms)) {
+    if (roomName === except) continue;
+    if (now - Number(meta?.updatedAt || 0) >= ACTIVE_CALL_TTL_MS) continue;
+    return true;
+  }
+  return false;
 }
 
 export function markBrowserCallActive(roomName) {
   const normalized = String(roomName || "").trim();
   if (!normalized || typeof window === "undefined") return;
   const writeActivity = () => {
-    try {
-      window.localStorage.setItem(
-        storageKey("active", "browser"),
-        JSON.stringify({ owner: tabId, roomName: normalized, updatedAt: Date.now() }),
-      );
-    } catch {
-      // Component-local session guards remain available without storage.
-    }
+    const rooms = readActiveRooms();
+    rooms[normalized] = { owner: tabId, updatedAt: Date.now() };
+    writeActiveRooms(rooms);
   };
   writeActivity();
   if (activeCallHeartbeatRoom === normalized && activeCallHeartbeat) return;
@@ -207,24 +248,59 @@ export function markBrowserCallActive(roomName) {
 export function clearBrowserCallActive(roomName) {
   const normalized = String(roomName || "").trim();
   if (!normalized || typeof window === "undefined") return;
-  const key = storageKey("active", "browser");
-  const active = readStored(key);
   if (activeCallHeartbeatRoom === normalized && activeCallHeartbeat) {
     window.clearInterval(activeCallHeartbeat);
     activeCallHeartbeat = null;
     activeCallHeartbeatRoom = "";
   }
-  if (active?.owner !== tabId || String(active.roomName || "") !== normalized) return;
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // The activity lease expires automatically.
+  const rooms = readActiveRooms();
+  if (!rooms[normalized]) return;
+  // Any tab leaving this room may clear it — needed when multiple accounts
+  // share one browser during multiparty testing.
+  delete rooms[normalized];
+  if (Object.keys(rooms).length) writeActiveRooms(rooms);
+  else {
+    try {
+      window.localStorage.removeItem(storageKey("active", "browser"));
+    } catch {
+      // The activity lease expires automatically.
+    }
   }
 }
 
-export function wasIncomingCallHandled(roomName) {
+const TERMINAL_INCOMING_ACTIONS = new Set([
+  "answered",
+  "declined",
+  "expired",
+  "ended",
+  "left",
+  "handled",
+]);
+
+/**
+ * Returns true if this room should not show another ring UI.
+ * Pass inviteOccurredAt from the invite payload so a later reinvite can ring again.
+ */
+export function wasIncomingCallHandled(roomName, { inviteOccurredAt } = {}) {
   const normalized = String(roomName || "").trim();
   if (!normalized) return false;
   cleanupHandledRooms();
-  return handledRooms.has(normalized);
+  const entry = readHandledEntry(handledRooms.get(normalized));
+  if (!entry) return false;
+  const inviteAt =
+    Date.parse(String(inviteOccurredAt || "")) || Number(inviteOccurredAt) || 0;
+  if (inviteAt > entry.at) {
+    // Fresh invite/reinvite after a prior disposition — allow UI again.
+    handledRooms.delete(normalized);
+    return false;
+  }
+  // "shown" only suppresses duplicate UI for the same wave (other tabs / inbox).
+  // Terminal actions block until a newer invite arrives.
+  return TERMINAL_INCOMING_ACTIONS.has(entry.action) || entry.action === "shown";
+}
+
+export function clearIncomingCallHandled(roomName) {
+  const normalized = String(roomName || "").trim();
+  if (!normalized) return;
+  handledRooms.delete(normalized);
 }

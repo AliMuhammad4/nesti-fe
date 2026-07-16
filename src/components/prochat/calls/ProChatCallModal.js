@@ -6,6 +6,7 @@ import { LiveKitRoom } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { AlertTriangle, Loader2, PhoneCall, PhoneOff, Video, X } from "lucide-react";
 import CallPeoplePanel from "./CallPeoplePanel";
+import LocalMediaBootstrap from "./LocalMediaBootstrap";
 import RemoteDepartureGuard from "./RemoteDepartureGuard";
 import VideoCallView from "./VideoCallView";
 import VideoPreview from "./VideoPreview";
@@ -17,7 +18,9 @@ import { shouldAttemptCallActivation } from "@/lib/callActivation";
 import {
   createCallRoom,
   FAST_CONNECT_OPTIONS,
+  formatLiveKitMediaError,
   prepareCallRoom,
+  releasePrewarmedCallMedia,
   warmLiveKitHost,
 } from "@/lib/liveKitCallPrep";
 
@@ -47,8 +50,10 @@ export default function ProChatCallModal({
   const [videoPreviewConfirmed, setVideoPreviewConfirmed] = useState(false);
   const [initialCameraEnabled, setInitialCameraEnabled] = useState(true);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [connectionPrepared, setConnectionPrepared] = useState(false);
   const disconnectTimerRef = useRef(null);
   const connectionStartedAtRef = useRef(0);
+  const prepareStartedAtRef = useRef(0);
   const room = useMemo(() => (typeof window === "undefined" ? null : createCallRoom()), []);
   const shouldActivateCall =
     typeof onActivateCall === "function" &&
@@ -71,15 +76,36 @@ export default function ProChatCallModal({
 
   useEffect(() => {
     if (!open || !token || !serverUrl || !room) {
+      setConnectionPrepared(false);
       return undefined;
     }
-    connectionStartedAtRef.current = performance.now();
-    void prepareCallRoom(room, serverUrl, token);
-    return undefined;
+
+    let cancelled = false;
+    prepareStartedAtRef.current = performance.now();
+    connectionStartedAtRef.current = 0;
+    setConnectionPrepared(false);
+
+    (async () => {
+      await prepareCallRoom(room, serverUrl, token);
+      if (cancelled) return;
+      if (process.env.NODE_ENV === "development" && prepareStartedAtRef.current) {
+        console.info("[prochat-call] LiveKit prepared", {
+          elapsedMs: Math.round(performance.now() - prepareStartedAtRef.current),
+        });
+      }
+      connectionStartedAtRef.current = performance.now();
+      setConnectionPrepared(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, room, serverUrl, token]);
 
   useEffect(() => {
     if (open) return undefined;
+    setConnectionPrepared(false);
+    releasePrewarmedCallMedia();
     if (room) {
       void room.disconnect(true);
     }
@@ -110,6 +136,7 @@ export default function ProChatCallModal({
   useEffect(
     () => () => {
       clearDisconnectTimer();
+      releasePrewarmedCallMedia();
       if (room) void room.disconnect(true);
     },
     [room],
@@ -124,6 +151,9 @@ export default function ProChatCallModal({
     : undefined;
   const canConnect = Boolean(token && serverUrl && room);
   const showVideoPreview = isVideo && ringing && !videoPreviewConfirmed;
+  const enableLocalVideo = isVideo && initialCameraEnabled;
+  const showPreparing =
+    canConnect && !connectionPrepared && !showVideoPreview;
 
   return createPortal(
     <div
@@ -141,7 +171,7 @@ export default function ProChatCallModal({
               {isVideo ? <Video size={14} /> : <PhoneCall size={14} />}
               {showVideoPreview
                 ? "Camera preview"
-                : connecting
+                : connecting || showPreparing
                   ? "Connecting…"
                   : ringing
                     ? "Calling…"
@@ -173,16 +203,19 @@ export default function ProChatCallModal({
               room={room}
               token={token}
               serverUrl={serverUrl}
-              connect
+              connect={connectionPrepared}
               connectOptions={FAST_CONNECT_OPTIONS}
-              audio
-              video={isVideo && initialCameraEnabled}
+              audio={false}
+              video={false}
               onConnected={() => {
                 clearDisconnectTimer();
                 setCallError("");
                 if (process.env.NODE_ENV === "development" && connectionStartedAtRef.current) {
                   console.info("[prochat-call] LiveKit connected", {
-                    elapsedMs: Math.round(performance.now() - connectionStartedAtRef.current),
+                    connectMs: Math.round(performance.now() - connectionStartedAtRef.current),
+                    prepareToConnectedMs: prepareStartedAtRef.current
+                      ? Math.round(performance.now() - prepareStartedAtRef.current)
+                      : undefined,
                   });
                 }
                 onConnected?.();
@@ -196,7 +229,7 @@ export default function ProChatCallModal({
                 }, 20_000);
               }}
               onError={(error) => {
-                setCallError(error?.message || "Could not connect to the call.");
+                setCallError(formatLiveKitMediaError(error) || "Could not connect to the call.");
               }}
               onMediaDeviceFailure={(_, kind) => {
                 const device =
@@ -211,6 +244,17 @@ export default function ProChatCallModal({
               }}
               className="relative h-full w-full"
             >
+              <LocalMediaBootstrap
+                enabled={connectionPrepared}
+                audio
+                video={enableLocalVideo}
+                onError={(error) => {
+                  setCallError(
+                    formatLiveKitMediaError(error) ||
+                      "Microphone or camera access failed.",
+                  );
+                }}
+              />
               <RemoteDepartureGuard enabled={!isMultiparty} onDeparted={onClose} />
               <CallActivationGate enabled={shouldActivateCall} onActivate={onActivateCall} />
               {isVideo ? (
@@ -219,7 +263,10 @@ export default function ProChatCallModal({
                   onEnd={onClose}
                   onShowPeople={showPeople}
                   onDeviceError={(error) => {
-                    setCallError(error?.message || "Camera or microphone access failed.");
+                    setCallError(
+                      formatLiveKitMediaError(error) ||
+                        "Camera or microphone access failed.",
+                    );
                   }}
                 />
               ) : (
@@ -228,7 +275,9 @@ export default function ProChatCallModal({
                   onEnd={onClose}
                   onShowPeople={showPeople}
                   onDeviceError={(error) => {
-                    setCallError(error?.message || "Microphone access failed.");
+                    setCallError(
+                      formatLiveKitMediaError(error) || "Microphone access failed.",
+                    );
                   }}
                 />
               )}
@@ -255,6 +304,14 @@ export default function ProChatCallModal({
                 <div className="absolute left-1/2 top-4 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-950/95 px-3 py-2 text-xs text-amber-100 shadow-lg">
                   <AlertTriangle size={15} className="mt-0.5 shrink-0" />
                   <span>{callError}</span>
+                </div>
+              ) : null}
+              {showPreparing ? (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/70">
+                  <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90">
+                    <Loader2 size={16} className="animate-spin" />
+                    Connecting call...
+                  </span>
                 </div>
               ) : null}
             </LiveKitRoom>

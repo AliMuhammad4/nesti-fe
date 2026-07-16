@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useParticipants } from "@livekit/components-react";
 import { PhoneCall, PhoneOff, Video } from "lucide-react";
-import { RING_TIMEOUT_MS, humanParticipants } from "./livekitParticipants";
+import {
+  CONNECT_TIMEOUT_MS,
+  RING_TIMEOUT_MS,
+  humanParticipants,
+} from "./livekitParticipants";
 
 export default function WaitingForAnswerOverlay({
   callType,
@@ -38,10 +42,12 @@ export default function WaitingForAnswerOverlay({
   }, [connecting, enabled, remoteHumanCount]);
 
   useEffect(() => {
-    if (!enabled || !waiting || typeof onTimeoutRef.current !== "function") return undefined;
-    const timer = window.setTimeout(() => onTimeoutRef.current?.(), RING_TIMEOUT_MS);
+    if (!waiting || typeof onTimeoutRef.current !== "function") return undefined;
+    const timeoutMs = connecting ? CONNECT_TIMEOUT_MS : enabled ? RING_TIMEOUT_MS : 0;
+    if (!timeoutMs) return undefined;
+    const timer = window.setTimeout(() => onTimeoutRef.current?.(), timeoutMs);
     return () => window.clearTimeout(timer);
-  }, [enabled, waiting]);
+  }, [connecting, enabled, waiting]);
 
   useEffect(() => {
     if (!enabled || !waiting || typeof window === "undefined") return undefined;

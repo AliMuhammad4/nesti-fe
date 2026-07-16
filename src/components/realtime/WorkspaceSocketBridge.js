@@ -9,7 +9,7 @@ import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
 import IncomingCallModal from "@/components/prochat/calls/IncomingCallModal";
 import OutgoingCallNotesModal from "@/components/prochat/calls/OutgoingCallNotesModal";
 import ProChatCallModal from "@/components/prochat/calls/ProChatCallModal";
-import { createProChatCallToken } from "@/lib/proChatClient";
+import { createProChatCallToken, fetchProChatThreadById } from "@/lib/proChatClient";
 import {
   acquireCallStartLock,
   claimIncomingCall,
@@ -20,10 +20,15 @@ import {
   resolveIncomingCallAcrossTabs,
 } from "@/lib/callNotifications";
 import {
+  cancelPendingCallTranscriptionConsent,
   consumeCallTranscriptionConsent,
   rememberCallTranscriptionConsent,
   resetCallTranscriptionConsent,
 } from "@/lib/callTranscriptionConsent";
+import {
+  emitCallSignal as emitSocketCallSignal,
+  isCallEndConfirmed,
+} from "@/lib/callSignal";
 import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
 
 const EMPTY_CALL_SESSION = {
@@ -42,23 +47,41 @@ const EMPTY_CALL_SESSION = {
   callScope: "direct",
   isHost: false,
   participantStates: [],
+  members: [],
   transcriptionStatus: "pending",
   onInviteParticipant: null,
 };
 
+async function loadCallMembers({ token, threadId, client = false }) {
+  try {
+    const detail = await fetchProChatThreadById({ token, id: threadId, client });
+    const members = Array.isArray(detail?.members)
+      ? detail.members
+      : Array.isArray(detail?.thread?.members)
+        ? detail.thread.members
+        : detail?.other_user
+          ? [detail.other_user]
+          : [];
+    return members
+      .map((member) => ({
+        id: String(member?.id || member?._id || ""),
+        full_name:
+          String(member?.full_name || "").trim() ||
+          [member?.first_name, member?.last_name].filter(Boolean).join(" ").trim(),
+        first_name: member?.first_name,
+        last_name: member?.last_name,
+        profile_image: member?.profile_image || null,
+      }))
+      .filter((member) => member.id);
+  } catch {
+    return [];
+  }
+}
+
 function emitCallSignal(socket, event, payload) {
-  return new Promise((resolve) => {
-    if (!socket?.connected) {
-      resolve({ success: false, message: "Realtime calling is reconnecting. Try again." });
-      return;
-    }
-    socket.timeout(5000).emit(event, payload, (error, ack) => {
-      if (error) {
-        resolve({ success: false, message: "The call signal timed out." });
-        return;
-      }
-      resolve(ack || { success: false });
-    });
+  return emitSocketCallSignal(socket, event, payload, {
+    notConnectedMessage: "Realtime calling is reconnecting. Try again.",
+    timeoutMessage: "The call signal timed out.",
   });
 }
 
@@ -133,7 +156,6 @@ export default function WorkspaceSocketBridge({ children }) {
           transcriptionStatus:
             payload.transcription_status || current.transcriptionStatus,
           ringing: current.ringing && !peerJoined,
-          peerConnecting: peerJoined ? false : current.peerConnecting,
         };
       });
     };
@@ -143,7 +165,7 @@ export default function WorkspaceSocketBridge({ children }) {
       if (!roomName) return;
       setCallSession((current) =>
         current.open && String(current.roomName || "") === roomName
-          ? { ...current, ringing: false, peerConnecting: false }
+          ? { ...current, ringing: false, peerConnecting: true }
           : current,
       );
     };
@@ -198,8 +220,13 @@ export default function WorkspaceSocketBridge({ children }) {
   }, [queryClient, token]);
 
   const cancelPendingOutgoingStart = () => {
+    const pending = pendingOutgoingStart;
     setPendingOutgoingStart(null);
     resetCallTranscriptionConsent();
+    cancelPendingCallTranscriptionConsent();
+    if (typeof pending?.request?.onResult === "function") {
+      pending.request.onResult({ success: false, cancelled: true });
+    }
   };
 
   const confirmPendingOutgoingStart = async (notesConsent) => {
@@ -241,22 +268,38 @@ export default function WorkspaceSocketBridge({ children }) {
       title: String(request.title || "Participant"),
       isHost: true,
     });
+    const warmPromise = Promise.all([
+      warmLiveKitHost(),
+      prewarmCallMedia({ video: callType === "video" }),
+    ]);
     try {
-      const response = await createProChatCallToken({
-        token,
-        id: threadId,
-        callType,
-        action: "start",
-        client: Boolean(request.client),
-        transcriptionConsent,
-      });
-      if (outgoingOperationRef.current !== operationId) return;
+      const [response] = await Promise.all([
+        createProChatCallToken({
+          token,
+          id: threadId,
+          callType,
+          action: "start",
+          client: Boolean(request.client),
+          transcriptionConsent,
+        }),
+        warmPromise,
+      ]);
       const roomName = String(response?.room_name || "");
       const payload = {
         thread_id: threadId,
         room_name: roomName,
         call_type: callType,
       };
+      if (outgoingOperationRef.current !== operationId) {
+        if (roomName) {
+          void emitCallSignal(
+            workspaceSocketRef.current,
+            "prochat:call_ended",
+            payload,
+          );
+        }
+        return;
+      }
       let invited = false;
       if (callType === "voice") {
         invited = true;
@@ -281,6 +324,26 @@ export default function WorkspaceSocketBridge({ children }) {
       }
       markBrowserCallActive(roomName);
       endedRoomsRef.current.delete(roomName);
+      const callScope =
+        response?.call_scope === "multiparty" ? "multiparty" : "direct";
+      const members =
+        callScope === "multiparty"
+          ? await loadCallMembers({
+              token,
+              threadId,
+              client: Boolean(request.client),
+            })
+          : [];
+      if (outgoingOperationRef.current !== operationId) {
+        if (roomName) {
+          void emitCallSignal(
+            workspaceSocketRef.current,
+            "prochat:call_ended",
+            payload,
+          );
+        }
+        return;
+      }
       setCallSession({
         open: true,
         token: String(response?.token || ""),
@@ -290,11 +353,12 @@ export default function WorkspaceSocketBridge({ children }) {
         title: String(request.title || "Participant"),
         connecting: false,
         ringing: true,
-        callScope: response?.call_scope === "multiparty" ? "multiparty" : "direct",
+        callScope,
         isHost: true,
         participantStates: Array.isArray(response?.participant_states)
           ? response.participant_states
           : [],
+        members,
         transcriptionStatus: response?.transcription_status || "pending",
         onInviteParticipant: async (targetUserId) => {
           const ack = await emitCallSignal(
@@ -337,9 +401,7 @@ export default function WorkspaceSocketBridge({ children }) {
             workspaceSocketRef.current,
             "prochat:call_ended",
             payload,
-          ).then(
-            (ack) => Boolean(ack?.success || ack?.code === "call_not_found"),
-          ),
+          ).then((ack) => isCallEndConfirmed(ack)),
       });
       queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
       finish({ success: true });
@@ -358,6 +420,7 @@ export default function WorkspaceSocketBridge({ children }) {
     const call = pending?.call;
     if (!call?.threadId || !call?.roomName) return;
     pending.dismiss?.();
+    const isVideo = String(call.callType || "").toLowerCase() === "video";
     setCallSession({
       open: true,
       connecting: true,
@@ -374,38 +437,75 @@ export default function WorkspaceSocketBridge({ children }) {
       onEnd: pending.onEnd,
       onActive: pending.onActive,
     });
-    void warmLiveKitHost();
-    void prewarmCallMedia({
-      video: String(call.callType || "").toLowerCase() === "video",
-    });
+    const operationId = ++answerOperationRef.current;
+    answeringRoomRef.current = call.roomName;
+    const warmPromise = Promise.all([
+      warmLiveKitHost(),
+      prewarmCallMedia({ video: isVideo }),
+    ]);
     const transcriptionConsent = await consumeCallTranscriptionConsent();
+    if (
+      answerOperationRef.current !== operationId ||
+      answeringRoomRef.current !== call.roomName
+    ) {
+      return;
+    }
     const claimed = await claimIncomingCall(call.roomName);
     if (!claimed) {
       resetCallTranscriptionConsent();
       setCallSession(EMPTY_CALL_SESSION);
       return;
     }
-    const operationId = ++answerOperationRef.current;
-    answeringRoomRef.current = call.roomName;
+    if (
+      answerOperationRef.current !== operationId ||
+      answeringRoomRef.current !== call.roomName
+    ) {
+      releaseIncomingCallClaim(call.roomName);
+      return;
+    }
     markBrowserCallActive(call.roomName);
     try {
-      const response = await createProChatCallToken({
-        token,
-        id: call.threadId,
-        callType: call.callType,
-        roomName: call.roomName,
-        action: "join",
-        client: Boolean(call.client),
-        transcriptionConsent,
-      });
+      const [response] = await Promise.all([
+        createProChatCallToken({
+          token,
+          id: call.threadId,
+          callType: call.callType,
+          roomName: call.roomName,
+          action: "join",
+          client: Boolean(call.client),
+          transcriptionConsent,
+        }),
+        warmPromise,
+      ]);
       if (
         answerOperationRef.current !== operationId ||
         answeringRoomRef.current !== call.roomName
       ) {
+        releaseIncomingCallClaim(call.roomName);
+        clearBrowserCallActive(call.roomName);
+        void emitCallSignal(workspaceSocketRef.current, "prochat:call_ended", {
+          thread_id: call.threadId,
+          room_name: call.roomName,
+          call_type: call.callType || "voice",
+        });
         return;
       }
       answeringRoomRef.current = "";
       resolveIncomingCallAcrossTabs(call.roomName, "answered");
+      const callScope = call.callScope === "multiparty" ? "multiparty" : "direct";
+      const members =
+        callScope === "multiparty"
+          ? await loadCallMembers({
+              token,
+              threadId: call.threadId,
+              client: Boolean(call.client),
+            })
+          : [];
+      if (answerOperationRef.current !== operationId) {
+        releaseIncomingCallClaim(call.roomName);
+        clearBrowserCallActive(call.roomName);
+        return;
+      }
       setCallSession({
         open: true,
         token: String(response?.token || ""),
@@ -413,11 +513,14 @@ export default function WorkspaceSocketBridge({ children }) {
         roomName: String(response?.room_name || call.roomName),
         callType: String(response?.call_type || call.callType || "voice"),
         title: call.callerName || "Conversation",
-        callScope: call.callScope === "multiparty" ? "multiparty" : "direct",
+        callScope,
         isHost: false,
         participantStates: Array.isArray(call.participantStates)
           ? call.participantStates
-          : [],
+          : Array.isArray(response?.participant_states)
+            ? response.participant_states
+            : [],
+        members,
         transcriptionStatus: response?.transcription_status || "pending",
         connecting: false,
         onEnd: pending.onEnd,
@@ -437,8 +540,12 @@ export default function WorkspaceSocketBridge({ children }) {
   const closeCall = () => {
     answerOperationRef.current += 1;
     outgoingOperationRef.current += 1;
+    cancelPendingCallTranscriptionConsent();
+    const answeringRoom = answeringRoomRef.current;
     answeringRoomRef.current = "";
     const current = callSessionRef.current;
+    if (answeringRoom) releaseIncomingCallClaim(answeringRoom);
+    if (current.roomName) releaseIncomingCallClaim(current.roomName);
     clearBrowserCallActive(current.roomName);
     setCallSession(EMPTY_CALL_SESSION);
     if (current.roomName) {
@@ -455,6 +562,7 @@ export default function WorkspaceSocketBridge({ children }) {
     if (!endRequest) return;
     void endRequest.then((confirmed) => {
       queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
+      // Only warn on hard failures (e.g. host_only_end). Soft timeouts / already-ended are OK.
       if (!confirmed) {
         toast.warning("The call closed locally, but the end signal was not confirmed.");
       }
@@ -495,6 +603,7 @@ export default function WorkspaceSocketBridge({ children }) {
         callScope={callSession.callScope}
         isHost={callSession.isHost}
         participantStates={callSession.participantStates}
+        members={callSession.members}
         transcriptionStatus={callSession.transcriptionStatus}
         myUserId={myUserId}
         onInviteParticipant={callSession.onInviteParticipant}
@@ -506,7 +615,11 @@ export default function WorkspaceSocketBridge({ children }) {
         }}
         onActivateCall={callSession.onActive || undefined}
         onRingTimeout={() => {
-          toast.info("No answer.");
+          toast.info(
+            callSession.peerConnecting
+              ? "Could not connect the call."
+              : "No answer.",
+          );
           closeCall();
         }}
         onAnswered={() => {

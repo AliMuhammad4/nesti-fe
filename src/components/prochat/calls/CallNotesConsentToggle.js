@@ -26,7 +26,7 @@ export default function CallNotesConsentToggle({
         }
       >
         <NotebookPen size={14} />
-        Call notes
+        Call minutes
       </div>
       <p
         className={
@@ -35,7 +35,7 @@ export default function CallNotesConsentToggle({
             : "mt-1 text-xs leading-5 text-gray-600"
         }
       >
-        Optional. Nesti can transcribe this call and prepare notes afterward.
+        Optional. Nesti can transcribe this call and prepare minutes of meeting afterward.
       </p>
       <div className="mt-3 flex gap-2">
         <button
@@ -52,7 +52,7 @@ export default function CallNotesConsentToggle({
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
           }`}
         >
-          Notes off
+          Minutes off
         </button>
         <button
           type="button"
@@ -68,7 +68,7 @@ export default function CallNotesConsentToggle({
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
           }`}
         >
-          Allow notes
+          Allow minutes
         </button>
       </div>
     </div>

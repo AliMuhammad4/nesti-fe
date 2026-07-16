@@ -464,7 +464,7 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
                 />
               )}
               <NavIconTile Icon={MessageSquare} variant={pathname === '/conversations' ? "active" : "idle"} />
-              <span className="min-w-0 truncate">Messages</span>
+              <span className="min-w-0 truncate">Conversations</span>
             </Link>
           </div>
         </div>

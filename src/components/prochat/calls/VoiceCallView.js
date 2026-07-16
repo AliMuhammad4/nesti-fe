@@ -7,7 +7,12 @@ import {
 } from "@livekit/components-react";
 import { PhoneOff, UserPlus } from "lucide-react";
 import LiveCallStatus from "./LiveCallStatus";
-import { humanParticipants, participantDisplayName } from "./livekitParticipants";
+import {
+  humanParticipants,
+  participantDisplayName,
+  participantInitials,
+  participantProfileImage,
+} from "./livekitParticipants";
 
 export default function VoiceCallView({ endLabel = "End call", onDeviceError, onEnd, onShowPeople }) {
   const participants = useParticipants();
@@ -20,16 +25,22 @@ export default function VoiceCallView({ endLabel = "End call", onDeviceError, on
       <div className="flex flex-1 flex-wrap items-center justify-center gap-10">
         {humans.map((participant) => {
           const name = participantDisplayName(participant);
-          const initials = name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0]?.toUpperCase())
-            .join("");
+          const initials = participantInitials(participant);
+          const profileImage = participantProfileImage(participant);
           return (
             <div key={participant.identity} className="flex w-40 flex-col items-center gap-3 text-center">
-              <div className="grid h-28 w-28 place-items-center rounded-full border border-white/15 bg-gradient-to-b from-white/10 to-white/5 text-2xl font-semibold tracking-wide text-white shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
-                {initials || "P"}
+              <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-white/15 bg-gradient-to-b from-white/10 to-white/5 text-2xl font-semibold tracking-wide text-white shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+                {profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profileImage}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-white">

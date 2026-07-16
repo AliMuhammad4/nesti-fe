@@ -40,7 +40,9 @@ export default function OutgoingCallNotesModal({
         <h2 id="outgoing-call-notes-title" className="mt-2 truncate text-xl font-bold text-white">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-slate-400">Choose your notes preference before calling.</p>
+        <p className="mt-1 text-sm text-slate-400">
+          Choose your minutes of meeting preference before calling.
+        </p>
 
         <div className="mt-5">
           <CallNotesConsentToggle
