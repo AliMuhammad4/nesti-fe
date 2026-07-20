@@ -1,5 +1,6 @@
 const DEFAULT_TIMEOUT_MS = 12_000;
 const DEFAULT_RETRIES = 2;
+const END_SIGNAL_RETRIES = 4;
 
 /** Server codes that mean the call is already over / end is safe to treat as done. */
 const END_CONFIRMED_CODES = new Set([
@@ -17,10 +18,10 @@ export function isCallEndConfirmed(ack) {
   if (!ack) return false;
   if (ack.success) return true;
   const code = String(ack.code || "").trim();
-  if (END_CONFIRMED_CODES.has(code)) return true;
-  // Local UI already closed; a lost ack after retries is usually not actionable.
-  if (code === "signal_timeout" || code === "not_connected") return true;
-  return false;
+  // Only treat server-side terminal codes as confirmed. Timeouts / disconnects
+  // must remain unconfirmed so the UI can retry or warn instead of silently
+  // leaving the server call live.
+  return END_CONFIRMED_CODES.has(code);
 }
 
 /**
@@ -95,4 +96,14 @@ export async function emitCallSignal(
   }
 
   return last;
+}
+
+/** Extra retries for hangup / leave so the server is less likely to stay live. */
+export async function emitCallEndSignal(socket, eventName, payload, options = {}) {
+  return emitCallSignal(socket, eventName, payload, {
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    retries: options.retries ?? END_SIGNAL_RETRIES,
+    notConnectedMessage: options.notConnectedMessage ?? "Chat is not connected.",
+    timeoutMessage: options.timeoutMessage ?? "Call end signaling timed out.",
+  });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store";
@@ -28,24 +28,7 @@ export default function ClientProgressPage() {
     setHydrated(true);
   }, []);
 
-  // Handle authentication and role checks
-  useEffect(() => {
-    if (!hydrated) return;
-    
-    if (!token) {
-      router.push('/log-in');
-      return;
-    }
-    
-    if (user?.role && user.role !== 'client') {
-      router.push('/dashboard');
-      return;
-    }
-    
-    fetchProfile();
-  }, [hydrated, token, user?.role]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/profile/me`, {
@@ -66,7 +49,24 @@ export default function ClientProgressPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  // Handle authentication and role checks
+  useEffect(() => {
+    if (!hydrated) return;
+    
+    if (!token) {
+      router.push('/log-in');
+      return;
+    }
+    
+    if (user?.role && user.role !== 'client') {
+      router.push('/dashboard');
+      return;
+    }
+    
+    fetchProfile();
+  }, [hydrated, token, user?.role, router, fetchProfile]);
 
   if (loading) {
     return (

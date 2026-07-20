@@ -18,17 +18,18 @@ import { createProChatCallToken } from "@/lib/proChatClient";
 import {
   cancelPendingCallTranscriptionConsent,
   consumeCallTranscriptionConsent,
-  rememberCallTranscriptionConsent,
+  takeCallTranscriptionConsent,
   resetCallTranscriptionConsent,
 } from "@/lib/callTranscriptionConsent";
 import { activateCallSessionWhenReady } from "@/lib/callActivation";
 import {
   emitCallSignal as emitSocketCallSignal,
+  emitCallEndSignal,
   isCallEndConfirmed,
 } from "@/lib/callSignal";
 import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
 
-export function emptyCallSession(callType = "voice", { multiparty = false } = {}) {
+export function emptyCallSession(callType = "voice") {
   return {
     open: false,
     token: "",
@@ -42,7 +43,8 @@ export function emptyCallSession(callType = "voice", { multiparty = false } = {}
     isHost: false,
     participantStates: [],
     transcriptionStatus: "pending",
-    ...(multiparty ? {} : {}),
+    callId: "",
+    transcriptionConsent: false,
   };
 }
 
@@ -70,7 +72,7 @@ export function useThreadCallSession({
   const [outgoingCallPrep, setOutgoingCallPrep] = useState(null);
   const [startingCall, setStartingCall] = useState(false);
   const [callSession, setCallSession] = useState(() =>
-    emptyCallSession("voice", { multiparty: enableMultiparty }),
+    emptyCallSession("voice"),
   );
   const callSessionRef = useRef(callSession);
   const incomingCallRef = useRef(incomingCall);
@@ -88,7 +90,7 @@ export function useThreadCallSession({
     autoJoinHandledRef.current = false;
     setIncomingCall(null);
     setOutgoingCallPrep(null);
-    setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+    setCallSession(emptyCallSession("voice"));
     startCallPendingRef.current = false;
     setStartingCall(false);
     return () => {
@@ -117,6 +119,11 @@ export function useThreadCallSession({
 
   const emitCallSignal = useCallback(
     (eventName, payload) => emitSocketCallSignal(socketRef.current, eventName, payload),
+    [socketRef],
+  );
+
+  const emitCallEnd = useCallback(
+    (eventName, payload) => emitCallEndSignal(socketRef.current, eventName, payload),
     [socketRef],
   );
 
@@ -166,7 +173,11 @@ export function useThreadCallSession({
   }, [connected, requireConnectedFlag, socketRef]);
 
   const openCallSession = useCallback(
-    async (callType, roomNameHint = "", { ringing = false } = {}) => {
+    async (
+      callType,
+      roomNameHint = "",
+      { ringing = false, transcriptionConsent: consentOverride } = {},
+    ) => {
       if (!token || !threadId) return null;
       const normalizedType =
         String(callType || "").toLowerCase() === "video" ? "video" : "voice";
@@ -175,7 +186,10 @@ export function useThreadCallSession({
         warmLiveKitHost(),
         prewarmCallMedia({ video: normalizedType === "video" }),
       ]);
-      const transcriptionConsent = await consumeCallTranscriptionConsent();
+      const transcriptionConsent =
+        typeof consentOverride === "boolean"
+          ? consentOverride
+          : await consumeCallTranscriptionConsent();
       if (callOperationRef.current !== operationId) {
         return null;
       }
@@ -215,6 +229,7 @@ export function useThreadCallSession({
             });
           }
           clearBrowserCallActive(roomNameHint);
+          setCallSession(emptyCallSession(normalizedType));
           return null;
         }
         const roomName = String(
@@ -239,12 +254,14 @@ export function useThreadCallSession({
             ? response.participant_states
             : [],
           transcriptionStatus: response?.transcription_status || "pending",
+          callId: String(response?.call_id || ""),
+          transcriptionConsent: response?.transcription_consent === true,
         });
         return { roomName };
       } catch (error) {
         clearBrowserCallActive(roomNameHint);
         if (callOperationRef.current !== operationId) return null;
-        setCallSession(emptyCallSession(normalizedType, { multiparty: enableMultiparty }));
+        setCallSession(emptyCallSession(normalizedType));
         toast.error(error?.message || "Could not start call");
         return null;
       }
@@ -275,7 +292,6 @@ export function useThreadCallSession({
 
   const cancelOutgoingCall = useCallback(() => {
     setOutgoingCallPrep(null);
-    resetCallTranscriptionConsent();
     cancelPendingCallTranscriptionConsent();
     startCallPendingRef.current = false;
     setStartingCall(false);
@@ -285,7 +301,7 @@ export function useThreadCallSession({
     async (notesConsent) => {
       const callType = outgoingCallPrep?.callType;
       if (!callType) return;
-      rememberCallTranscriptionConsent(notesConsent);
+      const transcriptionConsent = takeCallTranscriptionConsent(notesConsent);
       setOutgoingCallPrep(null);
       if (
         startCallPendingRef.current ||
@@ -308,7 +324,10 @@ export function useThreadCallSession({
       }
       try {
         const roomName = `prochat:${threadId}:${safeUuid()}`;
-        const started = await openCallSession(callType, roomName, { ringing: true });
+        const started = await openCallSession(callType, roomName, {
+          ringing: true,
+          transcriptionConsent,
+        });
         if (!started) return;
         const invite = {
           thread_id: threadId,
@@ -322,18 +341,23 @@ export function useThreadCallSession({
           if (!ack?.success) {
             clearBrowserCallActive(invite.room_name);
             void emitCallSignal("prochat:call_ended", invite);
-            setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+            setCallSession(emptyCallSession("voice"));
             toast.error(ack?.message || "Could not notify the other participant.");
             return;
           }
-          if (enableMultiparty && ack?.call) {
+          if (ack?.call) {
             setCallSession((current) => ({
               ...current,
               callScope:
-                ack.call.call_scope === "multiparty" ? "multiparty" : current.callScope,
+                enableMultiparty && ack.call.call_scope === "multiparty"
+                  ? "multiparty"
+                  : current.callScope,
               participantStates: Array.isArray(ack.call.participant_states)
                 ? ack.call.participant_states
                 : current.participantStates,
+              callId: String(ack.call.call_id || current.callId || ""),
+              transcriptionStatus:
+                ack.call.transcription_status || current.transcriptionStatus,
             }));
           }
         }
@@ -366,18 +390,23 @@ export function useThreadCallSession({
         room_name: invite.room_name,
         call_type: invite.call_type,
       });
-      setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+      setCallSession(emptyCallSession("voice"));
       toast.error(ack?.message || "Could not notify the other participant.");
       return;
     }
-    if (enableMultiparty && ack?.call) {
+    if (ack?.call) {
       setCallSession((current) => ({
         ...current,
         callScope:
-          ack.call.call_scope === "multiparty" ? "multiparty" : current.callScope,
+          enableMultiparty && ack.call.call_scope === "multiparty"
+            ? "multiparty"
+            : current.callScope,
         participantStates: Array.isArray(ack.call.participant_states)
           ? ack.call.participant_states
           : current.participantStates,
+        callId: String(ack.call.call_id || current.callId || ""),
+        transcriptionStatus:
+          ack.call.transcription_status || current.transcriptionStatus,
       }));
     }
   }, [emitCallSignal, enableMultiparty]);
@@ -387,12 +416,27 @@ export function useThreadCallSession({
       emit: emitCallSignal,
       getSession: () => callSessionRef.current,
       threadId,
+      onFailure: (result) => {
+        if (result?.code === "call_closed") return;
+        toast.warning(
+          result?.message ||
+            "Could not mark the call active yet. Still connecting…",
+        );
+      },
     });
   }, [emitCallSignal, threadId]);
 
-  const joinIncomingCall = useCallback(async () => {
+  const joinIncomingCall = useCallback(async (notesConsent) => {
     const call = incomingCallRef.current;
     if (!call) return;
+    // Resolve consent before the connecting UI so the policy modal never stacks on it.
+    const transcriptionConsent =
+      typeof notesConsent === "boolean"
+        ? takeCallTranscriptionConsent(notesConsent)
+        : await consumeCallTranscriptionConsent();
+    if (incomingCallRef.current?.roomName !== call.roomName) {
+      return;
+    }
     setIncomingCall(null);
     setCallSession((previous) => ({
       ...previous,
@@ -405,23 +449,24 @@ export function useThreadCallSession({
       isHost: false,
       participantStates: call.participantStates || [],
       transcriptionStatus: call.transcriptionStatus || "pending",
+      callId: String(call.callId || ""),
     }));
     const claimed = await claimIncomingCall(call.roomName);
     if (!claimed) {
-      resetCallTranscriptionConsent();
-      setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+      setCallSession(emptyCallSession("voice"));
       return;
     }
     const joined = await openCallSession(call.callType, call.roomName, {
       ringing: false,
+      transcriptionConsent,
     });
     if (joined) {
       resolveIncomingCallAcrossTabs(call.roomName, "answered");
     } else {
       releaseIncomingCallClaim(call.roomName);
-      resetCallTranscriptionConsent();
+      setCallSession(emptyCallSession("voice"));
     }
-  }, [enableMultiparty, openCallSession]);
+  }, [openCallSession]);
 
   const declineIncomingCall = useCallback(async () => {
     const call = incomingCallRef.current;
@@ -454,10 +499,10 @@ export function useThreadCallSession({
     const active = callSessionRef.current;
     const roomName = String(active.roomName || "").trim();
     clearBrowserCallActive(roomName);
-    setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+    setCallSession(emptyCallSession("voice"));
     if (!roomName || endingRoomsRef.current.has(roomName)) return;
     endingRoomsRef.current.add(roomName);
-    void emitCallSignal(endSignalFor(active), {
+    void emitCallEnd(endSignalFor(active), {
       thread_id: threadId,
       room_name: roomName,
       call_type: active.callType || "voice",
@@ -465,12 +510,20 @@ export function useThreadCallSession({
       // Keep the set entry briefly so pagehide / Strict Mode cleanup don't double-end.
       window.setTimeout(() => endingRoomsRef.current.delete(roomName), 8_000);
       if (isCallEndConfirmed(ack)) return;
-      toast.warning(
-        ack?.message ||
-          "The call closed locally, but the end signal was not confirmed.",
-      );
+      // One more delayed retry if the ack was only a timeout/disconnect.
+      void emitCallEnd(endSignalFor(active), {
+        thread_id: threadId,
+        room_name: roomName,
+        call_type: active.callType || "voice",
+      }).then((retryAck) => {
+        if (isCallEndConfirmed(retryAck)) return;
+        toast.warning(
+          retryAck?.message ||
+            "The call closed locally, but the end signal was not confirmed.",
+        );
+      });
     });
-  }, [emitCallSignal, enableMultiparty, endSignalFor, threadId]);
+  }, [emitCallEnd, endSignalFor, threadId]);
 
   const inviteCallParticipant = useCallback(
     async (targetUserId) => {
@@ -541,6 +594,7 @@ export function useThreadCallSession({
           ? payload.participant_states
           : [],
         transcriptionStatus: payload.transcription_status || "pending",
+        callId: String(payload.call_id || ""),
         inviteOccurredAt: payload.occurred_at || new Date().toISOString(),
         expiresAt: Date.now() + 85_000,
       };
@@ -592,6 +646,7 @@ export function useThreadCallSession({
               participantStates,
               transcriptionStatus:
                 payload.transcription_status || current.transcriptionStatus,
+              callId: String(payload.call_id || current.callId || ""),
             }
           : current,
       );
@@ -606,6 +661,7 @@ export function useThreadCallSession({
               participantStates,
               transcriptionStatus:
                 payload.transcription_status || current.transcriptionStatus,
+              callId: String(payload.call_id || current.callId || ""),
               ringing: current.ringing && !peerJoined,
             }
           : current,
@@ -626,9 +682,9 @@ export function useThreadCallSession({
       resetCallTranscriptionConsent();
       clearBrowserCallActive(eventRoom);
       setIncomingCall(null);
-      setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+      setCallSession(emptyCallSession("voice"));
     },
-    [enableMultiparty, threadId],
+    [threadId],
   );
 
   const onCallEnded = useCallback(
@@ -643,9 +699,9 @@ export function useThreadCallSession({
       resetCallTranscriptionConsent();
       clearBrowserCallActive(eventRoom);
       resolveIncomingCallAcrossTabs(eventRoom, "ended");
-      setCallSession(emptyCallSession("voice", { multiparty: enableMultiparty }));
+      setCallSession(emptyCallSession("voice"));
     },
-    [enableMultiparty, threadId],
+    [threadId],
   );
 
   useEffect(() => {
@@ -682,6 +738,7 @@ export function useThreadCallSession({
 
   return {
     title,
+    client: Boolean(client),
     incomingCall,
     outgoingCallPrep,
     callSession,

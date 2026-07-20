@@ -6,7 +6,7 @@ import { ConnectionState } from "livekit-client";
 
 /**
  * Marks the call active as soon as this client connects to LiveKit.
- * Backend trusts callee activation during connecting state.
+ * Direct callees still require their own LiveKit presence (min 1 human).
  */
 export default function CallActivationGate({ enabled, onActivate }) {
   const connectionState = useConnectionState();

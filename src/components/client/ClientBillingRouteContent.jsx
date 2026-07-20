@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store";
@@ -30,6 +30,50 @@ export default function ClientBillingRouteContent({ canonicalPath, mode = "billi
     setHasCheckoutReturn(readCheckoutReturnFromUrl());
   }, []);
 
+  const fetchSubscription = useCallback(async (refreshFromStripe = false) => {
+    try {
+      setLoading(true);
+      const refreshQuery = refreshFromStripe ? "?refresh=1" : "";
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/me${refreshQuery}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setSubscription(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      toast.error("Failed to load subscription data");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const fetchInvoices = useCallback(async () => {
+    try {
+      setInvoicesLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/invoices`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInvoices(Array.isArray(data.data) ? data.data : []);
+      }
+    } catch (error) {
+      console.error("Error fetching subscription invoices:", error);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!hydrated) return;
 
@@ -53,51 +97,16 @@ export default function ClientBillingRouteContent({ canonicalPath, mode = "billi
     };
 
     loadData();
-  }, [hydrated, token, user?.role, hasCheckoutReturn, canonicalPath, router]);
-
-  const fetchSubscription = async (refreshFromStripe = false) => {
-    try {
-      setLoading(true);
-      const refreshQuery = refreshFromStripe ? "?refresh=1" : "";
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/me${refreshQuery}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      if (data.success) {
-        setSubscription(data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching subscription:", error);
-      toast.error("Failed to load subscription data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchInvoices = async () => {
-    try {
-      setInvoicesLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/client/subscription/invoices`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setInvoices(Array.isArray(data.data) ? data.data : []);
-      }
-    } catch (error) {
-      console.error("Error fetching subscription invoices:", error);
-    } finally {
-      setInvoicesLoading(false);
-    }
-  };
+  }, [
+    hydrated,
+    token,
+    user?.role,
+    hasCheckoutReturn,
+    canonicalPath,
+    router,
+    fetchSubscription,
+    fetchInvoices,
+  ]);
 
   if (loading) {
     return (

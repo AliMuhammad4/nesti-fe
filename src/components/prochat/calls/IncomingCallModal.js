@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Phone, PhoneOff, Video } from "lucide-react";
-import { rememberCallTranscriptionConsent } from "@/lib/callTranscriptionConsent";
 import CallNotesConsentToggle from "./CallNotesConsentToggle";
 
 export default function IncomingCallModal({ call, onAnswer, onDecline, onExpire }) {
@@ -132,8 +131,7 @@ export default function IncomingCallModal({ call, onAnswer, onDecline, onExpire 
             disabled={Boolean(action)}
             onClick={async () => {
               setAction("answer");
-              rememberCallTranscriptionConsent(notesConsent);
-              await onAnswer?.();
+              await onAnswer?.(notesConsent);
               setAction("");
             }}
             className="flex flex-col items-center gap-2 text-xs font-semibold text-slate-200"

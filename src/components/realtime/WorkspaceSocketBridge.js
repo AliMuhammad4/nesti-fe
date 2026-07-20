@@ -22,11 +22,12 @@ import {
 import {
   cancelPendingCallTranscriptionConsent,
   consumeCallTranscriptionConsent,
-  rememberCallTranscriptionConsent,
+  takeCallTranscriptionConsent,
   resetCallTranscriptionConsent,
 } from "@/lib/callTranscriptionConsent";
 import {
   emitCallSignal as emitSocketCallSignal,
+  emitCallEndSignal,
   isCallEndConfirmed,
 } from "@/lib/callSignal";
 import { prewarmCallMedia, warmLiveKitHost } from "@/lib/liveKitCallPrep";
@@ -49,6 +50,9 @@ const EMPTY_CALL_SESSION = {
   participantStates: [],
   members: [],
   transcriptionStatus: "pending",
+  callId: "",
+  transcriptionConsent: false,
+  client: false,
   onInviteParticipant: null,
 };
 
@@ -83,6 +87,20 @@ function emitCallSignal(socket, event, payload) {
     notConnectedMessage: "Realtime calling is reconnecting. Try again.",
     timeoutMessage: "The call signal timed out.",
   });
+}
+
+function emitCallEnd(socket, event, payload) {
+  return emitCallEndSignal(socket, event, payload, {
+    notConnectedMessage: "Realtime calling is reconnecting. Try again.",
+    timeoutMessage: "The call end signal timed out.",
+  });
+}
+
+async function confirmCallEnd(socket, event, payload) {
+  const ack = await emitCallEnd(socket, event, payload);
+  if (isCallEndConfirmed(ack)) return true;
+  const retryAck = await emitCallEnd(socket, event, payload);
+  return isCallEndConfirmed(retryAck);
 }
 
 export default function WorkspaceSocketBridge({ children }) {
@@ -222,7 +240,6 @@ export default function WorkspaceSocketBridge({ children }) {
   const cancelPendingOutgoingStart = () => {
     const pending = pendingOutgoingStart;
     setPendingOutgoingStart(null);
-    resetCallTranscriptionConsent();
     cancelPendingCallTranscriptionConsent();
     if (typeof pending?.request?.onResult === "function") {
       pending.request.onResult({ success: false, cancelled: true });
@@ -240,9 +257,8 @@ export default function WorkspaceSocketBridge({ children }) {
         toast.error(result?.message || "Could not start the call.");
       }
     };
-    rememberCallTranscriptionConsent(notesConsent);
+    const transcriptionConsent = takeCallTranscriptionConsent(notesConsent);
     setPendingOutgoingStart(null);
-    const transcriptionConsent = await consumeCallTranscriptionConsent();
     if (
       callSessionRef.current.open ||
       incomingCallRef.current ||
@@ -298,6 +314,7 @@ export default function WorkspaceSocketBridge({ children }) {
             payload,
           );
         }
+        setCallSession(EMPTY_CALL_SESSION);
         return;
       }
       let invited = false;
@@ -342,6 +359,8 @@ export default function WorkspaceSocketBridge({ children }) {
             payload,
           );
         }
+        clearBrowserCallActive(roomName);
+        setCallSession(EMPTY_CALL_SESSION);
         return;
       }
       setCallSession({
@@ -360,6 +379,9 @@ export default function WorkspaceSocketBridge({ children }) {
           : [],
         members,
         transcriptionStatus: response?.transcription_status || "pending",
+        callId: String(response?.call_id || ""),
+        transcriptionConsent: response?.transcription_consent === true,
+        client: Boolean(request.client),
         onInviteParticipant: async (targetUserId) => {
           const ack = await emitCallSignal(
             workspaceSocketRef.current,
@@ -378,6 +400,7 @@ export default function WorkspaceSocketBridge({ children }) {
             participantStates: Array.isArray(ack?.call?.participant_states)
               ? ack.call.participant_states
               : current.participantStates,
+            callId: String(ack?.call?.call_id || current.callId || ""),
           }));
           toast.success("Invitation sent.");
           return true;
@@ -397,11 +420,11 @@ export default function WorkspaceSocketBridge({ children }) {
           }
         },
         onEnd: () =>
-          emitCallSignal(
+          confirmCallEnd(
             workspaceSocketRef.current,
             "prochat:call_ended",
             payload,
-          ).then((ack) => isCallEndConfirmed(ack)),
+          ),
       });
       queryClient.invalidateQueries({ queryKey: ["prochat-call-records"] });
       finish({ success: true });
@@ -415,12 +438,25 @@ export default function WorkspaceSocketBridge({ children }) {
     }
   };
 
-  const answerIncomingCall = async () => {
+  const answerIncomingCall = async (notesConsent) => {
     const pending = incomingCall;
     const call = pending?.call;
     if (!call?.threadId || !call?.roomName) return;
     pending.dismiss?.();
     const isVideo = String(call.callType || "").toLowerCase() === "video";
+    const operationId = ++answerOperationRef.current;
+    answeringRoomRef.current = call.roomName;
+    // Resolve consent before connecting UI so the policy modal never stacks on it.
+    const transcriptionConsent =
+      typeof notesConsent === "boolean"
+        ? takeCallTranscriptionConsent(notesConsent)
+        : await consumeCallTranscriptionConsent();
+    if (
+      answerOperationRef.current !== operationId ||
+      answeringRoomRef.current !== call.roomName
+    ) {
+      return;
+    }
     setCallSession({
       open: true,
       connecting: true,
@@ -434,25 +470,17 @@ export default function WorkspaceSocketBridge({ children }) {
       isHost: false,
       participantStates: Array.isArray(call.participantStates) ? call.participantStates : [],
       transcriptionStatus: call.transcriptionStatus || "pending",
+      callId: String(call.callId || ""),
+      client: Boolean(call.client),
       onEnd: pending.onEnd,
       onActive: pending.onActive,
     });
-    const operationId = ++answerOperationRef.current;
-    answeringRoomRef.current = call.roomName;
     const warmPromise = Promise.all([
       warmLiveKitHost(),
       prewarmCallMedia({ video: isVideo }),
     ]);
-    const transcriptionConsent = await consumeCallTranscriptionConsent();
-    if (
-      answerOperationRef.current !== operationId ||
-      answeringRoomRef.current !== call.roomName
-    ) {
-      return;
-    }
     const claimed = await claimIncomingCall(call.roomName);
     if (!claimed) {
-      resetCallTranscriptionConsent();
       setCallSession(EMPTY_CALL_SESSION);
       return;
     }
@@ -461,6 +489,7 @@ export default function WorkspaceSocketBridge({ children }) {
       answeringRoomRef.current !== call.roomName
     ) {
       releaseIncomingCallClaim(call.roomName);
+      setCallSession(EMPTY_CALL_SESSION);
       return;
     }
     markBrowserCallActive(call.roomName);
@@ -483,11 +512,12 @@ export default function WorkspaceSocketBridge({ children }) {
       ) {
         releaseIncomingCallClaim(call.roomName);
         clearBrowserCallActive(call.roomName);
-        void emitCallSignal(workspaceSocketRef.current, "prochat:call_ended", {
+        void emitCallEnd(workspaceSocketRef.current, "prochat:call_ended", {
           thread_id: call.threadId,
           room_name: call.roomName,
           call_type: call.callType || "voice",
         });
+        setCallSession(EMPTY_CALL_SESSION);
         return;
       }
       answeringRoomRef.current = "";
@@ -504,6 +534,7 @@ export default function WorkspaceSocketBridge({ children }) {
       if (answerOperationRef.current !== operationId) {
         releaseIncomingCallClaim(call.roomName);
         clearBrowserCallActive(call.roomName);
+        setCallSession(EMPTY_CALL_SESSION);
         return;
       }
       setCallSession({
@@ -522,6 +553,9 @@ export default function WorkspaceSocketBridge({ children }) {
             : [],
         members,
         transcriptionStatus: response?.transcription_status || "pending",
+        callId: String(response?.call_id || call.callId || ""),
+        transcriptionConsent: response?.transcription_consent === true,
+        client: Boolean(call.client),
         connecting: false,
         onEnd: pending.onEnd,
         onActive: pending.onActive,
@@ -529,7 +563,6 @@ export default function WorkspaceSocketBridge({ children }) {
     } catch (error) {
       if (answerOperationRef.current !== operationId) return;
       answeringRoomRef.current = "";
-      resetCallTranscriptionConsent();
       releaseIncomingCallClaim(call.roomName);
       clearBrowserCallActive(call.roomName);
       setCallSession(EMPTY_CALL_SESSION);

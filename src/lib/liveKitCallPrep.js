@@ -16,9 +16,9 @@ const DEFAULT_ROOM_OPTIONS = {
 
 export const FAST_CONNECT_OPTIONS = {
   autoSubscribe: true,
-  maxRetries: 2,
-  peerConnectionTimeout: 20_000,
-  websocketTimeout: 15_000,
+  maxRetries: 5,
+  peerConnectionTimeout: 25_000,
+  websocketTimeout: 20_000,
   rtcConfig: {
     iceCandidatePoolSize: 10,
   },
@@ -79,16 +79,28 @@ export async function setCallScreenShareEnabled(localParticipant, enabled) {
     if (name === "NotAllowedError" || message.includes("permission denied")) {
       throw error;
     }
-    // Retry with a minimal capture config (common Windows multi-tab failures).
-    return localParticipant.setScreenShareEnabled(
-      true,
-      {
-        audio: false,
-        contentHint: "detail",
-        resolution: ScreenSharePresets.h720fps15.resolution,
-      },
-      SCREEN_SHARE_PUBLISH_OPTIONS,
-    );
+    // Retry with reduced options, but keep system audio when possible.
+    try {
+      return await localParticipant.setScreenShareEnabled(
+        true,
+        {
+          audio: true,
+          contentHint: "detail",
+          resolution: ScreenSharePresets.h720fps15.resolution,
+        },
+        SCREEN_SHARE_PUBLISH_OPTIONS,
+      );
+    } catch (retryError) {
+      return localParticipant.setScreenShareEnabled(
+        true,
+        {
+          audio: false,
+          contentHint: "detail",
+          resolution: ScreenSharePresets.h720fps15.resolution,
+        },
+        SCREEN_SHARE_PUBLISH_OPTIONS,
+      );
+    }
   }
 }
 

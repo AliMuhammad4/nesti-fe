@@ -71,7 +71,10 @@ export default function CallRecordRow({ record, client, forceEnded = false, onOp
   const [startingCall, setStartingCall] = useState(false);
   const [now, setNow] = useState(null);
 
-  const participants = Array.isArray(record?.participants) ? record.participants : [];
+  const participants = useMemo(
+    () => (Array.isArray(record?.participants) ? record.participants : []),
+    [record?.participants],
+  );
   const others = Array.isArray(record?.other_participants) ? record.other_participants : [];
   // Group threads stay labeled as group calls even with 2 people on the line.
   const isGroup =
@@ -100,7 +103,10 @@ export default function CallRecordRow({ record, client, forceEnded = false, onOp
   const effectiveStatus =
     forceEnded && liveStatuses.has(rawStatus) ? "ended" : record.status;
   const status = displayCallStatus(effectiveStatus);
-  const notes = getCallNotesStatus(record.artifacts);
+  const notes = getCallNotesStatus(record.artifacts, {
+    callStatus: effectiveStatus,
+    endedAt: record.ended_at,
+  });
   const isLive = rawStatus === "active" && !forceEnded;
   const liveDuration =
     isLive && record.started_at && now
@@ -151,10 +157,12 @@ export default function CallRecordRow({ record, client, forceEnded = false, onOp
   const neverStarted =
     ["declined", "unanswered"].includes(rawStatus) ||
     (rawStatus === "expired" && !record.started_at);
+  // Only offer notes when there is content, it is still being prepared, or a
+  // summary failed but a transcript may still be available — not for empty/off/failed.
   const canOpenNotes =
     !neverStarted &&
     record.viewer_can_access_notes === true &&
-    ["ready", "preparing", "minutes_failed", "failed", "empty"].includes(notes.key);
+    ["ready", "preparing", "minutes_failed"].includes(notes.key);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md">

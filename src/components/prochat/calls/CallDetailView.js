@@ -85,7 +85,10 @@ export default function CallDetailView({
     queryFn: () => fetchProChatCallArtifacts({ token, callId, client }),
     enabled: mounted && Boolean(token && callId) && canAccessNotes,
     refetchInterval: (query) => {
-      const notes = getCallNotesStatus(query.state.data?.artifacts);
+      const notes = getCallNotesStatus(query.state.data?.artifacts, {
+        callStatus: record.status,
+        endedAt: record.ended_at,
+      });
       return notes.key === "preparing" ? 10_000 : false;
     },
   });
@@ -100,8 +103,18 @@ export default function CallDetailView({
               transcription_error_code: "viewer_no_transcription_consent",
               minutes_status: "not_ready",
             },
+        {
+          callStatus: record.status,
+          endedAt: record.ended_at,
+        },
       ),
-    [artifactsQuery.data?.artifacts, canAccessNotes, record.artifacts],
+    [
+      artifactsQuery.data?.artifacts,
+      canAccessNotes,
+      record.artifacts,
+      record.ended_at,
+      record.status,
+    ],
   );
 
   const transcriptQuery = useQuery({

@@ -1,6 +1,6 @@
 import { ParticipantKind } from "livekit-client";
 
-export const RING_TIMEOUT_MS = 45_000;
+export const RING_TIMEOUT_MS = 90_000;
 export const CONNECT_TIMEOUT_MS = 45_000;
 export const VIDEO_PREVIEW_TIMEOUT_MS = 50_000;
 export const NESTI_NOTETAKER_NAME = "Nesti Minutes";

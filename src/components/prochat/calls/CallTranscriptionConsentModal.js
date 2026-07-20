@@ -7,6 +7,7 @@ import { NotebookPen, X } from "lucide-react";
 import {
   CALL_TRANSCRIPTION_CONSENT_CANCEL_EVENT,
   CALL_TRANSCRIPTION_CONSENT_EVENT,
+  CALL_TRANSCRIPTION_DISCLOSURE,
 } from "@/lib/callTranscriptionConsent";
 
 export default function CallTranscriptionConsentModal() {
@@ -16,9 +17,9 @@ export default function CallTranscriptionConsentModal() {
   const previousFocusRef = useRef(null);
 
   const choose = useCallback(
-    (consent) => {
+    (consent, { intentional = true } = {}) => {
       if (!request) return;
-      request.resolve(consent === true);
+      request.resolve(consent === true, { intentional });
       setRequest(null);
     },
     [request],
@@ -51,7 +52,8 @@ export default function CallTranscriptionConsentModal() {
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        choose(false);
+        // Dismiss without caching a hard decline for the next call.
+        choose(false, { intentional: false });
         return;
       }
       if (event.key !== "Tab") return;
@@ -85,7 +87,7 @@ export default function CallTranscriptionConsentModal() {
     <div
       className="fixed inset-0 z-[2147483647] flex items-end justify-center bg-slate-950/40 p-4 sm:items-center"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) choose(false);
+        if (event.target === event.currentTarget) choose(false, { intentional: false });
       }}
     >
       <div
@@ -98,7 +100,7 @@ export default function CallTranscriptionConsentModal() {
       >
         <button
           type="button"
-          onClick={() => choose(false)}
+          onClick={() => choose(false, { intentional: false })}
           className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           aria-label="Continue without minutes"
         >
@@ -113,7 +115,7 @@ export default function CallTranscriptionConsentModal() {
             Allow minutes of meeting?
           </h2>
           <p id="call-notes-description" className="mt-1.5 text-sm leading-5 text-slate-600">
-            Nesti will transcribe your speech and create minutes of meeting for this call.
+            {CALL_TRANSCRIPTION_DISCLOSURE}
           </p>
         </div>
 

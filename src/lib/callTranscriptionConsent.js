@@ -1,7 +1,7 @@
 "use client";
 
 export const CALL_TRANSCRIPTION_DISCLOSURE =
-  "Nesti can join quietly to capture speech from people who opt in, send that audio to our speech service for transcription, and prepare minutes of meeting — summary, decisions, and action items — that call participants can review later. Minutes of meeting are retained with the call record and removed when that record expires.";
+  "Nesti transcribes the call and saves a summary with decisions and action items for participants to review.";
 
 export const CALL_TRANSCRIPTION_CONSENT_EVENT =
   "nesti:request-call-transcription-consent";
@@ -30,19 +30,10 @@ export function cancelPendingCallTranscriptionConsent() {
   }
 }
 
-export function rememberCallTranscriptionConsent(consent) {
-  cachedConsent = consent === true;
-}
-
-export function hasCachedCallTranscriptionConsent() {
-  return cachedConsent !== null;
-}
-
-export function primeCallTranscriptionConsent() {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (cachedConsent !== null) return Promise.resolve(cachedConsent);
-  if (pendingConsentPromise) return pendingConsentPromise;
-  return requestCallTranscriptionConsent();
+/** Commit an explicit UI choice and return it (does not leave a stale cache). */
+export function takeCallTranscriptionConsent(consent) {
+  cachedConsent = null;
+  return consent === true;
 }
 
 export function requestCallTranscriptionConsent() {
@@ -101,12 +92,27 @@ export function participantNotesChoiceLabel(consent) {
   return "No choice yet";
 }
 
-export function getCallNotesStatus(artifacts = {}) {
+const TERMINAL_CALL_STATUSES = new Set([
+  "ended",
+  "expired",
+  "declined",
+  "unanswered",
+  "missed",
+]);
+
+export function getCallNotesStatus(artifacts = {}, options = {}) {
   const transcription = text(artifacts.transcription_status || "pending").toLowerCase();
   const minutes = text(artifacts.minutes_status || "not_ready").toLowerCase();
   const errorCode = text(artifacts.transcription_error_code).toLowerCase();
   const errorMessage = text(artifacts.transcription_error_message);
   const segmentCount = Number(artifacts.transcript_segment_count || 0);
+  const callStatus = text(options.callStatus || artifacts.call_status).toLowerCase();
+  // After hangup the worker may keep transcription "active" while draining streams,
+  // but minutes_status flips to pending — that means post-call preparation, not listening.
+  const callEnded =
+    TERMINAL_CALL_STATUSES.has(callStatus) ||
+    Boolean(options.endedAt || artifacts.ended_at) ||
+    ["pending", "processing"].includes(minutes);
 
   if (transcription === "failed") {
     return {
@@ -195,7 +201,8 @@ export function getCallNotesStatus(artifacts = {}) {
     ["pending", "dispatching", "active"].includes(transcription) ||
     ["pending", "processing"].includes(minutes)
   ) {
-    const duringCall = ["pending", "dispatching", "active"].includes(transcription);
+    const duringCall =
+      ["pending", "dispatching", "active"].includes(transcription) && !callEnded;
     return {
       key: "preparing",
       label: duringCall ? "Capturing minutes" : "Preparing minutes",

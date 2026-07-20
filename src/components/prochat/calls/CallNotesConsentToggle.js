@@ -1,6 +1,7 @@
 "use client";
 
 import { NotebookPen } from "lucide-react";
+import { CALL_TRANSCRIPTION_DISCLOSURE } from "@/lib/callTranscriptionConsent";
 
 export default function CallNotesConsentToggle({
   value = false,
@@ -35,7 +36,7 @@ export default function CallNotesConsentToggle({
             : "mt-1 text-xs leading-5 text-gray-600"
         }
       >
-        Optional. Nesti can transcribe this call and prepare minutes of meeting afterward.
+        Optional. {CALL_TRANSCRIPTION_DISCLOSURE}
       </p>
       <div className="mt-3 flex gap-2">
         <button

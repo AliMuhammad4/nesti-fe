@@ -9,6 +9,7 @@ export async function activateCallWithRetry({
   emit,
   payload,
   isCurrent = () => true,
+  onFailure = null,
 }) {
   let lastResult = null;
   for (const delayMs of RETRY_DELAYS_MS) {
@@ -16,16 +17,26 @@ export async function activateCallWithRetry({
     if (!isCurrent()) return { success: false, code: "call_closed" };
     lastResult = await emit("prochat:call_active", payload);
     if (lastResult?.success) return lastResult;
-    if (!RETRYABLE_CODES.has(String(lastResult?.code || ""))) return lastResult;
+    if (!RETRYABLE_CODES.has(String(lastResult?.code || ""))) {
+      onFailure?.(lastResult);
+      return lastResult;
+    }
   }
-  return lastResult || { success: false, code: "media_not_ready" };
+  const failed = lastResult || { success: false, code: "media_not_ready" };
+  onFailure?.(failed);
+  return failed;
 }
 
 export function shouldAttemptCallActivation({ ringing = false, callScope = "direct" } = {}) {
   return !ringing || callScope === "multiparty";
 }
 
-export function activateCallSessionWhenReady({ emit, getSession, threadId }) {
+export function activateCallSessionWhenReady({
+  emit,
+  getSession,
+  threadId,
+  onFailure = null,
+}) {
   const active = getSession?.();
   if (!active?.roomName) return;
   if (!shouldAttemptCallActivation(active)) return;
@@ -45,5 +56,6 @@ export function activateCallSessionWhenReady({ emit, getSession, threadId }) {
         String(current?.roomName || "") === String(roomName)
       );
     },
+    onFailure,
   });
 }

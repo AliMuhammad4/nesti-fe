@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Building2, Loader2, Search } from "lucide-react";
@@ -21,23 +21,7 @@ export default function ClientPropertiesPage() {
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-
-    if (!token) {
-      router.push("/log-in");
-      return;
-    }
-
-    if (user?.role && user.role !== "client") {
-      router.push("/dashboard");
-      return;
-    }
-
-    fetchProperties();
-  }, [hydrated, token, user?.role]);
-
-  const fetchProperties = async (locationFilter = "") => {
+  const fetchProperties = useCallback(async (locationFilter = "") => {
     try {
       setLoading(true);
 
@@ -62,7 +46,23 @@ export default function ClientPropertiesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!token) {
+      router.push("/log-in");
+      return;
+    }
+
+    if (user?.role && user.role !== "client") {
+      router.push("/dashboard");
+      return;
+    }
+
+    fetchProperties();
+  }, [hydrated, token, user?.role, router, fetchProperties]);
 
   const handleSearch = (event) => {
     event.preventDefault();

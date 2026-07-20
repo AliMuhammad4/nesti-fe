@@ -46,6 +46,14 @@ function LeadDirectChatPanel({
     requireConnectedFlag: true,
     title: participantName,
   });
+  const {
+    onCallInvite,
+    onCallDecline,
+    onCallAccepted,
+    onCallParticipant,
+    onCallEnded,
+    endActiveCall,
+  } = call;
 
   const mergedMessages = useMemo(() => {
     const merged = Array.isArray(messages) ? [...messages] : [];
@@ -106,33 +114,33 @@ function LeadDirectChatPanel({
     };
     socket.on("prochat:typing", onTyping);
 
-    const onCallInvite = (payload) => {
+    const onCallInviteHandler = (payload) => {
       if (payload?.user_id && String(payload.user_id) === String(myUserId)) return;
-      call.onCallInvite(payload);
+      onCallInvite(payload);
     };
-    socket.on("prochat:call_invite", onCallInvite);
+    socket.on("prochat:call_invite", onCallInviteHandler);
 
-    const onCallDecline = (payload) => {
+    const onCallDeclineHandler = (payload) => {
       if (myUserId && String(payload?.user_id) === String(myUserId)) return;
-      call.onCallDecline(payload);
+      onCallDecline(payload);
     };
-    socket.on("prochat:call_decline", onCallDecline);
+    socket.on("prochat:call_decline", onCallDeclineHandler);
 
-    const onCallAccepted = (payload) => {
-      call.onCallAccepted(payload);
+    const onCallAcceptedHandler = (payload) => {
+      onCallAccepted(payload);
     };
-    socket.on("prochat:call_accepted", onCallAccepted);
+    socket.on("prochat:call_accepted", onCallAcceptedHandler);
 
-    const onCallParticipant = (payload) => {
-      call.onCallParticipant(payload);
+    const onCallParticipantHandler = (payload) => {
+      onCallParticipant(payload);
     };
-    socket.on("prochat:call_participant", onCallParticipant);
+    socket.on("prochat:call_participant", onCallParticipantHandler);
 
-    const onCallEnded = (payload) => {
+    const onCallEndedHandler = (payload) => {
       if (myUserId && String(payload?.user_id) === String(myUserId)) return;
-      call.onCallEnded(payload);
+      onCallEnded(payload);
     };
-    socket.on("prochat:call_ended", onCallEnded);
+    socket.on("prochat:call_ended", onCallEndedHandler);
 
     socket.on("connect_error", (error) => {
       if (process.env.NODE_ENV === "development") {
@@ -141,14 +149,14 @@ function LeadDirectChatPanel({
     });
 
     return () => {
-      call.endActiveCall();
+      endActiveCall();
       socket.off("prochat:message", onMessage);
       socket.off("prochat:typing", onTyping);
-      socket.off("prochat:call_invite", onCallInvite);
-      socket.off("prochat:call_decline", onCallDecline);
-      socket.off("prochat:call_accepted", onCallAccepted);
-      socket.off("prochat:call_participant", onCallParticipant);
-      socket.off("prochat:call_ended", onCallEnded);
+      socket.off("prochat:call_invite", onCallInviteHandler);
+      socket.off("prochat:call_decline", onCallDeclineHandler);
+      socket.off("prochat:call_accepted", onCallAcceptedHandler);
+      socket.off("prochat:call_participant", onCallParticipantHandler);
+      socket.off("prochat:call_ended", onCallEndedHandler);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -156,12 +164,12 @@ function LeadDirectChatPanel({
     token,
     threadId,
     myUserId,
-    call.onCallInvite,
-    call.onCallDecline,
-    call.onCallAccepted,
-    call.onCallParticipant,
-    call.onCallEnded,
-    call.endActiveCall,
+    onCallInvite,
+    onCallDecline,
+    onCallAccepted,
+    onCallParticipant,
+    onCallEnded,
+    endActiveCall,
   ]);
 
   const autosizeComposer = () => {

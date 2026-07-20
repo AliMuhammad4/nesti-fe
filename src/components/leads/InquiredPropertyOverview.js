@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   inquiredPropertyDistinctAddress,
   normalizeInquiredPropertyImages,
@@ -52,11 +53,13 @@ export default function InquiredPropertyOverview({ property, className = "", sho
                 key={url}
                 className="overflow-hidden rounded-md border border-border/60 bg-white"
               >
-                <img
+                <Image
                   src={url}
                   alt="Listing photo"
+                  width={400}
+                  height={96}
+                  unoptimized
                   className="h-24 w-full object-cover"
-                  loading="lazy"
                 />
               </div>
             ))}

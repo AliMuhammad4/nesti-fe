@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { ChevronDown, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 
@@ -563,7 +564,14 @@ export default function AgentInquiryModal({
                     <div className="grid grid-cols-4 gap-2">
                       {imagePreviews.map((preview, index) => (
                         <div key={`${preview.name}-${index}`} className="group relative overflow-hidden rounded-xl border border-white bg-slate-100 shadow-sm">
-                          <img src={preview.url} alt={preview.name} className="h-16 w-full object-cover" />
+                          <Image
+                            src={preview.url}
+                            alt={preview.name}
+                            width={128}
+                            height={64}
+                            unoptimized
+                            className="h-16 w-full object-cover"
+                          />
                           <button
                             type="button"
                             onClick={() => removeImage(index)}

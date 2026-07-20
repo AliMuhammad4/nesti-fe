@@ -226,7 +226,7 @@ export default function ProChatCallModal({
                 disconnectTimerRef.current = window.setTimeout(() => {
                   disconnectTimerRef.current = null;
                   onClose?.();
-                }, 20_000);
+                }, 45_000);
               }}
               onError={(error) => {
                 setCallError(formatLiveKitMediaError(error) || "Could not connect to the call.");

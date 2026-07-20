@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { activateCallWithRetry } from "@/lib/callActivation";
-import { emitCallSignal, isCallEndConfirmed } from "@/lib/callSignal";
+import { emitCallSignal, emitCallEndSignal, isCallEndConfirmed } from "@/lib/callSignal";
 import { toast } from "react-toastify";
 import { getSocketOrigin } from "@/lib/api";
 import WorkspaceRichToast from "@/components/ui/WorkspaceRichToast";
@@ -299,18 +299,19 @@ export function useWorkspaceSocket(
         return true;
       };
       const end = async () => {
-        const ack = await emitCallSignal(
-          socket,
+        const eventName =
           call?.call_scope === "multiparty"
             ? "prochat:call_leave"
-            : "prochat:call_ended",
-          {
-            thread_id: threadId,
-            room_name: roomName,
-            call_type: callType,
-          },
-        );
-        return isCallEndConfirmed(ack);
+            : "prochat:call_ended";
+        const payload = {
+          thread_id: threadId,
+          room_name: roomName,
+          call_type: callType,
+        };
+        const ack = await emitCallEndSignal(socket, eventName, payload);
+        if (isCallEndConfirmed(ack)) return true;
+        const retryAck = await emitCallEndSignal(socket, eventName, payload);
+        return isCallEndConfirmed(retryAck);
       };
       const active = () =>
         activateCallWithRetry({
@@ -320,6 +321,13 @@ export function useWorkspaceSocket(
             thread_id: threadId,
             room_name: roomName,
             call_type: callType,
+          },
+          onFailure: (result) => {
+            if (result?.code === "call_closed") return;
+            toast.warning(
+              result?.message ||
+                "Could not mark the call active yet. Still connecting…",
+            );
           },
         }).then((result) => Boolean(result?.success));
       const nextIncomingCall = {
@@ -334,6 +342,7 @@ export function useWorkspaceSocket(
             ? call.participant_states
             : [],
           transcriptionStatus: call?.transcription_status || "pending",
+          callId: String(call?.call_id || ""),
           inviteOccurredAt: inviteOccurredAt || new Date().toISOString(),
           expiresAt: Date.now() + 85_000,
         },
