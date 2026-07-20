@@ -122,6 +122,70 @@ h6 {
   .success-stories-track {
     animation: none;
   }
+
+  .invite-cta-shimmer,
+  .invite-cta-button {
+    animation: none !important;
+  }
+}
+
+@keyframes invite-cta-gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes invite-cta-shimmer-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-16deg);
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  45% {
+    transform: translateX(140%) skewX(-16deg);
+    opacity: 1;
+  }
+
+  55%,
+  100% {
+    transform: translateX(140%) skewX(-16deg);
+    opacity: 0;
+  }
+}
+
+.invite-cta-button {
+  background: linear-gradient(
+    115deg,
+    #22a855 0%,
+    #34c759 48%,
+    #2ea84e 100%
+  );
+  background-size: 180% 180%;
+  animation: invite-cta-gradient-shift 6s ease-in-out infinite;
+}
+
+.invite-cta-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.05) 65%,
+    transparent 100%
+  );
+  animation: invite-cta-shimmer-sweep 4.5s ease-in-out infinite;
 }
 
 .nesti-toast {
@@ -132,14 +196,15 @@ h6 {
   box-shadow:
     0 10px 25px rgba(15, 23, 42, 0.12),
     0 4px 10px rgba(15, 23, 42, 0.08) !important;
-  padding: 0.7rem 0.85rem !important;
+  padding: 0.75rem 0.9rem !important;
   min-height: 0 !important;
+  align-items: flex-start !important;
 }
 
 .nesti-toast--rich {
-  width: min(92vw, 440px) !important;
-  max-width: min(92vw, 440px) !important;
-  padding: 0.85rem 1rem !important;
+  width: min(92vw, 380px) !important;
+  max-width: min(92vw, 380px) !important;
+  padding: 0.875rem 1rem !important;
 }
 
 .nesti-toast-body {
@@ -149,10 +214,13 @@ h6 {
   line-height: 1.35rem !important;
   font-weight: 500 !important;
   word-break: break-word;
+  flex: 1 1 auto !important;
+  align-self: stretch !important;
 }
 
 .nesti-toast--rich .nesti-toast-body {
   width: 100% !important;
+  max-width: 100% !important;
   white-space: normal !important;
 }
 

@@ -50,6 +50,7 @@ const workspaceOverlayStyle = {
 
 function CancelSubscriptionModal({ isOpen, onClose, onConfirm, isPending, renewDate, planName }) {
   const [mounted, setMounted] = useState(false);
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -63,6 +64,10 @@ function CancelSubscriptionModal({ isOpen, onClose, onConfirm, isPending, renewD
     return () => {
       scrollTarget.style.overflow = previousOverflow;
     };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) setReason("");
   }, [isOpen]);
 
   if (!mounted) return null;
@@ -115,6 +120,26 @@ function CancelSubscriptionModal({ isOpen, onClose, onConfirm, isPending, renewD
                     Changed your mind? You can continue your subscription anytime before then.
                   </p>
                 </div>
+                <div className="mt-3">
+                  <label
+                    htmlFor="cancel-subscription-reason"
+                    className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-text-muted"
+                  >
+                    Reason for cancellation
+                  </label>
+                  <textarea
+                    id="cancel-subscription-reason"
+                    rows={3}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    placeholder="Please tell us what led you to cancel..."
+                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-text-body outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                    disabled={isPending}
+                  />
+                  <p className="mt-1 text-xs text-text-muted">
+                    This helps us improve Nesti for your next subscription.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -135,9 +160,9 @@ function CancelSubscriptionModal({ isOpen, onClose, onConfirm, isPending, renewD
               </button>
               <button
                 type="button"
-                onClick={onConfirm}
-                disabled={isPending}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition disabled:opacity-60"
+                onClick={() => onConfirm(reason.trim())}
+                disabled={isPending || !reason.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background-light/60 px-4 py-2 text-sm font-medium text-text-muted transition hover:border-border/90 hover:bg-background-light hover:text-text-body disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? <Loader2 size={16} className="animate-spin" /> : null}
                 Cancel subscription
@@ -241,9 +266,9 @@ export default function SubscriptionBillingPanel({
   const periodEndLabel = formatDate(periodEndRaw);
   const isLoadingPeriod = subscriptionQuery.isLoading && !periodEndLabel;
 
-  const handleCancel = async () => {
+  const handleCancel = async (reason = "") => {
     try {
-      await cancelMutation.mutateAsync();
+      await cancelMutation.mutateAsync({ reason });
       const res = await apiClient({ url: "/auth/profile", token });
       if (res.success && res.user) {
         dispatch(updateProfile(res.user));
@@ -372,19 +397,6 @@ export default function SubscriptionBillingPanel({
                   )}
                 </p>
               </div>
-              <div className="flex flex-col gap-3 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-text-muted">
-                  You can still cancel the subscription entirely. Access continues until the end of your billing period.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowCancelModal(true)}
-                  disabled={cancelMutation.isPending}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
-                >
-                  Cancel subscription
-                </button>
-              </div>
             </div>
           ) : cancelAtPeriodEnd ? (
             <div className="mt-5 space-y-3">
@@ -420,21 +432,20 @@ export default function SubscriptionBillingPanel({
               </button>
             </div>
             </div>
-          ) : (
-            <div className="mt-5 flex flex-col gap-3 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-text-muted">
-                Cancel anytime. Access continues until the end of your billing period.
-              </p>
+          ) : null}
+
+          {!cancelAtPeriodEnd ? (
+            <div className="mt-4 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowCancelModal(true)}
                 disabled={cancelMutation.isPending}
-                className="inline-flex shrink-0 items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                className="rounded-md px-2 py-1 text-[10px] font-medium text-text-muted/60 transition hover:bg-background-light/80 hover:text-text-muted disabled:opacity-40"
               >
                 Cancel subscription
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </section>
 

@@ -28,9 +28,11 @@ import {
 
 const VALID_TABS = [
   "personal",
+  "professional",
   "business",
   "icp",
   "subscription",
+  "subscriptions",
   "chatbot",
   "leads",
 ];
@@ -65,6 +67,7 @@ function SettingsPageContent() {
   const onboardingIncompleteOnEntryRef = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
+  const role = String(profileQuery.data?.user?.role || "").toLowerCase();
 
   useEffect(() => {
     setIsMounted(true);
@@ -181,7 +184,7 @@ function SettingsPageContent() {
     }
 
     if (tab && VALID_TABS.includes(tab)) {
-      setActiveTab(tab);
+      setActiveTab(tab === "subscriptions" ? "subscription" : tab);
     } else if (!tab) {
       setActiveTab("personal");
     }
@@ -192,6 +195,13 @@ function SettingsPageContent() {
       toast.warning("Your trial has expired. Please subscribe to continue.");
     }
   }, [searchParams, router, hasFeature]);
+
+  useEffect(() => {
+    const tab = String(searchParams.get("tab") || "").toLowerCase();
+    if ((tab === "subscription" || tab === "subscriptions") && role === "client") {
+      router.replace("/client-dashboard/subscription");
+    }
+  }, [role, router, searchParams]);
 
   // Keep settings forms in sync with `/auth/profile`.
   // PersonalInfo/BusinessInformation read from `state.profile.*` (profileSlice),
@@ -261,12 +271,42 @@ function SettingsPageContent() {
         specializations: Array.isArray(apiProfessional?.specializations)
           ? apiProfessional.specializations
           : [],
+        coreSpecializationTags: Array.isArray(apiProfessional?.core_specialization_tags)
+          ? apiProfessional.core_specialization_tags
+          : [],
+        specialtyStrengthTags: Array.isArray(apiProfessional?.specialty_strength_tags)
+          ? apiProfessional.specialty_strength_tags
+          : [],
         communicationChannels: Array.isArray(apiProfessional?.communication_channels)
           ? apiProfessional.communication_channels
           : [],
         preferredClients: Array.isArray(apiProfessional?.preferred_clients)
           ? apiProfessional.preferred_clients
           : [],
+        workingStyleTags: Array.isArray(apiProfessional?.working_style_tags)
+          ? apiProfessional.working_style_tags
+          : [],
+        personalityStyleTags: Array.isArray(apiProfessional?.personality_style_tags)
+          ? apiProfessional.personality_style_tags
+          : [],
+        serviceAreaPrimaryZones: Array.isArray(apiProfessional?.service_area_primary_zones)
+          ? apiProfessional.service_area_primary_zones
+          : [],
+        serviceAreaSecondaryZones: Array.isArray(apiProfessional?.service_area_secondary_zones)
+          ? apiProfessional.service_area_secondary_zones
+          : [],
+        serviceAreaCities: Array.isArray(apiProfessional?.service_area_cities)
+          ? apiProfessional.service_area_cities
+          : [],
+        serviceAreaRegions: Array.isArray(apiProfessional?.service_area_regions)
+          ? apiProfessional.service_area_regions
+          : [],
+        languagesSpoken: Array.isArray(apiProfessional?.languages_spoken)
+          ? apiProfessional.languages_spoken
+          : [],
+        otherLanguageText: apiProfessional?.other_language_text || "",
+        workingStyleStructured: apiProfessional?.working_style_structured || "",
+        experienceLevel: apiProfessional?.experience_level || "",
         calendlyLink: apiProfessional?.calendly_link || "",
       })
     );
@@ -311,15 +351,17 @@ function SettingsPageContent() {
       router.replace("/dashboard");
       return;
     }
-    if (!data?.profile_setup?.is_complete) {
+    if (role !== "client" && !data?.profile_setup?.is_complete) {
       goToBusinessTab();
     }
-  }, [queryClient, router, goToBusinessTab]);
+  }, [queryClient, router, goToBusinessTab, role]);
 
   const tabContent = useMemo(() => {
     switch (activeTab) {
       case "personal":
-        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} />;
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="basic" />;
+      case "professional":
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="profile" />;
       case "subscription":
         return <SubscriptionInfo />;
       case "chatbot":
@@ -329,13 +371,15 @@ function SettingsPageContent() {
       case "icp":
         return <IcpIntegrationCard />;
       default:
-        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} />;
+        return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="basic" />;
     }
   }, [activeTab, onPersonalSaveSuccess, onBusinessSaveSuccess]);
 
   const profileSetup = profileQuery.data?.profile_setup;
   const setupIncomplete =
     profileQuery.isSuccess && profileSetup && !profileSetup.is_complete;
+  const useClientSettingsShell =
+    role === "client" && (activeTab === "personal" || activeTab === "professional");
 
   if (!isMounted) return null;
   if (!isAuthenticated) return null;
@@ -349,25 +393,60 @@ function SettingsPageContent() {
         >
           <p className="font-semibold text-amber-950">Finish your workspace setup</p>
           <p className="mt-1.5 leading-relaxed text-amber-900/95">
-            Complete <strong>Personal Information</strong> (name, email, phone) and{" "}
-            <strong>Business Information</strong> (company name and where you serve). Other areas of the app stay
-            locked until both are done.
+            {role === "client" ? (
+              <>
+                Complete <strong>Personal Information</strong> (name, email, phone, language, and contact preferences) and{" "}
+                <strong>Home Acquisition Profile</strong> (your home goals and buying profile). Other areas of the app stay
+                locked until both are done.
+              </>
+            ) : (
+              <>
+                Complete <strong>Personal Information</strong> (name, email, phone, and company details) and{" "}
+                <strong>Business Information</strong> (where you serve clients). Other areas of the app stay
+                locked until both are done.
+              </>
+            )}
           </p>
           <ul className="mt-2 list-inside list-disc text-xs text-amber-900/85">
             {!profileSetup.personal_complete ? (
-              <li>Personal: add phone and confirm your name and email.</li>
+              <li>
+                {role === "client" ? (
+                  <>
+                    Personal: add your phone number, confirm your name and email, and set your language and contact preferences.
+                  </>
+                ) : (
+                  <>
+                    Personal: add your phone number, confirm your name and email, and enter your{" "}
+                    <strong>company / brokerage</strong>.
+                  </>
+                )}
+              </li>
             ) : null}
             {!profileSetup.business_complete ? (
               <li>
-                Business: add <strong>company / brokerage</strong> (Basics). For service area, use{" "}
-                <strong>Location</strong> on Basics and/or <strong>target neighborhoods</strong> under Style &amp;
-                Metrics.
+                {role === "client" ? (
+                  <>
+                    Home Acquisition Profile: complete your home goal, budget, financial profile, and buying readiness.
+                  </>
+                ) : (
+                  <>
+                    Business: add at least one <strong>service area</strong> under{" "}
+                    <strong>Where do you work?</strong> (search for a city, province, state, or region).
+                  </>
+                )}
               </li>
             ) : null}
           </ul>
         </div>
       ) : null}
-      <div className="w-full rounded-xl border border-border bg-white shadow-sm" style={{ width: "100%" }}>
+      <div
+        className={
+          useClientSettingsShell
+            ? "w-full"
+            : "w-full rounded-xl border border-border bg-white shadow-sm"
+        }
+        style={{ width: "100%" }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -375,7 +454,7 @@ function SettingsPageContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18 }}
-            className="w-full min-w-0 p-5 sm:p-5"
+            className={useClientSettingsShell ? "w-full min-w-0" : "w-full min-w-0 p-5 sm:p-5"}
             style={{ width: "100%" }}
           >
             {tabContent}

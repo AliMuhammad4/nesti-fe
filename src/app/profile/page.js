@@ -82,7 +82,7 @@ function ProfilePageContent() {
       website: apiProfessional?.website || "",
       phone: apiProfessional?.phone || apiUser?.phone || "",
       email: apiProfessional?.email || apiUser?.email || "",
-      experience: apiProfessional?.experience || "",
+      experience: apiProfessional?.experience || apiProfessional?.experience_level || "",
       licenseNumber: apiProfessional?.license_number || "",
       socialMedia: apiProfessional?.social_media || "",
       transactionVolume: apiProfessional?.transaction_volume || "",

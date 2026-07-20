@@ -1,426 +1,908 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  Briefcase,
-  Clock,
-  BarChart3,
-  Target,
-  BookOpen,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SubmitButton from "@/components/auth/SubmitButton";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { useSaveBusinessInfo } from "@/hooks/useProfileApi";
+import { useProfileQuery } from "@/hooks/useAuthApi";
 import { setBusinessInfo } from "@/store/profileSlice";
-import BasicsStep from "@/components/settings/businessSteps/BasicsStep";
-import ExperienceStep from "@/components/settings/businessSteps/ExperienceStep";
-import StyleMetricsStep from "@/components/settings/businessSteps/StyleMetricsStep";
-import PreferencesStep from "@/components/settings/businessSteps/PreferencesStep";
+import { PROFESSIONAL_WORKING_STYLE_OPTIONS, STANDARD_LANGUAGE_OPTIONS } from "@/lib/matchingTaxonomy";
+import { toast } from "react-toastify";
+import ServiceAreaPicker from "@/components/settings/ServiceAreaPicker";
+import { dedupeServiceAreas } from "@/lib/serviceAreaUtils";
 
-const specializationsList = [
-  "Residential",
-  "Commercial",
-  "Luxury Homes",
-  "Investment Properties",
-  "First-Time Buyers",
-  "Vacation Homes",
-  "Condos",
-  "Townhouses",
-  "Detached Homes",
-  "Multifamily",
-  "New Construction",
-  "Foreclosures",
+const AGENT_CORE_SPECIALIZATION_OPTIONS = [
+  "First-time home buyers",
+  "First-time investors",
+  "Move-up buyers",
+  "Luxury clients",
+  "Commercial clients",
+  "Rental / leasing",
+  "Credit-challenged buyers",
+  "Newcomer / immigrant support",
+  "High-net-worth clients",
+  "Family home buyers",
+  "Investor-focused deals",
+  "Downsizers",
 ];
 
-const communicationList = [
-  "Text Message",
-  "Email",
-  "Phone Calls",
-  "WhatsApp",
-  "Video Calls",
+const LAWYER_CORE_SPECIALIZATION_OPTIONS = [
+  "Purchase transactions",
+  "Sale transactions",
+  "Refinance transactions",
+  "Title transfers",
+  "Commercial real estate closings",
+  "Pre-construction contracts",
+  "Assignment sales",
+  "Private lending files",
+  "Landlord / tenant matters",
+  "Real estate disputes",
+  "Closing document review",
+  "Notary services",
 ];
 
-const preferredClientsList = [
-  "First-Time Buyers",
-  "Investors",
-  "Luxury Clients",
-  "Down-Sizers",
-  "Relocators",
-  "Pre-Approved Only",
-  "Cash Buyers",
-  "Quick Closers",
+const MORTGAGE_CORE_SPECIALIZATION_OPTIONS = [
+  "First-time home buyer financing",
+  "Pre-approval guidance",
+  "Refinance strategy",
+  "Self-employed borrowers",
+  "Newcomer mortgage support",
+  "Investment property financing",
+  "Construction / renovation loans",
+  "Debt consolidation refinance",
+  "Credit-challenged borrowers",
+  "High-ratio insured mortgages",
+  "Private / alternative lending",
+  "Commercial mortgage financing",
 ];
 
-const SUB_TABS = [
-  { id: "basics", label: "Basics", icon: Briefcase },
-  { id: "experience", label: "Experience", icon: Clock },
-  { id: "style", label: "Style & Metrics", icon: BarChart3 },
-  {
-    id: "audience",
-    label: "Audience & expertise",
-    icon: Target,
+const WORKING_STYLE_OPTIONS = PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => option.label);
+const WORKING_STYLE_LABEL_TO_VALUE = Object.fromEntries(
+  PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => [option.label, option.value]),
+);
+const WORKING_STYLE_VALUE_TO_LABEL = Object.fromEntries(
+  PROFESSIONAL_WORKING_STYLE_OPTIONS.map((option) => [option.value, option.label]),
+);
+const LANGUAGE_OPTIONS = STANDARD_LANGUAGE_OPTIONS.map((option) => option.label);
+const MAX_LANGUAGES = 8;
+
+const SLUG_ALIASES = {
+  transactional_and_efficient: ["transactional_efficient"],
+  transactional_efficient: ["transactional_and_efficient"],
+  calm_and_patient_guide: ["calm_patient_guide"],
+  calm_patient_guide: ["calm_and_patient_guide"],
+  data_driven_strategist: ["data_driven"],
+  data_driven: ["data_driven_strategist"],
+};
+
+const EXPERIENCE_OPTIONS = [
+  { key: "junior", label: "Junior (0-2 years)" },
+  { key: "mid", label: "Mid (3-7 years)" },
+  { key: "senior", label: "Senior (7-15 years)" },
+  { key: "elite", label: "Elite (15+ years)" },
+];
+
+const SPECIALTY_STRENGTH_OPTIONS = [
+  "First-time buyer expert",
+  "Investor strategy expert",
+  "Luxury market expert",
+  "Renovation / flip specialist",
+  "Newcomer relocation expert",
+  "Market analytics expert",
+  "Negotiation specialist",
+  "Financing-savvy advisor",
+  "Family housing expert",
+  "Commercial deal expert",
+];
+
+const MORTGAGE_SPECIALTY_STRENGTH_OPTIONS = [
+  "Rate shopping expert",
+  "Fast pre-approval turnaround",
+  "Credit repair guidance",
+  "Income document strategist",
+  "Down payment planning",
+  "Investor financing strategy",
+  "Alternative lender access",
+  "Renewal / refinance specialist",
+  "First-time buyer educator",
+  "Debt service optimization",
+];
+
+const PERSONALITY_TAG_OPTIONS = [
+  "Friendly & warm",
+  "Fast responder",
+  "Analytical",
+  "Calm & patient",
+  "Direct & transactional",
+  "Highly communicative",
+  "Relationship builder",
+  "High-energy closer",
+];
+
+const WORKING_STYLE_STRUCTURED_MAP = {
+  "Educational advisor": "educational_advisor",
+  "Fast deal closer": "fast_deal_closer",
+  "Data-driven strategist": "data_driven",
+  "Relationship-focused": "relationship_focused",
+  "Investor-oriented": "investor_oriented",
+};
+
+const ROLE_BUSINESS_COPY = {
+  mortgage_broker: {
+    serviceAreaHelper: "Add provinces, states, or cities where you arrange financing.",
+    credentialsTitle: "Mortgage experience & credentials",
+    licenseLabel: "Mortgage license number",
+    awardsPlaceholder: "Awards, lender awards, or designations",
+    helpTitle: "Who do you finance best?",
+    helpHelper: "Borrower types, lending programs, and financing strengths used for client matching.",
+    coreLabel: "Mortgage specializations",
+    strengthLabel: "Financing strengths",
+    strengthHelper: "Optional broker differentiators",
+    experienceHelper: "Experience, license details, and broker credentials.",
+    clientExperienceHelper: "How quickly and when borrowers can reach you.",
   },
-  { id: "story", label: "Story", icon: BookOpen },
+  lawyer: {
+    serviceAreaHelper: "Add provinces, states, or cities where you handle legal files.",
+    credentialsTitle: "Legal experience & credentials",
+    licenseLabel: "Law society / license number",
+    awardsPlaceholder: "Awards, credentials, or recognitions",
+    helpTitle: "Who do you help best?",
+    helpHelper: "Legal matter types and specialty strengths used for client matching.",
+    coreLabel: "Legal specializations",
+    strengthLabel: "Specialty strengths",
+    strengthHelper: "Optional differentiators",
+    experienceHelper: "Experience, license details, and legal credentials.",
+    clientExperienceHelper: "How quickly and when clients can reach you.",
+  },
+  default: {
+    serviceAreaHelper: "Add provinces, states, or cities you serve clients in.",
+    credentialsTitle: "Experience & credentials",
+    licenseLabel: "License number",
+    awardsPlaceholder: "Awards & certs",
+    helpTitle: "Who do you help best?",
+    helpHelper: "Core client types and specialty strengths.",
+    coreLabel: "Core specializations",
+    strengthLabel: "Specialty strengths",
+    strengthHelper: "Optional differentiators",
+    experienceHelper: "",
+    clientExperienceHelper: "How quickly and when clients can reach you.",
+  },
+};
+
+function toSlugValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^[a-z0-9_]+$/.test(raw.toLowerCase())) {
+    return raw.toLowerCase();
+  }
+  return raw
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\//g, " ")
+    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function chipClass(active, disabled = false) {
+  return `min-h-8 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight transition ${
+    active
+      ? "border-primary bg-primary text-white shadow-sm"
+      : "border-border bg-white text-text-heading hover:border-primary/40 hover:text-primary"
+  } ${disabled && !active ? "cursor-not-allowed opacity-45" : ""}`;
+}
+
+function compactChipClass(active) {
+  return `min-h-7 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight transition ${
+    active
+      ? "border-primary bg-primary text-white shadow-sm"
+      : "border-border bg-white text-text-heading hover:border-primary/40 hover:text-primary"
+  }`;
+}
+
+const compactInputClass =
+  "w-full rounded-md border border-border bg-white px-2.5 py-1.5 text-[13px] placeholder:text-text-muted/60 focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/15";
+
+function SectionCard({ title, helper, right, required, children }) {
+  return (
+    <section className="rounded-xl border border-border/80 bg-white p-3 shadow-sm shadow-black/[0.015]">
+      <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="text-[13px] font-bold text-text-heading sm:text-sm">
+            {title}
+            {required ? <span className="text-red-500"> *</span> : null}
+          </h3>
+          {helper ? <p className="mt-0.5 text-[11px] leading-4 text-text-muted sm:text-xs">{helper}</p> : null}
+        </div>
+        {right ? <div>{right}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function FieldLabel({ children, required = false, htmlFor, className = "" }) {
+  return (
+    <span className={`text-xs font-semibold text-text-heading ${className}`.trim()}>
+      {htmlFor ? <label htmlFor={htmlFor}>{children}</label> : children}
+      {required ? <span className="text-red-500"> *</span> : null}
+    </span>
+  );
+}
+
+function SingleSelectChips({ options, value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          className={chipClass(value === option.key)}
+          onClick={() => onChange(option.key)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const RESPONSE_TIME_OPTIONS = [
+  { key: "1hour", label: "Under 1 hour" },
+  { key: "sameday", label: "Same day" },
+  { key: "24hours", label: "Within 24 hours" },
+  { key: "48hours", label: "Within 48 hours" },
 ];
+
+const AVAILABILITY_OPTIONS = [
+  { key: "business", label: "Business hours" },
+  { key: "extended", label: "Extended hours" },
+  { key: "weekends", label: "Weekends" },
+  { key: "247", label: "24/7" },
+];
+
+function validateBusinessForm({
+  serviceAreaCities,
+  serviceAreaRegions,
+  experienceLevel,
+  coreSpecializationTags,
+  workingStyleTags,
+  languagesSpoken,
+}) {
+  const errors = [];
+  const hasServiceArea = serviceAreaRegions.length > 0 || serviceAreaCities.length > 0;
+  if (!hasServiceArea) errors.push("Add at least one service area under Where do you work.");
+  if (!experienceLevel) errors.push("Experience level is required.");
+  if (!coreSpecializationTags.length) errors.push("Select at least one core specialization.");
+  if (!workingStyleTags.length) errors.push("Select at least one working style.");
+  if (!languagesSpoken.length) errors.push("Select at least one language.");
+  return errors;
+}
+
+function ChipPicker({ options, selected, onToggle, max }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = selected.some((item) => slugEquals(item, option));
+        const disabled = max ? selected.length >= max : false;
+        return (
+          <button
+            key={option}
+            type="button"
+            className={chipClass(active, disabled)}
+            disabled={disabled && !active}
+            onClick={() => onToggle(option, max)}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function normalizeLanguageLabel(value) {
+  const normalized = toSlugValue(value);
+  return LANGUAGE_OPTIONS.find((option) => toSlugValue(option) === normalized) || value;
+}
+
+function normalizeLanguageForSave(value) {
+  const normalized = toSlugValue(value);
+  const match = STANDARD_LANGUAGE_OPTIONS.find(
+    (option) => option.value === normalized || toSlugValue(option.label) === normalized,
+  );
+  return match?.value || normalized;
+}
+
+function slugVariants(value) {
+  const base = toSlugValue(value);
+  if (!base) return [];
+  const variants = new Set([base, base.replace(/_and_/g, "_")]);
+  for (const alias of SLUG_ALIASES[base] || []) {
+    variants.add(alias);
+    variants.add(alias.replace(/_and_/g, "_"));
+  }
+  return [...variants].filter(Boolean);
+}
+
+function slugEquals(a, b) {
+  const left = new Set(slugVariants(a));
+  return slugVariants(b).some((variant) => left.has(variant));
+}
+
+function mapValuesToChipOptions(options = [], values = []) {
+  const out = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const raw = String(value || "").trim();
+    if (!raw) continue;
+    const match = options.find((option) => slugEquals(option, raw));
+    if (!match || out.includes(match)) continue;
+    out.push(match);
+  }
+  return out;
+}
+
+function mapWorkingStyleValuesToLabels(values = []) {
+  const out = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const raw = String(value || "").trim();
+    if (!raw) continue;
+    const fromTaxonomy = WORKING_STYLE_VALUE_TO_LABEL[raw];
+    const match =
+      fromTaxonomy ||
+      WORKING_STYLE_OPTIONS.find((option) => slugEquals(option, raw)) ||
+      null;
+    if (!match || out.includes(match)) continue;
+    out.push(match);
+  }
+  return out;
+}
+
+function mapApiProfileToFormSource(profile = {}) {
+  return {
+    professionalType: profile.professional_type || "",
+    calendlyLink: profile.calendly_link || "",
+    otherLanguageText: profile.other_language_text || "",
+    experienceLevel: profile.experience_level || profile.experience || "",
+    licenseNumber: profile.license_number || "",
+    responseTime: profile.response_time || "",
+    availability: profile.availability || "",
+    awards: profile.awards || "",
+    location: profile.location || "",
+    coreSpecializationTags: profile.core_specialization_tags || [],
+    specializations: profile.specializations || [],
+    specialtyStrengthTags: profile.specialty_strength_tags || [],
+    workingStyleTags: profile.working_style_tags || [],
+    workingStyleStructured: profile.working_style_structured || "",
+    personalityStyleTags: profile.personality_style_tags || [],
+    languagesSpoken: profile.languages_spoken || [],
+    serviceAreaCities: profile.service_area_cities || [],
+    serviceAreaRegions: profile.service_area_regions || [],
+    serviceAreaPrimaryZones: profile.service_area_primary_zones || [],
+  };
+}
+
+function normalizeLanguagesForSave(languages = []) {
+  const seen = new Set();
+  const result = [];
+  for (const language of languages) {
+    const value = normalizeLanguageForSave(language);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+    if (result.length >= MAX_LANGUAGES) break;
+  }
+  return result;
+}
 
 export default function BusinessInformation({ onSaveSuccess } = {}) {
   const dispatch = useAppDispatch();
+  const authRole = useAppSelector((state) => state.auth.user?.role || "");
   const storedBusiness = useAppSelector((state) => state.profile.businessInfo);
-  const [focusedField, setFocusedField] = useState("");
-  const [form, setForm] = useState({
-    professionalType: "",
-    companyName: "",
-    website: "",
-    phone: "",
-    email: "",
-    experience: "",
-    licenseNumber: "",
-    socialMedia: "",
-    transactionVolume: "",
-    avgSalePrice: "",
-    avgHomePrice: "",
-    commissionRatePercent: "",
-    responseTime: "",
-    availability: "",
-    supportLevel: "",
-    negotiationStyle: "",
-    salesApproach: "",
-    energyStyle: "",
-    personalityTag: "",
-    awards: "",
-    testimonial: "",
-    targetNeighborhoods: "",
-    fullName: "",
-    location: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [specializations, setSpecializations] = useState([]);
-  const [communicationChannels, setCommunicationChannels] = useState([]);
-  const [preferredClients, setPreferredClients] = useState([]);
+  const profileQuery = useProfileQuery();
   const saveBusinessInfo = useSaveBusinessInfo();
-  const [activeSubTab, setActiveSubTab] = useState("basics");
-  const formRef = useRef(form);
-  formRef.current = form;
-  const websiteLocationSaveTimerRef = useRef(null);
+
+  const [loading, setLoading] = useState(false);
+  const [calendlyLink, setCalendlyLink] = useState("");
+  const [otherLanguageText, setOtherLanguageText] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [responseTime, setResponseTime] = useState("");
+  const [availability, setAvailability] = useState("");
+  const [awards, setAwards] = useState("");
+
+  const [coreSpecializationTags, setCoreSpecializationTags] = useState([]);
+  const [serviceAreaCities, setServiceAreaCities] = useState([]);
+  const [serviceAreaRegions, setServiceAreaRegions] = useState([]);
+  const [serviceAreaPrimaryZones, setServiceAreaPrimaryZones] = useState([]);
+  const [workingStyleTags, setWorkingStyleTags] = useState([]);
+  const [languagesSpoken, setLanguagesSpoken] = useState([]);
+  const [specialtyStrengthTags, setSpecialtyStrengthTags] = useState([]);
+  const [personalityStyleTags, setPersonalityStyleTags] = useState([]);
+  const [rehydrateTick, setRehydrateTick] = useState(0);
+  const apiProfile = profileQuery.data?.professionalProfile;
+  const resolvedRole = String(
+    apiProfile?.professional_type || storedBusiness?.professionalType || authRole || "",
+  )
+    .trim()
+    .toLowerCase();
+  const roleBusinessCopy = ROLE_BUSINESS_COPY[resolvedRole] || ROLE_BUSINESS_COPY.default;
+  const coreSpecializationOptions = useMemo(
+    () => {
+      if (resolvedRole === "lawyer") return LAWYER_CORE_SPECIALIZATION_OPTIONS;
+      if (resolvedRole === "mortgage_broker") return MORTGAGE_CORE_SPECIALIZATION_OPTIONS;
+      return AGENT_CORE_SPECIALIZATION_OPTIONS;
+    },
+    [resolvedRole],
+  );
+  const specialtyStrengthOptions = useMemo(
+    () => (resolvedRole === "mortgage_broker" ? MORTGAGE_SPECIALTY_STRENGTH_OPTIONS : SPECIALTY_STRENGTH_OPTIONS),
+    [resolvedRole],
+  );
+
   const hasUserEditedRef = useRef(false);
 
-  const hydrateFromStore = useCallback(() => {
-    if (storedBusiness) {
-      setForm((prev) => ({ ...prev, ...storedBusiness }));
-      if (Array.isArray(storedBusiness.specializations))
-        setSpecializations(storedBusiness.specializations);
-      if (Array.isArray(storedBusiness.communicationChannels))
-        setCommunicationChannels(storedBusiness.communicationChannels);
-      if (Array.isArray(storedBusiness.preferredClients))
-        setPreferredClients(storedBusiness.preferredClients);
-    } else {
-      setForm((prev) => ({ ...prev }));
-      setSpecializations([]);
-      setCommunicationChannels([]);
-      setPreferredClients([]);
-    }
-  }, [storedBusiness]);
+  const hydrateForm = useCallback(
+    (source) => {
+      if (!source) return;
 
-  const toggleFromList = (value, setter) => {
-    setter((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  };
+      setCalendlyLink(source.calendlyLink || "");
+      setOtherLanguageText(source.otherLanguageText || "");
+      setExperienceLevel(source.experienceLevel || "");
+      setLicenseNumber(source.licenseNumber || "");
+      setResponseTime(source.responseTime || "");
+      setAvailability(source.availability || "");
+      setAwards(source.awards || "");
 
-  const scheduleWebsiteLocationAutosave = useCallback(() => {
-    if (websiteLocationSaveTimerRef.current) {
-      clearTimeout(websiteLocationSaveTimerRef.current);
-    }
-    websiteLocationSaveTimerRef.current = setTimeout(async () => {
-      websiteLocationSaveTimerRef.current = null;
-      const { website, location, companyName } = formRef.current;
-      try {
-        await saveBusinessInfo.mutateAsync({
-          company_name: String(companyName || "").trim(),
-          website: website || "",
-          location: location || "",
-          silent: true,
-        });
-      } catch {
-        /* toast via hook */
-      }
-    }, 650);
-  }, [saveBusinessInfo]);
+      const sourceCoreSpecializations =
+        Array.isArray(source.coreSpecializationTags) && source.coreSpecializationTags.length
+          ? source.coreSpecializationTags
+          : Array.isArray(source.specializations)
+            ? source.specializations.filter((item) =>
+                coreSpecializationOptions.some((option) => slugEquals(option, item)),
+              )
+            : [];
+      setCoreSpecializationTags(mapValuesToChipOptions(coreSpecializationOptions, sourceCoreSpecializations));
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    hasUserEditedRef.current = true;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "website" || name === "location" || name === "companyName") {
-      scheduleWebsiteLocationAutosave();
-    }
-  };
+      const hydratedCities = Array.isArray(source.serviceAreaCities) ? source.serviceAreaCities : [];
+      const hydratedRegions = Array.isArray(source.serviceAreaRegions) ? source.serviceAreaRegions : [];
+      const hydratedPriority = Array.isArray(source.serviceAreaPrimaryZones) ? source.serviceAreaPrimaryZones : [];
+      const deduped = dedupeServiceAreas(hydratedCities, hydratedRegions, hydratedPriority);
+      setServiceAreaCities(deduped.cities);
+      setServiceAreaRegions(deduped.regions);
+      setServiceAreaPrimaryZones(deduped.priorityCities);
 
-  const handleSelectChange = (name, val) => {
-    hasUserEditedRef.current = true;
-    setForm((prev) => ({ ...prev, [name]: val }));
-  };
+      const sourceWorkingStyles =
+        Array.isArray(source.workingStyleTags) && source.workingStyleTags.length
+          ? source.workingStyleTags
+          : source.workingStyleStructured
+            ? [source.workingStyleStructured]
+            : [];
+      setWorkingStyleTags(mapWorkingStyleValuesToLabels(sourceWorkingStyles));
+
+      setLanguagesSpoken(
+        Array.isArray(source.languagesSpoken)
+          ? source.languagesSpoken.map(normalizeLanguageLabel).filter(Boolean).slice(0, MAX_LANGUAGES)
+          : [],
+      );
+      setSpecialtyStrengthTags(mapValuesToChipOptions(specialtyStrengthOptions, source.specialtyStrengthTags));
+      setPersonalityStyleTags(mapValuesToChipOptions(PERSONALITY_TAG_OPTIONS, source.personalityStyleTags));
+    },
+    [coreSpecializationOptions, specialtyStrengthOptions],
+  );
 
   useEffect(() => {
     if (hasUserEditedRef.current) return;
-    hydrateFromStore();
-  }, [hydrateFromStore]);
+    const apiSource = apiProfile ? mapApiProfileToFormSource(apiProfile) : null;
+    const storeSource = storedBusiness
+      ? {
+          professionalType: storedBusiness.professionalType,
+          calendlyLink: storedBusiness.calendlyLink,
+          otherLanguageText: storedBusiness.otherLanguageText,
+          experienceLevel: storedBusiness.experienceLevel || storedBusiness.experience,
+          licenseNumber: storedBusiness.licenseNumber,
+          responseTime: storedBusiness.responseTime,
+          availability: storedBusiness.availability,
+          awards: storedBusiness.awards,
+          location: storedBusiness.location,
+          coreSpecializationTags: storedBusiness.coreSpecializationTags,
+          specializations: storedBusiness.specializations,
+          specialtyStrengthTags: storedBusiness.specialtyStrengthTags,
+          workingStyleTags: storedBusiness.workingStyleTags,
+          workingStyleStructured: storedBusiness.workingStyleStructured,
+          personalityStyleTags: storedBusiness.personalityStyleTags,
+          languagesSpoken: storedBusiness.languagesSpoken,
+          serviceAreaCities: storedBusiness.serviceAreaCities,
+          serviceAreaRegions: storedBusiness.serviceAreaRegions,
+          serviceAreaPrimaryZones: storedBusiness.serviceAreaPrimaryZones,
+        }
+      : null;
+    hydrateForm(apiSource || storeSource);
+  }, [apiProfile, storedBusiness, hydrateForm, rehydrateTick]);
 
-  useEffect(() => {
-    return () => {
-      if (websiteLocationSaveTimerRef.current) {
-        clearTimeout(websiteLocationSaveTimerRef.current);
+  const toggleArrayValue = useCallback((setter) => (value, max = 0) => {
+    hasUserEditedRef.current = true;
+    setter((prev) => {
+      if (prev.some((item) => slugEquals(item, value))) {
+        return prev.filter((item) => !slugEquals(item, value));
       }
-    };
+      if (max && prev.length >= max) return prev;
+      return [...prev, value];
+    });
   }, []);
 
-  /** Experience, Style & metrics, Audience & expertise, Story — does not touch basics fields. */
-  const buildRestPayload = () => ({
-    company_name: String(form.companyName || "").trim(),
-    website: form.website || "",
-    location: form.location || "",
-    target_neighborhoods: form.targetNeighborhoods || "",
-    experience: form.experience || "",
-    license_number: form.licenseNumber || "",
-    social_media: form.socialMedia || "",
-    transaction_volume: form.transactionVolume || "",
-    avg_sale_price: form.avgSalePrice || "",
-    avg_home_price: form.avgHomePrice ? Number(form.avgHomePrice) : null,
-    commission_rate_percent: form.commissionRatePercent ? Number(form.commissionRatePercent) : null,
-    response_time: form.responseTime || "",
-    availability: form.availability || "",
-    support_level: form.supportLevel || "",
-    negotiation_style: form.negotiationStyle || "",
-    sales_approach: form.salesApproach || "",
-    energy_style: form.energyStyle || "",
-    personality_tag: form.personalityTag || "",
-    awards: form.awards || "",
-    specializations,
-    communication_channels: communicationChannels,
-    preferred_clients: preferredClients,
-    bio: form.testimonial || "",
-  });
 
-  const handleSubmit = async (e) => {
-    if (e?.preventDefault) e.preventDefault();
+  const primaryWorkingStyleStructured = useMemo(() => {
+    const firstMapped = workingStyleTags.find((tag) => WORKING_STYLE_STRUCTURED_MAP[tag]);
+    return firstMapped ? WORKING_STYLE_STRUCTURED_MAP[firstMapped] : "";
+  }, [workingStyleTags]);
+
+  const buildPayload = useCallback(() => {
+    const normalizedLanguages = normalizeLanguagesForSave(languagesSpoken);
+    const legacySpecializations = [...coreSpecializationTags, ...specialtyStrengthTags]
+      .filter(Boolean)
+      .slice(0, 10);
+    const deduped = dedupeServiceAreas(serviceAreaCities, serviceAreaRegions, serviceAreaPrimaryZones);
+    const effectivePrimaryZones = deduped.priorityCities.length ? deduped.priorityCities : deduped.cities;
+    const effectiveSecondaryZones = deduped.cities.filter((city) => !effectivePrimaryZones.includes(city));
+
+    return {
+      calendly_link: calendlyLink || "",
+      experience_level: experienceLevel || "",
+      experience: experienceLevel || "",
+      license_number: licenseNumber || "",
+      response_time: responseTime || "",
+      availability: availability || "",
+      awards: awards || "",
+      core_specialization_tags: coreSpecializationTags.map(toSlugValue).filter(Boolean),
+      specialty_strength_tags: specialtyStrengthTags.map(toSlugValue).filter(Boolean),
+      working_style_tags: workingStyleTags
+        .map((label) => WORKING_STYLE_LABEL_TO_VALUE[label] || toSlugValue(label))
+        .filter(Boolean),
+      working_style_structured: primaryWorkingStyleStructured || undefined,
+      personality_style_tags: personalityStyleTags.map(toSlugValue).filter(Boolean),
+      personality_tag: personalityStyleTags[0] ? toSlugValue(personalityStyleTags[0]) : "",
+      languages_spoken: normalizedLanguages,
+      other_language_text: otherLanguageText || "",
+      service_area_cities: deduped.cities,
+      service_area_regions: deduped.regions,
+      service_area_primary_zones: effectivePrimaryZones,
+      service_area_secondary_zones: effectiveSecondaryZones,
+      target_neighborhoods: effectivePrimaryZones.join(", "),
+      specializations: legacySpecializations,
+    };
+  }, [
+    calendlyLink,
+    coreSpecializationTags,
+    experienceLevel,
+    licenseNumber,
+    responseTime,
+    availability,
+    awards,
+    languagesSpoken,
+    otherLanguageText,
+    personalityStyleTags,
+    primaryWorkingStyleStructured,
+    serviceAreaCities,
+    serviceAreaRegions,
+    serviceAreaPrimaryZones,
+    specialtyStrengthTags,
+    workingStyleTags,
+  ]);
+
+  const handleServiceAreaChange = useCallback(({ cities, regions }) => {
+    hasUserEditedRef.current = true;
+    setServiceAreaCities(cities);
+    setServiceAreaRegions(regions);
+    setServiceAreaPrimaryZones([]);
+  }, []);
+
+  const persistToStore = useCallback(() => {
+    const deduped = dedupeServiceAreas(serviceAreaCities, serviceAreaRegions, serviceAreaPrimaryZones);
+    const effectivePrimaryZones = deduped.priorityCities.length ? deduped.priorityCities : deduped.cities;
+    dispatch(
+      setBusinessInfo({
+        ...(storedBusiness || {}),
+        calendlyLink,
+        otherLanguageText,
+        experienceLevel,
+        licenseNumber,
+        responseTime,
+        availability,
+        awards,
+        coreSpecializationTags,
+        serviceAreaCities: deduped.cities,
+        serviceAreaRegions: deduped.regions,
+        serviceAreaPrimaryZones: effectivePrimaryZones,
+        serviceAreaSecondaryZones: deduped.cities.filter((city) => !effectivePrimaryZones.includes(city)),
+        workingStyleTags,
+        languagesSpoken,
+        specialtyStrengthTags,
+        personalityStyleTags,
+      }),
+    );
+  }, [
+    dispatch,
+    storedBusiness,
+    calendlyLink,
+    otherLanguageText,
+    experienceLevel,
+    licenseNumber,
+    responseTime,
+    availability,
+    awards,
+    coreSpecializationTags,
+    serviceAreaCities,
+    serviceAreaRegions,
+    serviceAreaPrimaryZones,
+    workingStyleTags,
+    languagesSpoken,
+    specialtyStrengthTags,
+    personalityStyleTags,
+  ]);
+
+  const handleSubmit = async () => {
+    const errors = validateBusinessForm({
+      serviceAreaCities,
+      serviceAreaRegions,
+      experienceLevel,
+      coreSpecializationTags,
+      workingStyleTags,
+      languagesSpoken,
+    });
+    if (errors.length) {
+      toast.error(errors[0]);
+      return;
+    }
+
     setLoading(true);
+    hasUserEditedRef.current = true;
     try {
-      await saveBusinessInfo.mutateAsync(buildRestPayload());
-      dispatch(
-        setBusinessInfo({
-          ...form,
-          specializations,
-          communicationChannels,
-          preferredClients,
-        })
-      );
+      await saveBusinessInfo.mutateAsync(buildPayload());
+      persistToStore();
       hasUserEditedRef.current = false;
+      // Ensure we re-run hydration after save; ref flips don't trigger effects.
+      setRehydrateTick((n) => n + 1);
       await onSaveSuccess?.();
     } catch {
-      /* error surfaced via toast in useSaveBusinessInfo hook */
+      /* surfaced by hook */
     } finally {
       setLoading(false);
     }
   };
 
-  const sharedProps = {
-    form,
-    focusedField,
-    setFocusedField,
-    handleChange,
-    handleSelectChange,
-    specializations,
-    communicationChannels,
-    preferredClients,
-    toggleFromList,
-    setSpecializations,
-    setCommunicationChannels,
-    setPreferredClients,
-    specializationsList,
-    communicationList,
-    preferredClientsList,
-  };
-
-  const currentIdx = SUB_TABS.findIndex((t) => t.id === activeSubTab);
-
-  const goNext = () => {
-    dispatch(
-      setBusinessInfo({
-        ...form,
-        specializations,
-        communicationChannels,
-        preferredClients,
-      })
-    );
-    hasUserEditedRef.current = false;
-    const nextIdx = Math.min(currentIdx + 1, SUB_TABS.length - 1);
-    setActiveSubTab(SUB_TABS[nextIdx].id);
-  };
-
-  const goBack = () => {
-    const prevIdx = Math.max(currentIdx - 1, 0);
-    setActiveSubTab(SUB_TABS[prevIdx].id);
-  };
-
-  const renderSubContent = () => {
-    switch (activeSubTab) {
-      case "basics":
-        return (
-          <div className="w-full min-w-0">
-            <BasicsStep {...sharedProps} />
-          </div>
-        );
-      case "experience":
-        return (
-          <div className="w-full min-w-0">
-            <ExperienceStep {...sharedProps} />
-          </div>
-        );
-      case "style":
-        return (
-          <div className="w-full min-w-0">
-            <StyleMetricsStep {...sharedProps} />
-          </div>
-        );
-      case "audience":
-        return (
-          <div className="w-full min-w-0">
-            <PreferencesStep {...sharedProps} mode="audience" />
-          </div>
-        );
-      case "story":
-        return (
-          <div className="w-full min-w-0">
-            <PreferencesStep {...sharedProps} mode="testimonial" />
-          </div>
-        );
-      default:
-        return (
-          <div className="w-full min-w-0">
-            <BasicsStep {...sharedProps} />
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="w-full min-w-0 space-y-4" style={{ width: "100%" }}>
-      {/* ── Header + step badge ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold text-text-heading">Business Information</h2>
-          <p className="mt-0.5 text-xs text-text-muted">Keep your professional details up to date.</p>
-        </div>
-        <span className="inline-flex items-center self-start rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary-dark">
-          Step {currentIdx + 1} / {SUB_TABS.length}
-        </span>
+    <div className="w-full space-y-4">
+      <div>
+        <h2 className="text-base font-bold text-text-heading">Business Information</h2>
+        <p className="mt-0.5 text-xs text-text-muted">
+          Complete each section below. Fields marked with <span className="text-red-500">*</span> are required.
+        </p>
       </div>
 
-      {/* ── Progress bar ── */}
-      <div className="grid w-full min-w-0 grid-cols-5 gap-0.5" style={{ width: "100%" }}>
-        {SUB_TABS.map((tab, idx) => {
-          const isPast = idx < currentIdx;
-          const isCurrent = idx === currentIdx;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveSubTab(tab.id)}
-              className="group w-full"
-              aria-label={tab.label}
-            >
-              <div
-                className={`h-1 rounded-full transition-all ${
-                  isCurrent
-                    ? "bg-primary"
-                    : isPast
-                    ? "bg-primary/40"
-                    : "bg-border"
-                } group-hover:bg-primary/60`}
+      <SectionCard
+        title="Where do you work?"
+        helper={roleBusinessCopy.serviceAreaHelper}
+        required
+        right={
+          <span className="text-[10px] font-semibold text-text-muted">
+            {serviceAreaRegions.length + serviceAreaCities.length}/30
+          </span>
+        }
+      >
+        <ServiceAreaPicker
+          cities={serviceAreaCities}
+          regions={serviceAreaRegions}
+          onChange={handleServiceAreaChange}
+          maxCities={15}
+          maxRegions={15}
+        />
+      </SectionCard>
+
+      <SectionCard
+        title={roleBusinessCopy.credentialsTitle}
+        helper={roleBusinessCopy.experienceHelper}
+        required
+      >
+        <div className="space-y-2">
+          <div>
+            <FieldLabel required className="text-[11px]">
+              Experience level
+            </FieldLabel>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {EXPERIENCE_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={compactChipClass(experienceLevel === option.key)}
+                  onClick={() => {
+                    hasUserEditedRef.current = true;
+                    setExperienceLevel(option.key);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-x-2 gap-y-1.5 sm:grid-cols-2">
+            <label className="block space-y-0.5">
+              <FieldLabel className="text-[11px] font-medium text-text-muted">{roleBusinessCopy.licenseLabel}</FieldLabel>
+              <input
+                value={licenseNumber}
+                onChange={(e) => {
+                  hasUserEditedRef.current = true;
+                  setLicenseNumber(e.target.value);
+                }}
+                className={compactInputClass}
+                placeholder="License #"
               />
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Sub-tabs row ── */}
-      <div className="flex w-full min-w-0 flex-wrap gap-1.5">
-        {SUB_TABS.map((tab, idx) => {
-          const Icon = tab.icon;
-          const isActive = activeSubTab === tab.id;
-          const isPast = idx < currentIdx;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold transition-all ${
-                isActive
-                  ? "bg-primary text-white shadow-sm"
-                  : isPast
-                  ? "bg-primary/10 text-primary-dark"
-                  : "bg-background-light text-text-muted hover:text-text-heading hover:bg-primary/5"
-              }`}
-            >
-              {isPast && !isActive ? (
-                <CheckCircle2 size={11} className="shrink-0" />
-              ) : (
-                <Icon size={11} className="shrink-0" />
-              )}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Content area (fixed min-height for consistency) ── */}
-      <div className="min-h-[280px] w-full min-w-0 max-w-none" style={{ width: "100%" }}>
-        <div className="block w-full min-w-0 max-w-none" style={{ width: "100%" }}>
-          {renderSubContent()}
+            </label>
+            <label className="block space-y-0.5">
+              <FieldLabel className="text-[11px] font-medium text-text-muted">Awards & recognitions</FieldLabel>
+              <input
+                value={awards}
+                onChange={(e) => {
+                  hasUserEditedRef.current = true;
+                  setAwards(e.target.value);
+                }}
+                className={compactInputClass}
+                placeholder={roleBusinessCopy.awardsPlaceholder}
+              />
+            </label>
+          </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* ── Footer navigation ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3.5">
-        <div>
-          {currentIdx > 0 ? (
-            <button
-              type="button"
-              onClick={goBack}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-semibold text-text-heading transition hover:border-primary hover:text-primary"
-            >
-              <ChevronLeft size={14} />
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
+      <SectionCard
+        title={roleBusinessCopy.helpTitle}
+        helper={roleBusinessCopy.helpHelper}
+        required
+        right={
+          <span className="text-[10px] font-semibold text-text-muted">
+            {coreSpecializationTags.length}/5
+          </span>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <FieldLabel required>{roleBusinessCopy.coreLabel}</FieldLabel>
+            <div className="mt-2">
+              <ChipPicker
+                options={coreSpecializationOptions}
+                selected={coreSpecializationTags}
+                onToggle={toggleArrayValue(setCoreSpecializationTags)}
+                max={5}
+              />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>{roleBusinessCopy.strengthLabel}</FieldLabel>
+            <div className="mt-2">
+              <ChipPicker
+                options={specialtyStrengthOptions}
+                selected={specialtyStrengthTags}
+                onToggle={toggleArrayValue(setSpecialtyStrengthTags)}
+                max={5}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-text-muted">
+              {roleBusinessCopy.strengthHelper} ({specialtyStrengthTags.length}/5)
+            </p>
+          </div>
         </div>
+      </SectionCard>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {currentIdx < SUB_TABS.length - 1 ? (
-            <button
-              type="button"
-              onClick={goNext}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-95"
-            >
-              Next
-              <ChevronRight size={14} />
-            </button>
-          ) : (
-            <SubmitButton
-              loading={loading}
-              onClick={handleSubmit}
-              type="button"
-              className="!h-auto !w-auto rounded-md bg-primary px-4 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-95"
-            >
-              Save changes
-            </SubmitButton>
-          )}
+      <SectionCard
+        title="How do you work?"
+        helper="Working style and personality signals used for client matching."
+        required
+        right={
+          <span className="text-[10px] font-semibold text-text-muted">{workingStyleTags.length}/5</span>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <FieldLabel required>Working style</FieldLabel>
+            <div className="mt-2">
+              <ChipPicker
+                options={WORKING_STYLE_OPTIONS}
+                selected={workingStyleTags}
+                onToggle={toggleArrayValue(setWorkingStyleTags)}
+                max={5}
+              />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Personality tags</FieldLabel>
+            <div className="mt-2">
+              <ChipPicker
+                options={PERSONALITY_TAG_OPTIONS}
+                selected={personalityStyleTags}
+                onToggle={toggleArrayValue(setPersonalityStyleTags)}
+                max={5}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-text-muted">
+              Optional ({personalityStyleTags.length}/5)
+            </p>
+          </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title="Client experience" helper={roleBusinessCopy.clientExperienceHelper}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <FieldLabel>Typical response time</FieldLabel>
+            <div className="mt-2">
+              <SingleSelectChips
+                options={RESPONSE_TIME_OPTIONS}
+                value={responseTime}
+                onChange={(value) => {
+                  hasUserEditedRef.current = true;
+                  setResponseTime(value);
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Availability</FieldLabel>
+            <div className="mt-2">
+              <SingleSelectChips
+                options={AVAILABILITY_OPTIONS}
+                value={availability}
+                onChange={(value) => {
+                  hasUserEditedRef.current = true;
+                  setAvailability(value);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Languages"
+        helper="Languages you can use with clients."
+        required
+        right={
+          <span className="text-[10px] font-semibold text-text-muted">
+            {languagesSpoken.length}/{MAX_LANGUAGES}
+          </span>
+        }
+      >
+        <ChipPicker
+          options={LANGUAGE_OPTIONS}
+          selected={languagesSpoken}
+          onToggle={toggleArrayValue(setLanguagesSpoken)}
+          max={MAX_LANGUAGES}
+        />
+        {languagesSpoken.includes("Other") ? (
+          <label className="mt-3 block space-y-1">
+            <FieldLabel>Other language</FieldLabel>
+            <input
+              value={otherLanguageText}
+              onChange={(e) => {
+                hasUserEditedRef.current = true;
+                setOtherLanguageText(e.target.value);
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+              placeholder="Type language name"
+            />
+          </label>
+        ) : null}
+      </SectionCard>
+
+      <div className="mt-2 flex justify-end border-t border-border/80 pt-3">
+        <SubmitButton
+          loading={loading}
+          onClick={handleSubmit}
+          type="button"
+          className="!h-auto w-full rounded-md bg-primary px-4 py-2.5 text-[12px] font-semibold text-white shadow-sm transition hover:brightness-95 sm:w-auto"
+        >
+          Save changes
+        </SubmitButton>
       </div>
     </div>
   );

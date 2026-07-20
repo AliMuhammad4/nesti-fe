@@ -12,6 +12,7 @@ import {
   resolveProChatRejoinRequestFromNotification,
 } from "@/lib/notificationsClient";
 import { CALENDLY_BILLING_URL } from "@/lib/calendlyErrors";
+import PropertyNotificationPreview from "@/components/notifications/PropertyNotificationPreview";
 
 function normalizeLeadId(value) {
   const raw = String(value || "").trim();
@@ -56,6 +57,109 @@ function MetaItem({ label, value }) {
     <div className="rounded-lg border border-border/70 bg-white/80 px-2.5 py-1.5">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{label}</p>
       <p className="text-sm font-medium text-text-heading">{String(value)}</p>
+    </div>
+  );
+}
+
+function visibleIntent(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || normalized === "unspecified" || normalized === "unknown") return null;
+  return value;
+}
+
+function displayNotificationType(display) {
+  const detailsType = String(display?.details?.type || "").trim();
+  if (detailsType === "lawyer_inquiry" || detailsType === "mortgage_broker_inquiry") return "lead_created";
+  if (detailsType === "property_inquiry") return "property_inquiry_created";
+  return display?.notification_type || "";
+}
+
+function humanize(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function money(value) {
+  if (value === undefined || value === null || value === "") return "";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value);
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(number);
+}
+
+function LawyerInquiryDetails({ details }) {
+  const type = String(details?.type || "");
+  if (!details || (type !== "lawyer_inquiry" && type !== "mortgage_broker_inquiry")) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-border/70 bg-background-light/45 px-3 py-2.5">
+      {details.inquiry_message ? (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Client question</p>
+          <p className="mt-1 max-h-20 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-text-heading">
+            {details.inquiry_message}
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function PropertyInquiryDetails({ details }) {
+  if (!details || String(details?.type || "") !== "property_inquiry") return null;
+  const property = details.property || {};
+  const clientProfile = details.client_profile || {};
+  const reasons = Array.isArray(details.lead_reasons)
+    ? details.lead_reasons.map((reason) => String(reason || "").trim()).filter(Boolean)
+    : [];
+
+  return (
+    <div className="mt-4 rounded-xl border border-border bg-white/80 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Property inquiry details</p>
+      {details.inquiry_message ? (
+        <div className="mt-2 rounded-lg border border-border/70 bg-background-light/50 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Client question</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-text-heading">
+            {details.inquiry_message}
+          </p>
+        </div>
+      ) : null}
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <MetaItem label="Client" value={details.client_name} />
+        <MetaItem label="Contact preference" value={humanize(details.contact_preference)} />
+        <MetaItem label="Best time" value={humanize(details.best_time_to_contact)} />
+        <MetaItem label="Property" value={property.title} />
+        <MetaItem label="Location" value={property.location || property.address} />
+        <MetaItem label="Price" value={money(property.expected_price || property.price)} />
+        <MetaItem label="Property type" value={humanize(property.property_type)} />
+        <MetaItem label="Beds / Baths" value={[property.bedrooms, property.bathrooms].filter(Boolean).join(" / ")} />
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <MetaItem label="Preferred location" value={clientProfile.preferred_location} />
+        <MetaItem label="Target home price" value={money(clientProfile.dream_home_price)} />
+        <MetaItem label="Annual income" value={money(clientProfile.annual_income)} />
+        <MetaItem label="Current savings" value={money(clientProfile.current_savings)} />
+        <MetaItem label="Monthly savings" value={money(clientProfile.monthly_savings)} />
+        <MetaItem label="Down payment goal" value={money(clientProfile.down_payment_goal)} />
+        <MetaItem label="Mortgage status" value={humanize(clientProfile.mortgage_status)} />
+        <MetaItem label="Realtor status" value={humanize(clientProfile.realtor_status)} />
+      </div>
+      {reasons.length ? (
+        <div className="mt-3 rounded-lg border border-primary/15 bg-primary/[0.04] px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Why this lead scored well</p>
+          <ul className="mt-1 space-y-1 text-sm leading-relaxed text-text-heading">
+            {reasons.map((reason, index) => (
+              <li key={`${index}-${reason}`}>• {reason}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -160,6 +264,13 @@ export default function NotificationDetailModal({ notification, onClose }) {
     display?.action?.type === "open_prochat_thread" && String(display?.action?.thread_id || "").trim()
       ? String(display.action.thread_id).trim()
       : null;
+  const isInquiryThreadAction =
+    display?.action?.type === "open_prochat_thread" &&
+    (display?.action?.is_lead_thread === true || Boolean(String(display?.action?.lead_id || "").trim()));
+  const openPropertyId =
+    display?.action?.type === "open_property" && String(display?.action?.property_id || "").trim()
+      ? String(display.action.property_id).trim()
+      : null;
   const openBulkFollowupsHref =
     display?.action?.type === "open_bulk_followups"
       ? String(display?.action?.href || "").trim() || "/clients/follow-ups"
@@ -194,6 +305,12 @@ export default function NotificationDetailModal({ notification, onClose }) {
   const pna = display?.primary_next_action;
   const pnaTitle = pna && typeof pna === "object" ? pna.title : null;
   const pnaTemplate = pna && typeof pna === "object" ? pna.follow_up_template : null;
+  const isPropertyListingNotification =
+    String(display?.notification_type || "").trim() === "new_property_for_sale" ||
+    String(display?.action?.type || "").trim() === "open_property";
+  const detailsType = String(display?.details?.type || "").trim();
+  const isLawyerInquiryNotification = detailsType === "lawyer_inquiry" || detailsType === "mortgage_broker_inquiry";
+  const propertyPreview = display?.action?.property_preview || null;
 
   return createPortal(
     <div
@@ -217,9 +334,9 @@ export default function NotificationDetailModal({ notification, onClose }) {
               <Bell size={18} />
             </span>
             <div className="min-w-0">
-              {display?.notification_type ? (
+              {displayNotificationType(display) ? (
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-                  {String(display.notification_type).replace(/_/g, " ")}
+                  {String(displayNotificationType(display)).replace(/_/g, " ")}
                 </p>
               ) : null}
               <h2
@@ -257,27 +374,41 @@ export default function NotificationDetailModal({ notification, onClose }) {
           </p>
         ) : (
           <>
-            {display?.body ? (
-              <p className="mt-4 text-sm leading-relaxed text-text-heading/90">{display.body}</p>
+            {propertyPreview ? (
+              <>
+                {display?.outcomes_headline ? (
+                  <p className="mt-4 text-sm font-medium text-text-heading">{display.outcomes_headline}</p>
+                ) : null}
+                <PropertyNotificationPreview preview={propertyPreview} />
+              </>
+            ) : display?.body ? (
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-text-heading/90">
+                {display.body}
+              </p>
             ) : null}
 
+            {!isPropertyListingNotification ? (
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <MetaItem label="Grade" value={display?.grade} />
               <MetaItem label="Score" value={display?.score != null ? String(display.score) : null} />
-              <MetaItem label="Intent" value={display?.intent} />
+              <MetaItem label="Intent" value={visibleIntent(display?.intent)} />
               <MetaItem label="Appointment" value={display?.appointment_status?.replace(/_/g, " ")} />
               <MetaItem label="Urgency" value={display?.urgency} />
               <MetaItem label="Response window" value={display?.urgency_window} />
             </div>
+            ) : null}
 
-            {display?.speed_to_lead_tip ? (
+            <LawyerInquiryDetails details={display?.details} />
+            <PropertyInquiryDetails details={display?.details} />
+
+            {display?.speed_to_lead_tip && !isPropertyListingNotification && !isLawyerInquiryNotification ? (
               <div className="mt-4 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm text-text-heading">
                 <span className="font-semibold text-primary">Speed to lead: </span>
                 {display.speed_to_lead_tip}
               </div>
             ) : null}
 
-            {display?.outcomes_headline ? (
+            {display?.outcomes_headline && !isPropertyListingNotification ? (
               <div className="mt-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Goal</p>
                 <p className="text-sm text-text-heading">{display.outcomes_headline}</p>
@@ -386,11 +517,27 @@ export default function NotificationDetailModal({ notification, onClose }) {
               type="button"
               onClick={() => {
                 onClose();
-                router.push(`/messages/${encodeURIComponent(openProChatThreadId)}`);
+                router.push(
+                  isInquiryThreadAction
+                    ? `/client-dashboard/inquiries?thread=${encodeURIComponent(openProChatThreadId)}`
+                    : `/messages/${encodeURIComponent(openProChatThreadId)}`,
+                );
               }}
               className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
             >
-              Open chat
+              {isInquiryThreadAction ? "Open inquiry" : "Open chat"}
+            </button>
+          ) : null}
+          {openPropertyId && !isLoading && !isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push(`/client-dashboard/properties/${encodeURIComponent(openPropertyId)}`);
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Open property
             </button>
           ) : null}
           {openBulkFollowupsHref && !isLoading && !isError ? (

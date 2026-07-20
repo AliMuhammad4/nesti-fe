@@ -1,6 +1,10 @@
 "use client";
 
-import { inquiredPropertyDisplayAddress } from "@/lib/inquiredPropertyUtils";
+import Image from "next/image";
+import {
+  inquiredPropertyDistinctAddress,
+  normalizeInquiredPropertyImages,
+} from "@/lib/inquiredPropertyUtils";
 
 function Field({ label, value }) {
   const text = String(value ?? "").trim();
@@ -16,9 +20,10 @@ function Field({ label, value }) {
 /**
  * Listing snapshot for buyer inquiries (used on lead workspace + referral lead snapshot).
  */
-export default function InquiredPropertyOverview({ property, className = "" }) {
+export default function InquiredPropertyOverview({ property, className = "", showPhotos = true }) {
   if (!property || typeof property !== "object") return null;
-  const address = inquiredPropertyDisplayAddress(property);
+  const address = inquiredPropertyDistinctAddress(property);
+  const images = showPhotos ? normalizeInquiredPropertyImages(property.images) : [];
 
   return (
     <div
@@ -35,9 +40,32 @@ export default function InquiredPropertyOverview({ property, className = "" }) {
         <Field label="Type" value={property.property_type} />
         <Field label="Bedrooms" value={property.bedrooms} />
         <Field label="Bathrooms" value={property.bathrooms} />
+        <Field label="Square footage" value={property.square_footage} />
         <Field label="Listed by" value={property.listed_by_name} />
         <Field label="Seller" value={property.seller_name} />
       </div>
+      {images.length ? (
+        <div className="mt-3">
+          <div className="text-[9px] font-medium uppercase tracking-wide text-text-muted">Photos</div>
+          <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {images.map((url) => (
+              <div
+                key={url}
+                className="overflow-hidden rounded-md border border-border/60 bg-white"
+              >
+                <Image
+                  src={url}
+                  alt="Listing photo"
+                  width={400}
+                  height={96}
+                  unoptimized
+                  className="h-24 w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

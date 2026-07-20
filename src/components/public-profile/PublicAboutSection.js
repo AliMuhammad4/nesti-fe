@@ -3,11 +3,10 @@
 import Image from 'next/image';
 import { CalendarCheck, Clock3, ShieldCheck, Target, Zap } from 'lucide-react';
 
-const toTitle = (value) =>
-  String(value || '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
+import {
+  formatProfileBusinessField,
+  toTitleCase,
+} from "@/lib/profileFieldDisplay";
 
 const getInitials = (name) =>
   String(name || 'Professional')
@@ -28,7 +27,12 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
     { label: 'Support Level', value: professionalProfile.support_level, icon: ShieldCheck },
     { label: 'Approach', value: professionalProfile.sales_approach || professionalProfile.negotiation_style, icon: Target },
     { label: 'Energy', value: professionalProfile.energy_style || professionalProfile.personality_tag, icon: Zap },
-  ].filter((item) => item.value);
+  ]
+    .filter((item) => item.value)
+    .map((item) => ({
+      ...item,
+      value: formatProfileBusinessField(item.label, item.value),
+    }));
 
   const paragraphs = String(about || '')
     .split('\n')
@@ -63,7 +67,7 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
               {professionalName}
             </h3>
             <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-widest text-primary lg:text-left">
-              {professionalProfile.company_name || toTitle(profile?.professional_type)}
+              {professionalProfile.company_name || toTitleCase(profile?.professional_type)}
             </p>
           </div>
 
@@ -104,9 +108,7 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                         {item.label}
                       </div>
-                      <div className="text-sm font-medium text-text-heading">
-                        {toTitle(item.value)}
-                      </div>
+                      <div className="text-sm font-medium text-text-heading">{item.value}</div>
                     </div>
                   </div>
                 );

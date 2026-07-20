@@ -80,8 +80,11 @@ export function useVerifyEmail() {
         clearInviteAttribution();
       }
       if (data?.token) {
-        // 1. Store the session token in Redux + localStorage (shared across tabs)
-        dispatch(loginSuccess({ user: null, token: data.token }));
+        // 1. Store the session token + user data in Redux
+        dispatch(loginSuccess({ 
+          user: data.user || null, 
+          token: data.token 
+        }));
 
         // 2. Warm profile in background; do not block navigation on this request.
         apiClient({

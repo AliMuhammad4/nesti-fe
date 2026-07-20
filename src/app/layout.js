@@ -3,6 +3,7 @@ import { Inter, Poppins } from "next/font/google";
 
 import Providers from "./providers";
 import AppChromeShell from "./AppChromeShell";
+import CallTranscriptionConsentModal from "@/components/prochat/calls/CallTranscriptionConsentModal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,10 +27,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${poppins.variable} flex flex-col min-h-screen`}
       >
         <Providers>
           <AppChromeShell>{children}</AppChromeShell>
+          <CallTranscriptionConsentModal />
         </Providers>
       </body>
     </html>

@@ -788,6 +788,7 @@ function LeadsPageContent() {
               nurtureLogsLoading={nurtureLogsQuery.isLoading}
               deleteLeadMutation={deleteLeadMutation}
               onDeleteClick={handleDeleteLead}
+              myUserId={String(authUser?.id || authUser?._id || "").trim()}
               inquiredProperty={inquiredProperty}
               inquiredSellerLeadDetail={inquiredSellerLeadDetail}
               inquiredSellerConversation={inquiredSellerConversation}

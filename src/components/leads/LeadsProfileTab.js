@@ -3,6 +3,12 @@
 import { getStatusDisplay } from "@/lib/leadPipelineConfig";
 import { formatLeadIntakeSlug } from "@/lib/leadsPageUtils";
 import LeadPipelineStageControl from "@/components/leads/LeadPipelineStageControl";
+import InquiredPropertyOverview from "@/components/leads/InquiredPropertyOverview";
+import {
+  inquiredPropertyDisplayAddress,
+  inquiredPropertyFromLead,
+  isClientDashboardPropertyInquiry,
+} from "@/lib/inquiredPropertyUtils";
 import { Info } from "lucide-react";
 
 export default function LeadsProfileTab({
@@ -25,7 +31,12 @@ export default function LeadsProfileTab({
   const contact = leadData.contact || {};
   const property = leadData.property || {};
   const qualification = leadData.qualification || {};
-  const locationDisplay = property.location || (leadData.intent === "sell" ? property.address : "");
+  const clientProfile = leadData.client_profile && typeof leadData.client_profile === "object" ? leadData.client_profile : null;
+  const isClientDashboardPropertyInquiryLead = isClientDashboardPropertyInquiry(leadData);
+  const inquiredPropertySnapshot = inquiredPropertyFromLead(leadData);
+  const locationDisplay = isClientDashboardPropertyInquiryLead
+    ? inquiredPropertyDisplayAddress(inquiredPropertySnapshot) || property.address || property.location || ""
+    : property.location || (leadData.intent === "sell" ? property.address : "");
 
   const readable = (value) => {
     if (value === null || value === undefined || value === "") return "—";
@@ -115,6 +126,16 @@ export default function LeadsProfileTab({
     </div>
   );
 
+  const hasClientProfile = Boolean(
+    clientProfile &&
+      Object.values(clientProfile).some((value) => value !== null && value !== undefined && value !== "")
+  );
+
+  const clientMoney = (value) => {
+    const n = toFiniteNumber(value);
+    return n === null ? value : formatMoney(n);
+  };
+
   const pipelineInfo = getStatusDisplay(leadData.status ?? leadData.match_status);
   const outerClassName = embedded ? "space-y-4" : "rounded-md border border-border bg-white shadow-sm p-5 space-y-4";
   const sectionClassName = embedded ? "space-y-3" : "rounded-md border border-border bg-white p-4 space-y-3";
@@ -180,52 +201,92 @@ export default function LeadsProfileTab({
             </div>
           ) : null}
 
-          <div className={embedded ? "space-y-4 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-4"}>
-            <div>
-              <div className="text-sm font-semibold text-text-heading">
-                {isLawyerLead ? "Matter summary" : isMortgageBrokerLead ? "Financing summary" : "Lead context"}
+          {hasClientProfile && !isClientDashboardPropertyInquiryLead ? (
+            <div className={embedded ? "space-y-4 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-4"}>
+              <div>
+                <div className="text-sm font-semibold text-text-heading">Client profile</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
+                  Homeownership details shared from the client profile at the time of inquiry.
+                </p>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
-                Key information captured from the lead intake.
-              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <KeyValue label="Preferred location" value={clientProfile.preferred_location} />
+                <KeyValue label="Target home price" value={clientMoney(clientProfile.dream_home_price)} />
+                <KeyValue label="Purchase timeline" value={clientProfile.purchase_timeline} />
+                <KeyValue label="Employment" value={clientProfile.employment_status} />
+                <KeyValue label="Annual income" value={clientMoney(clientProfile.annual_income)} />
+                <KeyValue label="Current savings" value={clientMoney(clientProfile.current_savings)} />
+                <KeyValue label="Monthly savings" value={clientMoney(clientProfile.monthly_savings)} />
+                <KeyValue label="Down payment goal" value={clientMoney(clientProfile.down_payment_goal)} />
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {hideBuyerSellerIntent ? null : <KeyValue label="Intent" value={leadData.intent} />}
-              <KeyValue label="Lead type" value={leadData.lead_type} />
-              <KeyValue label="Budget" value={budgetDisplay} />
-              <KeyValue
-                label={isLawyerLead ? "Closing timeline" : "Timeline"}
-                value={isLawyerLead ? qualification.closing_timeline : property.timeline}
-              />
-              {isLawyerLead ? (
-                <>
-                  <KeyValue label="Transaction stage" value={qualification.transaction_stage} />
-                  <KeyValue label="Transaction type" value={qualification.transaction_type} />
-                  <KeyValue label="Property value" value={qualification.property_value} />
-                  <KeyValue label="Mortgage status" value={qualification.mortgage_status} />
-                  <KeyValue label="Realtor involved" value={qualification.realtor_involved} />
-                  <KeyValue label="First-time buyer" value={qualification.first_time_buyer} />
-                  <KeyValue label="Legal services" value={qualification.legal_services_needed} />
-                </>
-              ) : isMortgageBrokerLead ? (
-                <>
-                  <KeyValue label="Mortgage timeline" value={qualification.mortgage_timeline} />
-                  <KeyValue label="Pre-approval" value={qualification.pre_approval_status} />
-                  <KeyValue label="Purchase purpose" value={qualification.purchase_purpose} />
-                  <KeyValue label="Urgency" value={qualification.urgency_signal} />
-                </>
-              ) : (
-                <>
-                  <KeyValue label="Property type" value={property.property_type} />
-                  <KeyValue label="Mortgage status" value={qualification.mortgage_status} />
-                  <KeyValue label="Realtor status" value={qualification.realtor_status} />
-                  {!isSellerLead ? (
-                    <KeyValue label="Address" value={qualification.buy_property_location} />
-                  ) : null}
-                  <KeyValue label="Motivation" value={qualification.motivation_reason} />
-                </>
-              )}
-            </div>
+          ) : null}
+
+          <div className={embedded ? "space-y-4 border-t border-border/60 pt-4" : "rounded-md border border-border bg-white p-4 space-y-4"}>
+            {isClientDashboardPropertyInquiryLead ? (
+              <>
+                <div>
+                  <div className="text-sm font-semibold text-text-heading">Client property inquiry</div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
+                    This lead came from a client inquiring on a specific listing from their dashboard.
+                  </p>
+                </div>
+                <InquiredPropertyOverview property={inquiredPropertySnapshot} showPhotos={false} />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {hideBuyerSellerIntent ? null : <KeyValue label="Intent" value={leadData.intent} />}
+                  <KeyValue label="Score" value={leadData.score != null ? String(leadData.score) : null} />
+                  <KeyValue label="Lead type" value={leadData.lead_type} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="text-sm font-semibold text-text-heading">
+                    {isLawyerLead ? "Matter summary" : isMortgageBrokerLead ? "Financing summary" : "Lead context"}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
+                    Key information captured from the lead intake.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {hideBuyerSellerIntent ? null : <KeyValue label="Intent" value={leadData.intent} />}
+                  <KeyValue label="Lead type" value={leadData.lead_type} />
+                  <KeyValue label="Budget" value={budgetDisplay} />
+                  <KeyValue
+                    label={isLawyerLead ? "Closing timeline" : "Timeline"}
+                    value={isLawyerLead ? qualification.closing_timeline : property.timeline}
+                  />
+                  {isLawyerLead ? (
+                    <>
+                      <KeyValue label="Transaction stage" value={qualification.transaction_stage} />
+                      <KeyValue label="Transaction type" value={qualification.transaction_type} />
+                      <KeyValue label="Property value" value={qualification.property_value} />
+                      <KeyValue label="Mortgage status" value={qualification.mortgage_status} />
+                      <KeyValue label="Realtor involved" value={qualification.realtor_involved} />
+                      <KeyValue label="First-time buyer" value={qualification.first_time_buyer} />
+                      <KeyValue label="Legal services" value={qualification.legal_services_needed} />
+                    </>
+                  ) : isMortgageBrokerLead ? (
+                    <>
+                      <KeyValue label="Mortgage timeline" value={qualification.mortgage_timeline} />
+                      <KeyValue label="Pre-approval" value={qualification.pre_approval_status} />
+                      <KeyValue label="Purchase purpose" value={qualification.purchase_purpose} />
+                      <KeyValue label="Urgency" value={qualification.urgency_signal} />
+                    </>
+                  ) : (
+                    <>
+                      <KeyValue label="Property type" value={property.property_type} />
+                      <KeyValue label="Mortgage status" value={qualification.mortgage_status} />
+                      <KeyValue label="Realtor status" value={qualification.realtor_status} />
+                      {!isSellerLead ? (
+                        <KeyValue label="Address" value={qualification.buy_property_location} />
+                      ) : null}
+                      <KeyValue label="Motivation" value={qualification.motivation_reason} />
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </>
       ) : (

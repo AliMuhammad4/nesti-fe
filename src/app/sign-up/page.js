@@ -10,7 +10,8 @@ import AuthHeader from "@/components/auth/AuthHeader";
 import AuthVisualSection from "@/components/auth/AuthVisualSection";
 import FormField from "@/components/auth/FormField";
 import PasswordField from "@/components/auth/PasswordField";
-import RoleDropdown from "@/components/auth/RoleDropdown";
+import UserTypeSelector from "@/components/auth/UserTypeSelector";
+import ProfessionalRoleDropdown from "@/components/auth/ProfessionalRoleDropdown";
 import NameFields from "@/components/auth/NameFields";
 import SubmitButton from "@/components/auth/SubmitButton";
 import Divider from "@/components/auth/Divider";
@@ -31,6 +32,7 @@ import {
   getOrCreateInviteVisitorId,
   saveInviteAttribution,
 } from "@/lib/inviteAttributionStorage";
+import { getDashboardRoute } from "@/lib/roleUtils";
 
 function SignUpPageContent() {
   const router = useRouter();
@@ -39,7 +41,20 @@ function SignUpPageContent() {
   const [inviteToken, setInviteToken] = useState("");
 
   useEffect(() => {
-    if (token) router.replace("/dashboard");
+    if (token) {
+      // If already logged in, redirect to appropriate dashboard based on stored role
+      const storedRole = localStorage.getItem('nesti_signup_data');
+      let role = null;
+      try {
+        if (storedRole) {
+          const data = JSON.parse(storedRole);
+          role = data.role;
+        }
+      } catch (e) {}
+      
+      const dashboardRoute = role ? getDashboardRoute(role) : '/dashboard';
+      router.replace(dashboardRoute);
+    }
   }, [token, router]);
 
   useEffect(() => {
@@ -84,7 +99,8 @@ function SignUpPageContent() {
     lastName: "",
     email: "",
     password: "",
-    role: "",
+    userType: "", // "professional" or "client"
+    role: "", // specific professional role or "client"
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const { saveSignupData } = useSignupFlow();
@@ -103,7 +119,10 @@ function SignUpPageContent() {
           invite_token: inviteToken || undefined,
         },
         {
-          onSuccess: () => router.push("/dashboard"),
+          onSuccess: (data) => {
+            const dashboardRoute = getDashboardRoute(form.role);
+            router.push(dashboardRoute);
+          },
         }
       );
     },
@@ -127,6 +146,16 @@ function SignUpPageContent() {
     }
   };
 
+  const handleUserTypeChange = (value) => {
+    setForm((prev) => ({ 
+      ...prev, 
+      userType: value,
+      // If switching to client, set role to "client" immediately
+      role: value === "client" ? "client" : ""
+    }));
+    setFieldErrors((prev) => ({ ...prev, userType: "", role: "" }));
+  };
+
   const handleRoleChange = (value) => {
     setForm((prev) => ({ ...prev, role: value }));
     setFieldErrors((prev) => ({ ...prev, role: "" }));
@@ -134,7 +163,7 @@ function SignUpPageContent() {
 
   const validate = () => {
     const errs = {};
-    const { firstName, lastName, email, password, role } = form;
+    const { firstName, lastName, email, password, userType, role } = form;
     if (!firstName.trim()) errs.firstName = "First name cannot be blank";
     if (!lastName.trim()) errs.lastName = "Last name cannot be blank";
     if (!email.trim()) {
@@ -153,6 +182,8 @@ function SignUpPageContent() {
           "Password must be at least 8 characters and include uppercase, lowercase, number, and special character";
       }
     }
+    if (!userType) errs.userType = "Please select if you are a professional or client";
+    if (userType === "professional" && !role) errs.role = "Please select your professional role";
     if (!role) errs.role = "Please select a role";
     return errs;
   };
@@ -174,11 +205,12 @@ function SignUpPageContent() {
         invite_token: inviteToken || undefined,
       });
 
-      // Persist email + verificationToken for the OTP verification step
+      // Persist email + verificationToken + role for the OTP verification step
       saveSignupData({
         email: form.email,
         verificationToken: data?.verificationToken || null,
         inviteToken: inviteToken || null,
+        role: form.role,
       });
 
       // Redirect to verify email page
@@ -192,9 +224,14 @@ function SignUpPageContent() {
 
   const handleGoogleSignup = () => {
     setIsGoogleSignupSelected(true);
-    if (!form.role) {
-      setFieldErrors((prev) => ({ ...prev, role: "Please select a role" }));
-      toast.error("Please select your role before continuing with Google.");
+    if (!form.userType) {
+      setFieldErrors((prev) => ({ ...prev, userType: "Please select if you are a professional or client" }));
+      toast.error("Please select your user type before continuing with Google.");
+      return;
+    }
+    if (form.userType === "professional" && !form.role) {
+      setFieldErrors((prev) => ({ ...prev, role: "Please select your professional role" }));
+      toast.error("Please select your professional role before continuing with Google.");
       return;
     }
     googleSignup();
@@ -262,15 +299,24 @@ function SignUpPageContent() {
               </>
             ) : null}
 
-            <RoleDropdown
-            value={form.role}
-            onChange={handleRoleChange}
-            onFocus={() => setFocusedField("role")}
-            onBlur={() => setFocusedField("")}
-            focusedField={focusedField}
-            error={fieldErrors.role}
-            required
+            {/* User Type Selection: Professional or Client */}
+            <UserTypeSelector
+              value={form.userType}
+              onChange={handleUserTypeChange}
+              error={fieldErrors.userType}
             />
+
+            {/* Professional Role Selection - Only show if user selected "professional" */}
+            {form.userType === "professional" && (
+              <ProfessionalRoleDropdown
+                value={form.role}
+                onChange={handleRoleChange}
+                onFocus={() => setFocusedField("role")}
+                onBlur={() => setFocusedField("")}
+                error={fieldErrors.role}
+                required
+              />
+            )}
 
             {!isGoogleFlowActive ? (
               <div className="flex flex-col space-y-2 pt-1">

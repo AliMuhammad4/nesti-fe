@@ -7,6 +7,32 @@ const cardVariants = {
   animate: { opacity: 1, y: 0 },
 };
 
+function normalizeUrlHref(value) {
+  const str = String(value || "").trim();
+  if (!str) return "";
+  if (/^https?:\/\//i.test(str)) return str;
+  return `https://${str.replace(/^\/+/, "")}`;
+}
+
+function formatUrlDisplay(value, maxLength = 44) {
+  const str = String(value || "").trim();
+  if (!str) return "";
+
+  try {
+    const parsed = new URL(normalizeUrlHref(str));
+    const host = parsed.hostname.replace(/^www\./i, "");
+    const pathQuery = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const normalizedPath = pathQuery === "/" ? "" : pathQuery;
+    let display = normalizedPath ? `${host}${normalizedPath}` : host;
+    if (display.length <= maxLength) return display;
+    return `${display.slice(0, maxLength - 1)}…`;
+  } catch {
+    const fallback = str.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+    if (fallback.length <= maxLength) return fallback;
+    return `${fallback.slice(0, maxLength - 1)}…`;
+  }
+}
+
 function FieldValue({ label, value }) {
   const empty = value === undefined || value === null || value === "";
   if (empty && value !== 0) {
@@ -39,16 +65,17 @@ function FieldValue({ label, value }) {
     (label === "Calendly" && (str.includes(".") || str.includes("/")));
 
   if (looksLikeUrl && str.length > 0) {
-    let href = str;
-    if (!/^https?:\/\//i.test(href)) href = `https://${href.replace(/^\/+/, "")}`;
+    const href = normalizeUrlHref(str);
+    const display = formatUrlDisplay(str);
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-sm text-primary/90 underline decoration-primary/30 underline-offset-2 transition hover:text-primary hover:decoration-primary [overflow-wrap:anywhere]"
+        title={str}
+        className="block max-w-full truncate text-sm text-primary/90 underline decoration-primary/30 underline-offset-2 transition hover:text-primary hover:decoration-primary"
       >
-        {str}
+        {display}
       </a>
     );
   }
@@ -72,14 +99,26 @@ export const InfoCard = ({ children, delay = 0 }) => (
   </motion.div>
 );
 
+function getColSpanClass(columns, colSpan) {
+  if (columns === 3) {
+    if (colSpan === 3) return "col-span-6";
+    if (colSpan === 2) return "col-span-4";
+    if (colSpan === "half") return "col-span-3";
+    return "col-span-2";
+  }
+
+  if (colSpan === 2) return "col-span-2";
+  return "";
+}
+
 export const InfoGrid = ({ items, className = "", compact = false, columns = 2 }) => (
-  <div className={`grid ${columns === 3 ? "grid-cols-3" : "grid-cols-2"} ${compact ? "gap-1.5" : "gap-2"} ${className}`.trim()}>
+  <div
+    className={`grid ${columns === 3 ? "grid-cols-6" : "grid-cols-2"} ${compact ? "gap-1.5" : "gap-2"} ${className}`.trim()}
+  >
     {items.map(({ label, value, icon: Icon, colSpan }) => (
       <div
         key={label}
-        className={`flex items-center ${compact ? "gap-2 rounded-lg px-2.5 py-2" : "gap-2.5 rounded-xl px-3 py-2.5"} border border-slate-100 bg-slate-50 transition hover:border-slate-200 hover:bg-white ${
-          colSpan === 3 ? "col-span-3" : colSpan === 2 ? "col-span-2" : ""
-        }`}
+        className={`flex items-center ${compact ? "gap-2 rounded-lg px-2.5 py-2" : "gap-2.5 rounded-xl px-3 py-2.5"} border border-slate-100 bg-slate-50 transition hover:border-slate-200 hover:bg-white ${getColSpanClass(columns, colSpan)}`}
       >
         {Icon ? (
           <div className={`flex shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm ${compact ? "h-6 w-6" : "h-7 w-7"}`}>

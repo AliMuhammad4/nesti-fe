@@ -5,6 +5,7 @@ export const NAV_FEATURE_MAP = Object.freeze({
   analytics: FEATURES.WORKSPACE_ANALYTICS_PAGE,
   "public-profile": FEATURES.PUBLIC_PROFILE,
   calendar: FEATURES.CALENDAR_INTEGRATION,
+  "call-history": FEATURES.PRO_CHAT_DM,
 });
 
 export const HEADER_FEATURE_LINKS = Object.freeze({

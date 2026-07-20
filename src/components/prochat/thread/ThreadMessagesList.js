@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, FileText, X } from "lucide-react";
+import { Bath, Bed, CalendarDays, ChevronLeft, ChevronRight, Download, FileText, Image as ImageIcon, Tag, X } from "lucide-react";
 import {
   displayName,
   formatBytes,
@@ -56,6 +56,149 @@ function splitMessageWithLinks(text) {
     chunks.push({ type: "text", value: source.slice(lastIdx) });
   }
   return chunks;
+}
+
+function cleanSelectedPropertyFollowup(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^Client question:\s*/i, "");
+}
+
+function parseSelectedPropertyFromText(content) {
+  const text = String(content || "").trim();
+  const structuredMatch = /\[PROPERTY_CARD\]\s*([\s\S]*?)\s*\[\/PROPERTY_CARD\](?:\s*\n\s*([\s\S]+))?/i.exec(text);
+  if (structuredMatch) {
+    try {
+      const card = JSON.parse(structuredMatch[1]);
+      const followup = cleanSelectedPropertyFollowup(structuredMatch[2]);
+      return {
+        kind: "property",
+        title: String(card?.title || "Selected property").trim(),
+        location: String(card?.location || "").trim(),
+        price: String(card?.price || "").trim(),
+        propertyType: String(card?.propertyType || "").trim(),
+        bedrooms: String(card?.bedrooms || "").trim(),
+        bathrooms: String(card?.bathrooms || "").trim(),
+        squareFootage: String(card?.squareFootage || "").trim(),
+        features: String(card?.features || "").trim(),
+        listedDate: card?.listedDate || null,
+        imageUrl: String(card?.imageUrl || "").trim(),
+        imageCount: Number(card?.imageCount || 0),
+        followup,
+        structured: true,
+      };
+    } catch {
+      // Fall through to legacy parser below.
+    }
+  }
+  const match = /^I selected this (property|comparable):\s*([\s\S]+?)\.\s*Please guide me on[\s\S]*?(?:\n\n([\s\S]+))?$/i.exec(text);
+  if (!match) return null;
+  const kind = String(match[1] || "property").toLowerCase();
+  const summary = String(match[2] || "").trim();
+  const followup = cleanSelectedPropertyFollowup(match[3]);
+  if (!summary) return null;
+  const parts = summary
+    .split("•")
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+  const [title, location, price] = parts;
+  return {
+    kind,
+    title: title || "Selected property",
+    location: location || "",
+    price: price || "",
+    followup,
+  };
+}
+
+function formatShortDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function SelectedPropertyMessage({ selected, mine }) {
+  if (!selected) return null;
+  const caption = selected.kind === "comparable" ? "Selected comparable" : "Selected property";
+  const listedDate = formatShortDate(selected.listedDate);
+  return (
+    <div className="space-y-1.5">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm">
+        <div className="relative h-[150px] overflow-hidden rounded-t-xl bg-slate-100 sm:h-[170px]">
+          {selected.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={selected.imageUrl} alt={selected.title} className="h-full w-full object-contain object-center" />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-slate-100 to-slate-200 px-3 text-center">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/80 text-slate-400 shadow-sm">
+                <ImageIcon size={16} />
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-500/60">
+                {caption}
+              </span>
+            </div>
+          )}
+          {selected.price ? (
+            <span className="absolute left-2.5 top-2.5 rounded-full bg-primary px-2.5 py-0.5 text-xs font-black text-white shadow">
+              {selected.price}
+            </span>
+          ) : null}
+          {(selected.propertyType || (!selected.structured && selected.location)) ? (
+            <span className="absolute right-2.5 top-2.5 inline-flex max-w-[55%] items-center gap-1 rounded-full border border-primary/15 bg-white/95 px-2.5 py-0.5 text-[11px] font-black text-primary shadow-sm backdrop-blur-sm">
+              <Tag size={11} className="shrink-0" />
+              <span className="truncate">
+              {selected.propertyType || selected.location}
+              </span>
+            </span>
+          ) : null}
+          {selected.imageCount > 1 ? (
+            <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">
+              <ImageIcon size={11} />
+              {selected.imageCount}
+            </span>
+          ) : null}
+        </div>
+        <div className="space-y-2 p-3">
+          <div>
+            <p className="line-clamp-2 text-sm font-black leading-snug text-slate-950 sm:text-[15px]">{selected.title}</p>
+            {selected.structured && selected.location ? (
+              <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-slate-500">{selected.location}</p>
+            ) : null}
+          </div>
+          {(selected.bedrooms || selected.bathrooms || selected.squareFootage) ? (
+            <div className="flex flex-wrap gap-1.5">
+              {selected.bedrooms ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                  <Bed size={12} className="text-primary" />
+                  {selected.bedrooms} Beds
+                </span>
+              ) : null}
+              {selected.bathrooms ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                  <Bath size={12} className="text-primary" />
+                  {selected.bathrooms} Baths
+                </span>
+              ) : null}
+              {selected.squareFootage ? (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{selected.squareFootage} sqft</span>
+              ) : null}
+            </div>
+          ) : null}
+          {selected.features ? <p className="line-clamp-1 text-xs leading-5 text-slate-500">{selected.features}</p> : null}
+          {listedDate ? (
+            <div className="flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs font-semibold text-slate-500">
+              <CalendarDays size={12} className="text-slate-400" />
+              Listed {listedDate}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {selected.followup ? (
+        <p className={`whitespace-pre-wrap break-words text-xs leading-relaxed sm:text-[13px] ${mine ? "text-white" : "text-text-heading"}`}>{selected.followup}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export default function ThreadMessagesList({
@@ -118,6 +261,7 @@ export default function ThreadMessagesList({
             : m?.sender || membersById.get(String(m.sender_user_id)) || (isGroup ? null : otherUser);
           const attachments = Array.isArray(m?.attachments) ? m.attachments : [];
           const emojiOnly = isEmojiOnlyMessage(m?.body);
+          const selectedProperty = parseSelectedPropertyFromText(m?.body);
           const imageAtts = attachments.filter((a) => isImageAttachment(a));
           const docAtts = attachments.filter((a) => !isImageAttachment(a));
           const imageGridClass =
@@ -165,36 +309,40 @@ export default function ThreadMessagesList({
                     </div>
                   ) : null}
                   <div
-                    className={`w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm shadow-sm ring-1 ${
+                    className={`${selectedProperty ? "w-[min(420px,84vw)]" : "w-fit max-w-full"} rounded-2xl px-4 py-2.5 text-sm shadow-sm ring-1 ${
                       mine
                         ? "bg-gradient-to-br from-primary to-primary-dark text-white ring-primary/20 rounded-br-md"
                         : "bg-white text-text-heading ring-border/70 rounded-bl-md"
                     }`}
                   >
                     {m.body ? (
-                      <p
+                      <div
                         className={`whitespace-pre-wrap break-words leading-relaxed ${
                           emojiOnly ? "text-2xl leading-snug tracking-wide" : ""
                         }`}
                       >
-                        {splitMessageWithLinks(m.body).map((part, idx) =>
-                          part.type === "link" ? (
-                            <a
-                              key={`msg-link-${idx}`}
-                              href={normalizeUrl(part.value)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`underline underline-offset-2 break-all ${
-                                mine ? "text-white hover:text-white/90" : "text-primary hover:text-primary-dark"
-                              }`}
-                            >
-                              {part.value}
-                            </a>
-                          ) : (
-                            <span key={`msg-text-${idx}`}>{part.value}</span>
+                        {selectedProperty ? (
+                          <SelectedPropertyMessage selected={selectedProperty} mine={mine} />
+                        ) : (
+                          splitMessageWithLinks(m.body).map((part, idx) =>
+                            part.type === "link" ? (
+                              <a
+                                key={`msg-link-${idx}`}
+                                href={normalizeUrl(part.value)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`underline underline-offset-2 break-all ${
+                                  mine ? "text-white hover:text-white/90" : "text-primary hover:text-primary-dark"
+                                }`}
+                              >
+                                {part.value}
+                              </a>
+                            ) : (
+                              <span key={`msg-text-${idx}`}>{part.value}</span>
+                            )
                           )
                         )}
-                      </p>
+                      </div>
                     ) : null}
                     {attachments.length ? (
                       <div className={`${m.body ? "mt-2" : ""} flex flex-col gap-2`}>

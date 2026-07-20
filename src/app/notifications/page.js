@@ -308,7 +308,7 @@ export default function NotificationsPage() {
                               onClick={() => onRowClick(n)}
                               className="text-left text-xs font-semibold text-primary"
                             >
-                              Open chat →
+                              {n.action?.is_lead_thread === true || String(n.action?.lead_id || "").trim() ? "Open inquiry →" : "Open chat →"}
                             </button>
                           ) : n.action?.type === "open_referral" ? (
                             <button

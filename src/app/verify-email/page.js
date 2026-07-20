@@ -18,6 +18,7 @@ import AuthVisualSection from "@/components/auth/AuthVisualSection";
 import { useSignupFlow } from "@/hooks/useSignupFlow";
 import { useVerifyEmail, useResendVerification } from "@/hooks/useAuthApi";
 import { useAppSelector } from "@/store";
+import { getDashboardRoute } from "@/lib/roleUtils";
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function VerifyEmailPage() {
     getEmail,
     getVerificationToken,
     getInviteToken,
+    getRole,
     saveSignupData,
     clearSignupData,
   } = useSignupFlow();
@@ -42,13 +44,22 @@ export default function VerifyEmailPage() {
   const resendMutation = useResendVerification();
   const verifying = verifyEmailMutation.isPending || verifyEmailMutation.isLoading;
   const token = useAppSelector((state) => state.auth.token);
+  const userRole = useAppSelector((state) => state.auth.user?.role);
 
   // Once token lands in Redux (set by useVerifyEmail onSuccess), navigate to dashboard
   useEffect(() => {
     if (token && verificationStatus === "success") {
-      router.push("/dashboard");
+      // Use role from Redux (from API response) or fallback to localStorage
+      const role = userRole || getRole();
+      console.log('🔍 DEBUG - Routing after verification:');
+      console.log('  userRole from Redux:', userRole);
+      console.log('  role from localStorage:', getRole());
+      console.log('  final role used:', role);
+      const dashboardRoute = getDashboardRoute(role);
+      console.log('  dashboard route:', dashboardRoute);
+      router.push(dashboardRoute);
     }
-  }, [token, verificationStatus, router]);
+  }, [token, verificationStatus, userRole, router, getRole]);
 
   useEffect(() => {
     const storedEmail = getEmail();
@@ -300,7 +311,11 @@ export default function VerifyEmailPage() {
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => router.push("/dashboard")}
+                onClick={() => {
+                  const role = userRole || getRole();
+                  const dashboardRoute = getDashboardRoute(role);
+                  router.push(dashboardRoute);
+                }}
                 className="h-14 w-full bg-gradient-to-r from-primary to-primary-dark rounded-md flex flex-col justify-center items-center cursor-pointer text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300"
               >
                 Go to Dashboard

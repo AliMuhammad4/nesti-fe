@@ -17,6 +17,7 @@ import {
   hasInquiredPropertyContext,
   inquiredPropertyDisplayAddress,
   inquiredPropertyFromLead,
+  normalizeInquiredPropertyImages,
 } from "@/lib/inquiredPropertyUtils";
 import LeadsProfileTab from "@/components/leads/LeadsProfileTab";
 import {
@@ -43,6 +44,7 @@ export default function LeadsPropertyMatchesTab({
 
   const inquiredMode = hasInquiredPropertyContext(lead);
   const inquiredPropertySnapshot = inquiredProperty || inquiredPropertyFromLead(lead);
+  const inquiredPropertyPhotoCount = normalizeInquiredPropertyImages(inquiredPropertySnapshot?.images).length;
   const matchesCopy = getPropertyMatchesCopy(lead, propertyMatchesPayload);
   const selectedLeadKey = String(selectedConversation?.id || selectedConversation?.lead_match_id || "");
   useEffect(() => {
@@ -414,7 +416,7 @@ export default function LeadsPropertyMatchesTab({
                   <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                     Could not load the linked seller lead details.
                   </div>
-                ) : inquiredSellerLeadDetail && inquiredSellerConversation ? (
+                ) : inquiredSellerLeadDetail ? (
                   <div className="mt-4 space-y-5 rounded-lg border border-border/60 bg-white px-4 py-4">
                     <LeadsProfileTab
                       selectedConversation={inquiredSellerConversation}
@@ -432,7 +434,7 @@ export default function LeadsPropertyMatchesTab({
                       onOpenMeta={() => {}}
                       onCancelCalendlyAppointment={undefined}
                       cancelCalendlyPending={false}
-                      inquiredPropertyAddress={inquiredPropertyDisplayAddress(inquiredPropertySnapshot)}
+                      suppressPropertyPhotos={inquiredPropertyPhotoCount > 0}
                       embedded
                     />
                   </div>

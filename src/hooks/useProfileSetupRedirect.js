@@ -46,7 +46,7 @@ export function useProfileSetupRedirect(isMounted) {
     if (pathAllowedDuringSetup(pathname)) return;
     if (!toastShownRef.current) {
       toastShownRef.current = true;
-      toast.info("Complete your personal and business details in Settings to use the workspace.", {
+      toast.info("Complete your personal and business information in Settings to unlock the workspace.", {
         toastId: "profile-setup-required",
       });
     }

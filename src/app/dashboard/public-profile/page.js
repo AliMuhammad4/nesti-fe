@@ -125,6 +125,7 @@ export default function PublicProfilePage() {
 
   const profile = profileData?.profile;
   const slug = profile?.slug || profileData?.suggested_slug;
+  const hasSavedDraft = Boolean(profile);
   const user = profileData?.user || {};
   const professionalProfile = profileData?.professional_profile || {};
   const displayName =
@@ -137,6 +138,9 @@ export default function PublicProfilePage() {
     lawyer: 'Real Estate Lawyer',
   }[professionalProfile.professional_type || profileData?.professional_type || profile?.professional_type] || 'Professional';
   const publicUrl = slug ? `${origin || ''}/professional/${slug}` : '';
+  const hasUnsavedChanges = Object.keys(formData).length > 0;
+  const isLive = formData.enabled ?? Boolean(profile?.enabled);
+  const canPublish = Boolean(profile) && !isLive && !hasUnsavedChanges;
 
   return (
     <FeaturePageGate feature={FEATURES.PUBLIC_PROFILE}>
@@ -158,47 +162,78 @@ export default function PublicProfilePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:shrink-0">
-              {slug && (
-                <a
-                  href={`/professional/${slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-primary/30 hover:text-primary"
-                >
-                  <Eye size={15} />
-                  Preview
-                </a>
-              )}
-              {profile && !(formData.enabled ?? Boolean(profile?.enabled)) && (
-                <button
-                  type="button"
-                  onClick={handlePublish}
-                  disabled={updateMutation.isPending}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  {updateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Globe2 size={15} />}
-                  Publish
-                </button>
-              )}
+              {profile && isLive ? (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-700">
+                  <Check size={14} />
+                  Live
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => generateCopyMutation.mutate()}
                 disabled={generateCopyMutation.isPending}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:opacity-60"
+                className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-xs font-semibold shadow-sm transition disabled:opacity-60 ${
+                  isLive
+                    ? "border border-slate-200 bg-white text-slate-700 hover:border-primary/30 hover:text-primary"
+                    : "bg-primary text-white hover:bg-primary-dark"
+                }`}
               >
                 {generateCopyMutation.isPending ? (
                   <Loader2 className="animate-spin" size={16} />
                 ) : (
                   <Sparkles size={16} />
                 )}
-                Generate
+                {isLive ? "Regenerate draft" : "Generate draft"}
               </button>
+              {hasUnsavedChanges ? (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending || deleteMutation.isPending}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-800 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {updateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                  {updateMutation.isPending ? 'Saving...' : 'Save changes'}
+                </button>
+              ) : null}
+              {hasSavedDraft && isLive && slug ? (
+                <a
+                  href={`/professional/${slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-primary/30 hover:text-primary"
+                  title={hasUnsavedChanges ? 'Preview shows last saved version. Save changes to include latest edits.' : 'Preview current page'}
+                >
+                  <Eye size={15} />
+                  {hasUnsavedChanges ? 'Preview saved' : 'Preview'}
+                </a>
+              ) : null}
+              {profile ? (
+                isLive ? (
+                  null
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handlePublish}
+                    disabled={!canPublish || updateMutation.isPending}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+                    title={
+                      hasUnsavedChanges
+                        ? 'Save your changes before publishing'
+                        : 'Publish your saved public page'
+                    }
+                  >
+                    {updateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Globe2 size={15} />}
+                    {hasUnsavedChanges ? 'Save to publish' : 'Publish'}
+                  </button>
+                )
+              ) : null}
               {profile ? (
                 <button
                   type="button"
                   onClick={handleDeleteWebPage}
                   disabled={deleteMutation.isPending}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 text-xs font-semibold text-red-700 shadow-sm transition hover:bg-red-100 disabled:opacity-60"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
                 >
                   {deleteMutation.isPending ? (
                     <Loader2 className="animate-spin" size={16} />
@@ -206,16 +241,6 @@ export default function PublicProfilePage() {
                     <Trash2 size={16} />
                   )}
                   {deleteMutation.isPending ? 'Deleting...' : 'Delete page'}
-                </button>
-              ) : null}
-              {Object.keys(formData).length > 0 ? (
-                <button
-                  onClick={handleSave}
-                  disabled={updateMutation.isPending || deleteMutation.isPending}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-800 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {updateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                  {updateMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               ) : null}
             </div>

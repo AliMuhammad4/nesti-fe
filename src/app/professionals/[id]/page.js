@@ -2,16 +2,27 @@
 
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { MessageSquare, User, Briefcase } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { fetchProfessionalById } from "@/lib/professionalsClient";
+import {
+  fetchProfessionalById,
+  submitAgentInquiryFromClient,
+  submitLawyerInquiryFromClient,
+  submitMortgageBrokerInquiryFromClient,
+  uploadAgentInquiryPropertyImages,
+} from "@/lib/professionalsClient";
 import { createOrGetProChatThread } from "@/lib/proChatClient";
 import PersonalCard from "@/components/profile/PersonalCard";
 import BusinessCard from "@/components/profile/BusinessCard";
+import { ClientMatchExplanation } from "@/components/matching/MatchExplanation";
+import AgentInquiryModal from "@/components/client/AgentInquiryModal";
+import LawyerInquiryModal from "@/components/client/LawyerInquiryModal";
+import MortgageBrokerInquiryModal from "@/components/client/MortgageBrokerInquiryModal";
 
 function humanizeToken(value) {
   return String(value || "")
@@ -53,7 +64,10 @@ function SectionHeader({ icon: Icon, title, right = null }) {
 export default function ProfessionalDetailPage() {
   const { isAuthenticated } = useAuthGuard();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token, user: authUser } = useAppSelector((state) => state.auth);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [submittingInquiry, setSubmittingInquiry] = useState(false);
   const params = useParams();
   const id = String(params?.id || "").trim();
   const myUserId = String(authUser?.id || authUser?._id || "").trim();
@@ -71,6 +85,12 @@ export default function ProfessionalDetailPage() {
   const roleBadgeText = humanizeToken(pro?.professional_type || pro?.role || "").toUpperCase();
   const hasCover = Boolean(pro?.cover_image);
   const isSelf = Boolean(myUserId && String(pro?.id || "") === String(myUserId));
+  const isClientViewer = String(authUser?.role || "").toLowerCase() === "client";
+  const professionalRole = String(pro?.professional_type || pro?.role || "").toLowerCase();
+  const isAgentProfile = professionalRole === "agent";
+  const isLawyerProfile = professionalRole === "lawyer";
+  const isMortgageBrokerProfile = professionalRole === "mortgage_broker" || professionalRole === "broker";
+  const canSubmitProfessionalInquiry = isClientViewer && (isAgentProfile || isLawyerProfile || isMortgageBrokerProfile);
 
   const startChat = async () => {
     try {
@@ -78,6 +98,7 @@ export default function ProfessionalDetailPage() {
       const resp = await createOrGetProChatThread({
         token,
         other_user_id: String(pro.id),
+        client: String(authUser?.role || "").toLowerCase() === "client",
       });
       const threadId = resp?.thread?.id;
       if (threadId) {
@@ -87,6 +108,30 @@ export default function ProfessionalDetailPage() {
       }
     } catch (e) {
       toast.error(e?.message || "Could not start chat");
+    }
+  };
+
+  const submitInquiry = async (payload) => {
+    try {
+      if (!token || !pro?.id) return;
+      setSubmittingInquiry(true);
+      const submitter = isMortgageBrokerProfile
+        ? submitMortgageBrokerInquiryFromClient
+        : isAgentProfile
+          ? submitAgentInquiryFromClient
+          : submitLawyerInquiryFromClient;
+      const response = await submitter({
+        token,
+        professionalId: pro.id,
+        payload,
+      });
+      toast.success(response?.message || "Inquiry submitted successfully");
+      queryClient.invalidateQueries({ queryKey: ["client-inquiries"] });
+      setShowInquiryModal(false);
+    } catch (error) {
+      toast.error(error?.message || "Could not submit inquiry");
+    } finally {
+      setSubmittingInquiry(false);
     }
   };
 
@@ -108,7 +153,7 @@ export default function ProfessionalDetailPage() {
     website: pro?.website || "",
     phone: pro?.phone || "",
     email: pro?.email || "",
-    experience: pro?.experience || "",
+    experience: pro?.experience || pro?.experience_level || "",
     licenseNumber: pro?.license_number || "",
     socialMedia: pro?.social_media || "",
     transactionVolume: pro?.transaction_volume || "",
@@ -212,14 +257,25 @@ export default function ProfessionalDetailPage() {
                   title="Contact & role"
                   right={
                     !isSelf ? (
-                      <button
-                        type="button"
-                        onClick={startChat}
-                        className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
-                      >
-                        <MessageSquare size={14} />
-                        Chat
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {canSubmitProfessionalInquiry ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowInquiryModal(true)}
+                            className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
+                          >
+                            {isMortgageBrokerProfile ? "Ask this broker" : isAgentProfile ? "Ask this agent" : "Ask this lawyer"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={startChat}
+                          className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:border-primary/35 hover:bg-primary/[0.12] active:scale-[0.99]"
+                        >
+                          <MessageSquare size={14} />
+                          Chat
+                        </button>
+                      </div>
                     ) : null
                   }
                 />
@@ -232,6 +288,14 @@ export default function ProfessionalDetailPage() {
                 />
               </section>
 
+              {pro?.ai_match_tier || pro?.ai_match_score || pro?.ai_match_breakdown?.length ? (
+                <ClientMatchExplanation
+                  score={pro.ai_match_score}
+                  breakdown={pro.ai_match_breakdown}
+                  tier={pro.ai_match_tier}
+                />
+              ) : null}
+
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.05] sm:p-6">
                 <SectionHeader icon={Briefcase} title="Business & expertise" />
                 <BusinessCard businessInfo={businessInfo} />
@@ -240,6 +304,42 @@ export default function ProfessionalDetailPage() {
           </>
         )}
       </div>
+      {isMortgageBrokerProfile ? (
+        <MortgageBrokerInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      ) : isAgentProfile ? (
+        <AgentInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          token={token}
+          uploadPropertyImages={uploadAgentInquiryPropertyImages}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      ) : (
+        <LawyerInquiryModal
+          open={showInquiryModal}
+          submitting={submittingInquiry}
+          professionalName={name}
+          onClose={() => {
+            if (submittingInquiry) return;
+            setShowInquiryModal(false);
+          }}
+          onSubmit={submitInquiry}
+        />
+      )}
     </div>
   );
 }

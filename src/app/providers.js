@@ -19,6 +19,7 @@ const ReactQueryDevtools = dynamic(
 
 export default function Providers({ children }) {
   const [mounted, setMounted] = useState(false);
+  const [canUseLocalStorage, setCanUseLocalStorage] = useState(false);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -39,6 +40,14 @@ export default function Providers({ children }) {
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const key = "__nesti_devtools_probe__";
+      window.localStorage.setItem(key, "1");
+      window.localStorage.removeItem(key);
+      setCanUseLocalStorage(true);
+    } catch {
+      setCanUseLocalStorage(false);
+    }
   }, []);
 
   return (
@@ -52,7 +61,9 @@ export default function Providers({ children }) {
               children
             )}
           </NotificationsUiProvider>
-          {isDev ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+          {isDev && mounted && canUseLocalStorage ? (
+            <ReactQueryDevtools initialIsOpen={false} />
+          ) : null}
         </QueryClientProvider>
       </ReduxProvider>
     </GoogleOAuthProvider>

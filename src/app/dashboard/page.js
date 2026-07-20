@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Copy, Link2, Mail, MessageCircle, RefreshCw, Share2, X } from "lucide-react";
+import { Copy, Link2, Loader2, Mail, MessageCircle, RefreshCw, Settings2, Share2, X } from "lucide-react";
+import DashboardInviteRewardButton from "@/components/dashboard/DashboardInviteRewardButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
@@ -11,13 +13,14 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useProfileQuery } from "@/hooks/useAuthApi";
 import { useRecordLeadView } from "@/hooks/useRecordLeadView";
 import { motion, AnimatePresence } from "framer-motion";
+import { getDashboardRoute } from "@/lib/roleUtils";
 import {
   fetchChatAnalyticsSummary,
   fetchChatAnalyticsTimeseries,
 } from "@/lib/chatClient";
 import { fetchLeads, fetchLeadProfiles } from "@/lib/leadsClient";
 import { fetchCalendarBookings } from "@/lib/calendarClient";
-import { createInviteLink, fetchInviteConversionRoleTrends } from "@/lib/inviteClient";
+import { createInviteLink, fetchInviteConversionRoleTrends, fetchInviteLinks } from "@/lib/inviteClient";
 import { leadApiRowToConversationShape } from "@/lib/leadAdapters";
 import { formatLeadLocationLine, getLeadMeta, getLeadPropertyTypeDisplay } from "@/lib/leadConversationMeta";
 import PlanLimitBanner from "@/components/billing/PlanLimitBanner";
@@ -28,6 +31,8 @@ import DashboardTopTables from "@/components/dashboard/DashboardTopTables";
 import DashboardCalendlyButton from "@/components/dashboard/DashboardCalendlyButton";
 import DashboardStartGuide from "@/components/dashboard/DashboardStartGuide";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
+import CoverImageEditor from "@/components/dashboard/CoverImageEditor";
+import { apiClient, API_ENDPOINTS } from "@/lib/api";
 
 const DashboardAnalyticsPanels = dynamic(
   () => import("@/components/dashboard/DashboardAnalyticsPanels"),
@@ -51,6 +56,23 @@ const WINDOW_OPTIONS = [
   { value: 90, label: "90d" },
 ];
 const DEFAULT_WINDOW_DAYS = 30;
+function safeLocalStorageGet(key) {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage write failures for restricted contexts.
+  }
+}
 function normalizeProfilesPayload(data) {
   if (Array.isArray(data?.lead_profiles)) return data.lead_profiles;
   if (Array.isArray(data?.items)) return data.items;
@@ -59,6 +81,7 @@ function normalizeProfilesPayload(data) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user, token } = useAppSelector((state) => state.auth);
   const personalInfo = useAppSelector((state) => state.profile.personalInfo);
@@ -70,6 +93,13 @@ export default function DashboardPage() {
   const canUseCalendarIntegration = hasFeature(FEATURES.CALENDAR_INTEGRATION);
   const activeUser = profile?.user || profile?.data || user;
 
+  // Redirect clients to client dashboard
+  useEffect(() => {
+    if (activeUser?.role === 'client') {
+      router.replace('/client-dashboard');
+    }
+  }, [activeUser?.role, router]);
+
   const apiUser = profile?.user;
   const coverImageUrl = useMemo(() => {
     const fromStore = personalInfo?.coverImage && String(personalInfo.coverImage).trim();
@@ -77,6 +107,20 @@ export default function DashboardPage() {
     const fromActive = activeUser?.cover_image && String(activeUser.cover_image).trim();
     return fromStore || fromApi || fromActive || "";
   }, [personalInfo?.coverImage, apiUser?.cover_image, activeUser?.cover_image]);
+
+  const coverImagePosition = useMemo(() => {
+    const pos = apiUser?.cover_image_position || activeUser?.cover_image_position || {};
+    return {
+      x: Math.min(100, Math.max(0, Number(pos.x) || 50)),
+      y: Math.min(100, Math.max(0, Number(pos.y) || 50)),
+    };
+  }, [apiUser?.cover_image_position, activeUser?.cover_image_position]);
+
+  const coverImageZoom = useMemo(() => {
+    const value = Number(apiUser?.cover_image_zoom || activeUser?.cover_image_zoom || 1);
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(3, Math.max(1, value));
+  }, [apiUser?.cover_image_zoom, activeUser?.cover_image_zoom]);
 
   const profileImageUrl = useMemo(() => {
     const fromStore = personalInfo?.profileImage && String(personalInfo.profileImage).trim();
@@ -149,6 +193,7 @@ export default function DashboardPage() {
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [generatedInviteLink, setGeneratedInviteLink] = useState("");
+  const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [guideDismissed, setGuideDismissed] = useState(false);
   const guideStorageKey = useMemo(() => {
     const id =
@@ -167,7 +212,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isMounted || typeof window === "undefined") return;
-    const status = window.localStorage.getItem(guideStorageKey);
+    const status = safeLocalStorageGet(guideStorageKey);
     setGuideDismissed(status === "dismissed" || status === "completed");
   }, [guideStorageKey, isMounted]);
 
@@ -263,6 +308,22 @@ export default function DashboardPage() {
     profilesTopQuery.isFetching ||
     calendarBookingsQuery.isFetching;
 
+  const inviteLinksQuery = useQuery({
+    queryKey: ["dashboard-invite-links", token],
+    enabled: Boolean(token) && canUseReferralInviteLinks && showInviteModal,
+    queryFn: () => fetchInviteLinks({ token, page: 1, limit: 1 }),
+    staleTime: 30_000,
+  });
+
+  const existingInviteLink = useMemo(() => {
+    const items = inviteLinksQuery.data?.items;
+    if (!Array.isArray(items) || !items.length) return "";
+    const active = items.find((item) => item?.is_active && item?.share_url);
+    return String(active?.share_url || items[0]?.share_url || "").trim();
+  }, [inviteLinksQuery.data?.items]);
+
+  const displayInviteLink = generatedInviteLink || existingInviteLink;
+
   const createInviteMutation = useMutation({
     mutationFn: () =>
       createInviteLink({
@@ -275,6 +336,7 @@ export default function DashboardPage() {
     onSuccess: async (data) => {
       const link = String(data?.share_url || data?.invite?.share_url || "").trim();
       setGeneratedInviteLink(link);
+      queryClient.invalidateQueries({ queryKey: ["dashboard-invite-links", token] });
       if (link) {
         try {
           await navigator.clipboard.writeText(link);
@@ -289,10 +351,27 @@ export default function DashboardPage() {
     onError: (err) => toast.error(err?.message || "Could not create invite link."),
   });
 
+  const saveCoverAdjustmentsMutation = useMutation({
+    mutationFn: ({ zoom, position }) =>
+      apiClient({
+        url: API_ENDPOINTS.professionals.coverAdjustments,
+        method: "POST",
+        data: { zoom, position },
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Cover photo saved.");
+      setShowCoverEditor(false);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      profileQuery.refetch();
+    },
+    onError: (err) => toast.error(err?.message || "Could not save cover photo."),
+  });
+
   const copyGeneratedInviteLink = async () => {
-    if (!generatedInviteLink) return;
+    if (!displayInviteLink) return;
     try {
-      await navigator.clipboard.writeText(generatedInviteLink);
+      await navigator.clipboard.writeText(displayInviteLink);
       toast.success("Invite link copied.");
     } catch {
       toast.error("Could not copy invite link.");
@@ -301,25 +380,23 @@ export default function DashboardPage() {
 
   const handleGuideDismiss = (status = "dismissed") => {
     setGuideDismissed(true);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(guideStorageKey, status);
-    }
+    safeLocalStorageSet(guideStorageKey, status);
   };
 
-  const inviteShareText = generatedInviteLink
-    ? `Join Nesti via this invite link: ${generatedInviteLink}`
+  const inviteShareText = displayInviteLink
+    ? `Join Nesti via this invite link: ${displayInviteLink}`
     : "";
   const inviteShareLinks = {
-    email: generatedInviteLink
+    email: displayInviteLink
       ? `mailto:?subject=${encodeURIComponent("Join my Nesti network")}&body=${encodeURIComponent(inviteShareText)}`
       : "#",
-    whatsapp: generatedInviteLink
+    whatsapp: displayInviteLink
       ? `https://wa.me/?text=${encodeURIComponent(inviteShareText)}`
       : "#",
-    sms: generatedInviteLink
+    sms: displayInviteLink
       ? `sms:?body=${encodeURIComponent(inviteShareText)}`
       : "#",
-    social: generatedInviteLink
+    social: displayInviteLink
       ? `https://x.com/intent/tweet?text=${encodeURIComponent(inviteShareText)}`
       : "#",
   };
@@ -480,9 +557,22 @@ export default function DashboardPage() {
                 <img
                   src={coverImageUrl}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.02] contrast-[0.98]"
+                  className="absolute inset-0 h-full w-full object-cover brightness-[1.02] contrast-[0.98]"
+                  style={{
+                    objectPosition: `${coverImagePosition.x}% ${coverImagePosition.y}%`,
+                    transform: `scale(${coverImageZoom})`,
+                    transformOrigin: `${coverImagePosition.x}% ${coverImagePosition.y}%`,
+                  }}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/15 via-slate-900/8 to-slate-900/30" aria-hidden />
+                <button
+                  type="button"
+                  onClick={() => setShowCoverEditor(true)}
+                  className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-primary"
+                >
+                  <Settings2 size={13} />
+                  Adjust cover
+                </button>
               </>
             ) : (
               <>
@@ -551,15 +641,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2.5">
             {canUseReferralInviteLinks ? (
-              <button
-                type="button"
-                onClick={() => setShowInviteModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/[0.06] px-3.5 py-2 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
-                title="Create invite link"
-              >
-                <Link2 size={13} strokeWidth={2.5} />
-                Create invite
-              </button>
+              <DashboardInviteRewardButton onClick={() => setShowInviteModal(true)} />
             ) : null}
             <div
               role="tablist"
@@ -648,37 +730,48 @@ export default function DashboardPage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
               initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
               transition={{ duration: 0.18 }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-bold text-text-heading">Create invite link</h3>
-                  <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                    Generate a professional invite link you can share with your network.
-                  </p>
+              <div className="border-b border-slate-100 bg-gradient-to-r from-primary/[0.06] via-white to-primary/[0.04] px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200/70">
+                      Earn $5 per invite
+                    </div>
+                    <h3 className="text-base font-bold text-text-heading">Invite link</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                      Share your link with professionals in your network and track conversions from your dashboard.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteModal(false)}
+                    className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-slate-100 hover:text-text-heading"
+                    aria-label="Close invite modal"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-slate-100 hover:text-text-heading"
-                  aria-label="Close invite modal"
-                >
-                  <X size={16} />
-                </button>
               </div>
 
-              <div className="mt-4 rounded-xl border border-primary/15 bg-primary/[0.04] p-3">
-                <p className="text-xs font-semibold text-text-heading">Invite link</p>
-                {generatedInviteLink ? (
+              <div className="p-5">
+              <div className="rounded-xl border border-primary/15 bg-primary/[0.04] p-3.5">
+                <p className="text-xs font-semibold text-text-heading">Your invite link</p>
+                {inviteLinksQuery.isLoading && !displayInviteLink ? (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-text-muted">
+                    <Loader2 size={14} className="animate-spin text-primary" />
+                    Loading your invite link...
+                  </div>
+                ) : displayInviteLink ? (
                   <div className="mt-2 flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
-                      value={generatedInviteLink}
+                      value={displayInviteLink}
                       className="min-w-0 flex-1 rounded-lg border border-border bg-white px-3 py-2 text-xs text-text-body outline-none"
                     />
                     <button
@@ -692,15 +785,17 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <p className="mt-1 text-xs text-text-muted">
-                    Click create below to generate a fresh invite link.
+                    No invite link yet. Create one below to start sharing.
                   </p>
                 )}
               </div>
 
-              <div className="mt-4 rounded-xl border border-border/70 bg-white p-3">
+              <div className="mt-4 rounded-xl border border-border/70 bg-white p-3.5">
                 <p className="text-xs font-semibold text-text-heading">Share on platforms</p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  Create an invite first, then share it directly through your preferred channel.
+                  {displayInviteLink
+                    ? "Send your invite through your preferred channel."
+                    : "Create an invite first, then share it directly through your preferred channel."}
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <a
@@ -708,7 +803,7 @@ export default function DashboardPage() {
                     target="_blank"
                     rel="noreferrer"
                     className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs font-semibold ${
-                      generatedInviteLink
+                      displayInviteLink
                         ? "border-border bg-white text-text-heading hover:bg-primary/[0.07]"
                         : "pointer-events-none border-border/60 bg-slate-100 text-text-muted"
                     }`}
@@ -721,7 +816,7 @@ export default function DashboardPage() {
                     target="_blank"
                     rel="noreferrer"
                     className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs font-semibold ${
-                      generatedInviteLink
+                      displayInviteLink
                         ? "border-border bg-white text-text-heading hover:bg-primary/[0.07]"
                         : "pointer-events-none border-border/60 bg-slate-100 text-text-muted"
                     }`}
@@ -734,7 +829,7 @@ export default function DashboardPage() {
                     target="_blank"
                     rel="noreferrer"
                     className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs font-semibold ${
-                      generatedInviteLink
+                      displayInviteLink
                         ? "border-border bg-white text-text-heading hover:bg-primary/[0.07]"
                         : "pointer-events-none border-border/60 bg-slate-100 text-text-muted"
                     }`}
@@ -747,7 +842,7 @@ export default function DashboardPage() {
                     target="_blank"
                     rel="noreferrer"
                     className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs font-semibold ${
-                      generatedInviteLink
+                      displayInviteLink
                         ? "border-border bg-white text-text-heading hover:bg-primary/[0.07]"
                         : "pointer-events-none border-border/60 bg-slate-100 text-text-muted"
                     }`}
@@ -758,28 +853,60 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
                   className="rounded-lg border border-border bg-white px-4 py-2 text-xs font-semibold text-text-heading hover:bg-slate-50"
                 >
-                  Cancel
+                  Close
                 </button>
-                <button
-                  type="button"
-                  onClick={() => createInviteMutation.mutate()}
-                  disabled={!token || createInviteMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Link2 size={13} />
-                  {createInviteMutation.isPending ? "Creating..." : "Create invite"}
-                </button>
+                {displayInviteLink ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => createInviteMutation.mutate()}
+                      disabled={!token || createInviteMutation.isPending}
+                      className="rounded-lg border border-border bg-white px-4 py-2 text-xs font-semibold text-text-heading hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {createInviteMutation.isPending ? "Creating..." : "Generate new link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyGeneratedInviteLink}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark"
+                    >
+                      <Copy size={13} />
+                      Copy link
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => createInviteMutation.mutate()}
+                    disabled={!token || createInviteMutation.isPending || inviteLinksQuery.isLoading}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Link2 size={13} />
+                    {createInviteMutation.isPending ? "Creating..." : "Create invite link"}
+                  </button>
+                )}
+              </div>
               </div>
             </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
+      {showCoverEditor && coverImageUrl ? (
+        <CoverImageEditor
+          coverUrl={coverImageUrl}
+          initialZoom={coverImageZoom}
+          initialPosition={coverImagePosition}
+          saving={saveCoverAdjustmentsMutation.isPending}
+          onClose={() => setShowCoverEditor(false)}
+          onSave={(values) => saveCoverAdjustmentsMutation.mutate(values)}
+        />
+      ) : null}
     </div>
   );
 }

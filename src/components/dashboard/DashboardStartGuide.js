@@ -79,7 +79,7 @@ const GUIDE_STEPS = [
     body: "Browse professionals so you understand who you can message, collaborate with, or refer leads to inside the platform.",
     guidance: ["Search for professionals who match your client needs.", "Use the network to support referrals, collaboration, and relationship building."],
     detail: "This turns the left menu from a toolbox into a workflow: capture leads, qualify them, book meetings, and collaborate with other professionals.",
-    href: "/professionals?role=agent",
+    href: "/professionals",
     actionLabel: "Browse Professionals",
   },
 ];

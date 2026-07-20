@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import React from "react";
 import { roles } from "@/constants/auth";
 import { CheckCircle2 } from "lucide-react";
 
@@ -34,7 +35,7 @@ export default function RoleDropdown({
   return (
     <div>
       <label className="mb-1.5 block text-xs font-bold text-text-heading">
-        Sign up as a Professional{" "}
+        I am a{" "}
         {required && <span className="text-red-500">*</span>}
       </label>
       <div className="relative" ref={dropdownRef}>
@@ -49,11 +50,18 @@ export default function RoleDropdown({
             } ${value ? "text-text-heading" : "text-text-muted"}`}
         >
           {value ? (
-            <span className="font-medium">
-              {selectedRole?.label || "Choose your role"}
-            </span>
+            <div className="flex items-center gap-2">
+              {selectedRole?.icon && (
+                <div className="flex h-5 w-5 items-center justify-center">
+                  {React.createElement(selectedRole.icon, { size: 16, className: "text-primary" })}
+                </div>
+              )}
+              <span className="font-medium">
+                {selectedRole?.label || "Choose your role"}
+              </span>
+            </div>
           ) : (
-            <span>Choose your role</span>
+            <span>Select your role</span>
           )}
         </button>
         <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2">
@@ -78,6 +86,8 @@ export default function RoleDropdown({
             {roles.map((role, index) => {
               const IconComponent = role.icon;
               const isSelected = value === role.value;
+              const isClient = role.value === 'client';
+              
               return (
                 <button
                   key={role.value}
@@ -86,18 +96,28 @@ export default function RoleDropdown({
                     onChange(role.value);
                     setIsOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors duration-150 ${isSelected ? "bg-primary/5" : "hover:bg-gray-50"
+                  className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors duration-150 ${isSelected ? "bg-primary/5" : "hover:bg-gray-50"
                     } ${index !== roles.length - 1
                       ? "border-b border-border/50"
                       : ""
-                    }`}
+                    } ${isClient ? "bg-green-50/50 hover:bg-green-50" : ""}`}
                 >
-                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-green-100">
-                    <IconComponent size={16} className="text-primary" />
+                  <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${isClient ? "bg-green-100" : "bg-primary/10"}`}>
+                    <IconComponent size={18} className={isClient ? "text-green-600" : "text-primary"} />
                   </div>
-                  <span className="text-sm font-medium text-text-heading">
-                    {role.label}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-text-heading">
+                      {role.label}
+                    </div>
+                    {role.description && (
+                      <div className="text-xs text-text-muted mt-0.5">
+                        {role.description}
+                      </div>
+                    )}
+                  </div>
+                  {isSelected && (
+                    <CheckCircle2 size={16} className="text-primary flex-shrink-0 mt-1" />
+                  )}
                 </button>
               );
             })}

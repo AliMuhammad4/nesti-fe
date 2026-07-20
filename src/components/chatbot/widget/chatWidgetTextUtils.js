@@ -16,6 +16,24 @@ export const formatPrice = (value) => {
   return `$${n.toLocaleString()}`;
 };
 
+const firstImageUrl = (property) => {
+  const explicit = String(property?.imageUrl || property?.image_url || "").trim();
+  if (explicit) return explicit;
+  const images = Array.isArray(property?.images) ? property.images : [];
+  for (const image of images) {
+    if (typeof image === "string" && image.trim()) return image.trim();
+    const url = String(image?.secure_url || image?.url || "").trim();
+    if (url) return url;
+  }
+  return "";
+};
+
+const imageCount = (property) => {
+  const explicit = Number(property?.imageCount || property?.image_count || 0);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return Array.isArray(property?.images) ? property.images.length : 0;
+};
+
 export const buildPropertyPickMessage = (property, context = "buy") => {
   const matchedLead = property?.matched_lead ?? property?.matchedLead;
   const sellerName =
@@ -38,6 +56,40 @@ export const buildPropertyPickMessage = (property, context = "buy") => {
         ? formatPrice(property.price) || `$${property.price}`
         : "";
   const summary = [title, place, price].filter(Boolean).join(" • ");
+  const card = {
+    title: title || "Selected property",
+    location: place,
+    price,
+    propertyType: String(
+      matchedLead?.property_type ||
+        matchedLead?.propertyType ||
+        property?.propertyType ||
+        property?.property_type ||
+        "",
+    ).trim(),
+    bedrooms: String(matchedLead?.bedrooms || property?.bedrooms || "").trim(),
+    bathrooms: String(matchedLead?.bathrooms || property?.bathrooms || "").trim(),
+    squareFootage: String(property?.squareFootage || property?.square_footage || "").trim(),
+    features: String(property?.features || property?.must_have_features || "").trim(),
+    listedDate: property?.listedDate || property?.listed_date || property?.createdAt || null,
+    imageUrl: firstImageUrl(property),
+    imageCount: imageCount(property),
+  };
+  const followup =
+    context === "sell"
+      ? "Please guide me on pricing strategy and next steps."
+      : "Please guide me on viewing and next steps.";
+  const structuredMessage = [
+    "[PROPERTY_CARD]",
+    JSON.stringify(card),
+    "[/PROPERTY_CARD]",
+    "",
+    followup,
+  ].join("\n");
+
+  if (card.imageUrl || card.bedrooms || card.bathrooms || card.propertyType || card.listedDate) {
+    return structuredMessage;
+  }
 
   if (context === "sell") {
     return summary

@@ -1,4 +1,5 @@
 import HeroSection from "@/components/sections/HeroSection";
+import FeaturedProfessionalsSection from "@/components/sections/FeaturedProfessionalsSection";
 import AIAssistantsSection from "@/components/sections/AIAssistantsSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
