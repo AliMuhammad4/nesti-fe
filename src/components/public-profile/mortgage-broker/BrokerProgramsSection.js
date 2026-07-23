@@ -2,16 +2,19 @@
 
 import { Calculator, Check, Home, Percent } from 'lucide-react';
 
-export default function BrokerProgramsSection({ programs, onProgramClick }) {
+export default function BrokerProgramsSection({ programs, onProgramClick, content = {} }) {
+  const heading = content.heading || 'Mortgage Programs';
+  const body = content.body || 'Find the perfect mortgage solution tailored to your financial needs.';
+
   return (
     <section id="programs" className="py-16 bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-text-heading mb-4">
-            Mortgage Programs
+            {heading}
           </h2>
           <p className="text-lg text-text-muted">
-            Find the perfect mortgage solution tailored to your financial needs.
+            {body}
           </p>
         </div>
 

@@ -41,8 +41,31 @@ const ROLE_DETAILS = {
   },
 };
 
-export default function PublicRoleDetailSection({ profile }) {
-  const content = ROLE_DETAILS[profile?.professional_type] || ROLE_DETAILS.agent;
+export default function PublicRoleDetailSection({ profile, content = {} }) {
+  const base = ROLE_DETAILS[profile?.professional_type] || ROLE_DETAILS.agent;
+  const highlights = Array.isArray(content.highlights) && content.highlights.length
+    ? content.highlights
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          const [title = '', text = ''] = item.split('|').map((part) => part.trim());
+          return title ? { title, text } : null;
+        }
+        return item.title ? { title: item.title, text: item.text || '' } : null;
+      })
+      .filter(Boolean)
+    : base.highlights;
+  const proof = Array.isArray(content.proof) && content.proof.length
+    ? content.proof.map((item) => String(item || '').trim()).filter(Boolean)
+    : base.proof;
+  const resolved = {
+    ...base,
+    eyebrow: content.eyebrow || base.eyebrow,
+    title: content.heading || content.title || base.title,
+    description: content.body || content.description || base.description,
+    highlights,
+    proof,
+  };
 
   return (
     <section className="py-12">
@@ -56,16 +79,16 @@ export default function PublicRoleDetailSection({ profile }) {
               <div className="max-w-2xl">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
                   <Sparkles size={12} />
-                  {content.eyebrow}
+                  {resolved.eyebrow}
                 </div>
                 <h2 className="text-xl font-bold tracking-tight text-text-heading sm:text-2xl">
-                  {content.title}
+                  {resolved.title}
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-text-muted">{content.description}</p>
+                <p className="mt-3 text-sm leading-6 text-text-muted">{resolved.description}</p>
               </div>
 
               <div className="ml-auto grid w-fit min-w-[17rem] gap-2 rounded-2xl border border-primary/15 bg-primary/[0.035] p-3">
-                {content.proof.map((item) => (
+                {resolved.proof.map((item) => (
                   <div key={item} className="w-fit min-w-full rounded-xl bg-white px-3 py-2 text-[12px] font-semibold text-text-heading shadow-sm ring-1 ring-primary/10">
                     {item}
                   </div>
@@ -73,8 +96,8 @@ export default function PublicRoleDetailSection({ profile }) {
               </div>
             </div>
 
-            <div className="mt-6 grid auto-rows-fr gap-3 sm:grid-cols-3">
-              {content.highlights.map((item) => (
+            <div className="mt-6 grid auto-rows-fr gap-3 lg:grid-cols-3">
+              {resolved.highlights.map((item) => (
                 <div key={item.title} className="flex h-full flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-primary/[0.035] p-4 shadow-sm">
                   <h3 className="text-sm font-bold text-text-heading">{item.title}</h3>
                   <p className="mt-2 flex-1 text-xs leading-5 text-text-muted">{item.text}</p>

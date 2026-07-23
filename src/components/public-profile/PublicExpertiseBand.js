@@ -26,21 +26,27 @@ function fallbackServices(role) {
   return ['Buying guidance', 'Selling strategy', 'Market consultation'];
 }
 
-export default function PublicExpertiseBand({ profile, onCTAClick }) {
+export default function PublicExpertiseBand({ profile, onCTAClick, content = {} }) {
   const professionalProfile = profile.professional_profile || {};
   const role = profile.professional_type;
+  const customServices = uniqueItems(normalizeList(content.services));
+  const customExpertise = uniqueItems(normalizeList(content.expertise));
+  const customAreas = uniqueItems(normalizeList(content.areas));
   const services = uniqueItems([
+    ...customServices,
     ...(profile.services || []).map((service) => service?.title),
     ...(profile.practice_areas || []),
     ...fallbackServices(role),
   ]);
   const expertise = uniqueItems([
+    ...customExpertise,
     ...normalizeList(professionalProfile.specializations),
     ...normalizeList(professionalProfile.certificates),
     ...normalizeList(professionalProfile.awards),
     ...normalizeList(professionalProfile.preferred_clients),
   ]);
   const areas = uniqueItems([
+    ...customAreas,
     ...normalizeList(professionalProfile.target_neighborhoods),
     ...normalizeList(professionalProfile.location),
   ]);
@@ -72,14 +78,14 @@ export default function PublicExpertiseBand({ profile, onCTAClick }) {
         <div className="mb-6">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-              Professional Snapshot
+              {content.eyebrow || 'Professional Snapshot'}
             </div>
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-heading">
-              Services, Expertise & Areas
+              {content.heading || 'Services, Expertise & Areas'}
             </h2>
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">
-            A quick view of what this professional handles, where they work, and the strengths clients can expect.
+            {content.body || 'A quick view of what this professional handles, where they work, and the strengths clients can expect.'}
           </p>
         </div>
 

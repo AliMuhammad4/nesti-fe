@@ -46,24 +46,24 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main content row – both columns stretch to the same height */}
         <div className="flex flex-col gap-10 lg:flex-row lg:items-stretch lg:gap-14">
-          {/* Left - Portrait */}
-          <div className="flex flex-col items-center lg:w-72 lg:shrink-0 lg:items-start">
-            <div className="relative w-60 flex-1 overflow-hidden rounded-2xl bg-slate-100 shadow-md sm:w-72" style={{ minHeight: '260px' }}>
+          {/* Left - Compact portrait */}
+          <div className="flex flex-col items-center lg:w-48 lg:shrink-0 lg:items-start">
+            <div className="relative h-40 w-40 overflow-hidden rounded-2xl bg-slate-100 shadow-md ring-1 ring-slate-200/80 sm:h-44 sm:w-44">
               {profilePhoto ? (
                 <Image
                   src={profilePhoto}
                   alt={professionalName}
                   fill
-                  sizes="(min-width: 640px) 288px, 240px"
-                  className="object-cover object-center"
+                  sizes="176px"
+                  className="object-cover object-top"
                 />
               ) : (
-                <div className="grid h-full w-full place-items-center bg-gradient-to-br from-primary/20 to-primary/5 text-4xl font-bold text-primary">
+                <div className="grid h-full w-full place-items-center bg-gradient-to-br from-primary/20 to-primary/5 text-3xl font-bold text-primary">
                   {getInitials(professionalName)}
                 </div>
               )}
             </div>
-            <h3 className="mt-4 text-center text-base font-semibold text-text-heading lg:text-left">
+            <h3 className="mt-3 text-center text-sm font-semibold text-text-heading lg:text-left">
               {professionalName}
             </h3>
             <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-widest text-primary lg:text-left">

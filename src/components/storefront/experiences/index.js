@@ -1,0 +1,30 @@
+import { classicBalancedExperience } from './classicBalanced';
+import { conversionFunnelExperience } from './conversionFunnel';
+import { industrialMinimalExperience } from './industrialMinimal';
+import { luxuryEditorialExperience } from './luxuryEditorial';
+import { storyWarmExperience } from './storyWarm';
+
+const EXPERIENCES = {
+  'luxury-editorial': luxuryEditorialExperience,
+  'industrial-minimal': industrialMinimalExperience,
+  'story-warm': storyWarmExperience,
+  'conversion-funnel': conversionFunnelExperience,
+  'classic-balanced': classicBalancedExperience,
+};
+
+export function experienceIdFromTemplateKey(templateKey = '') {
+  const key = String(templateKey || '').toLowerCase();
+  if (key.includes('luxury') || key.includes('wealth')) return 'luxury-editorial';
+  if (key.includes('commercial') || key.includes('investor')) return 'industrial-minimal';
+  if (key.includes('first-home') || key.includes('newcomer') || key.includes('community')) return 'story-warm';
+  if (key.includes('seller') || key.includes('renewal')) return 'conversion-funnel';
+  return 'classic-balanced';
+}
+
+export function getStorefrontExperience(experienceId) {
+  return EXPERIENCES[experienceId] || EXPERIENCES['classic-balanced'];
+}
+
+export function allExperienceCss() {
+  return Object.values(EXPERIENCES).map((item) => item.css || '').join('\n');
+}

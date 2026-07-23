@@ -1,9 +1,7 @@
 import { notFound } from 'next/navigation';
-import { getPublicProfile } from '@/lib/publicProfileClient';
+import { getPublicProfile, getPublishedStorefront } from '@/lib/publicProfileClient';
 import PublicProfileLayout from '@/components/public-profile/PublicProfileLayout';
-import AgentLandingPage from '@/components/public-profile/agent/AgentLandingPage';
-import BrokerLandingPage from '@/components/public-profile/mortgage-broker/BrokerLandingPage';
-import LawyerLandingPage from '@/components/public-profile/lawyer/LawyerLandingPage';
+import PublicStorefrontPage from '@/components/storefront/PublicStorefrontPage';
 
 export async function generateMetadata({ params }) {
   try {
@@ -50,14 +48,34 @@ export default async function PublicProfilePage({ params }) {
   if (!profile || !profile.enabled) {
     notFound();
   }
-
-  const professionalType = profile.professional_type;
+  const storefrontResponse = await getPublishedStorefront(params.slug);
+  const published = storefrontResponse?.storefront?.published || null;
+  const storefrontProfile = published
+    ? {
+        ...profile,
+        storefront_blocks: (published.blocks || []).map((block) => ({
+          ...block,
+          enabled: block.data?.enabled ?? true,
+          content: block.data?.content || {},
+        })),
+        storefront_theme: {
+          primary: published.brandKit?.primary_color || undefined,
+          accent: published.brandKit?.accent_color || undefined,
+          fontFamily: published.brandKit?.font_family || undefined,
+          radius: published.brandKit?.button_shape === 'pill'
+            ? '999px'
+            : published.brandKit?.button_shape === 'square'
+              ? '2px'
+              : '0.75rem',
+        },
+        storefront_logo_url: published.brandKit?.logo_url || '',
+      storefront_template_key: published.template?.id || '',
+      }
+    : profile;
 
   return (
-    <PublicProfileLayout profile={profile}>
-      {professionalType === 'agent' && <AgentLandingPage profile={profile} />}
-      {professionalType === 'mortgage_broker' && <BrokerLandingPage profile={profile} />}
-      {professionalType === 'lawyer' && <LawyerLandingPage profile={profile} />}
+    <PublicProfileLayout profile={storefrontProfile}>
+      <PublicStorefrontPage profile={storefrontProfile} />
     </PublicProfileLayout>
   );
 }

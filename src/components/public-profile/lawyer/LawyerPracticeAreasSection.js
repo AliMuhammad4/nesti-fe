@@ -10,21 +10,26 @@ const areaIcons = {
   'Closing Services': <Handshake size={32} />,
 };
 
-export default function LawyerPracticeAreasSection({ practiceAreas, onAreaClick }) {
+export default function LawyerPracticeAreasSection({ practiceAreas, onAreaClick, content = {} }) {
+  const areas = Array.isArray(practiceAreas) ? practiceAreas.filter(Boolean) : [];
+  if (!areas.length) return null;
+  const heading = content.heading || 'Practice Areas';
+  const body = content.body || 'Expert legal services for all your real estate needs.';
+
   return (
     <section id="practice-areas" className="py-16 bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-text-heading mb-4">
-            Practice Areas
+            {heading}
           </h2>
           <p className="text-lg text-text-muted">
-            Expert legal services for all your real estate needs.
+            {body}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {practiceAreas.map((area, index) => (
+          {areas.map((area, index) => (
             <div
               key={index}
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer group text-center"

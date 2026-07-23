@@ -36,6 +36,14 @@ export async function getPublicProfile(slug) {
   return res.json();
 }
 
+export async function getPublishedStorefront(slug) {
+  const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/storefront`, {
+    next: { revalidate: 10 },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function submitPublicLead(slug, payload = {}) {
   const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/lead`, {
     method: 'POST',
@@ -48,6 +56,36 @@ export async function submitPublicLead(slug, payload = {}) {
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to submit inquiry' }));
     throw new Error(error.message || 'Failed to submit inquiry');
+  }
+
+  return res.json();
+}
+
+export async function submitPublicFeedback(slug, payload = {}) {
+  const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to submit feedback' }));
+    throw new Error(error.message || 'Failed to submit feedback');
+  }
+
+  return res.json();
+}
+
+export async function getPublicFeedback(slug) {
+  const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/feedback`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to load feedback' }));
+    throw new Error(error.message || 'Failed to load feedback');
   }
 
   return res.json();
@@ -162,6 +200,67 @@ export async function generatePublicProfileCopy(token) {
     throw new Error(error.message || 'Failed to generate profile copy');
   }
 
+  return res.json();
+}
+
+export async function getStorefrontDraft(token) {
+  const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/draft`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to fetch storefront draft' }));
+    throw new Error(error.message || 'Failed to fetch storefront draft');
+  }
+  return res.json();
+}
+
+export async function getOwnStorefrontProperties(token) {
+  const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/properties`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to fetch storefront properties' }));
+    throw new Error(error.message || 'Failed to fetch storefront properties');
+  }
+  return res.json();
+}
+
+export async function saveStorefrontDraft(token, draft) {
+  const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/draft`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draft }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to save storefront draft' }));
+    throw new Error(error.message || 'Failed to save storefront draft');
+  }
+  return res.json();
+}
+
+export async function publishStorefront(token) {
+  const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/publish`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to publish storefront' }));
+    throw new Error(error.message || 'Failed to publish storefront');
+  }
+  return res.json();
+}
+
+export async function generateStorefrontDraft(token, payload = {}) {
+  const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/generate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to generate storefront draft' }));
+    throw new Error(error.message || 'Failed to generate storefront draft');
+  }
   return res.json();
 }
 

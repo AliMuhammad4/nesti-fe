@@ -1,6 +1,7 @@
 'use client';
 
-import { BookOpen, CheckCircle2, HelpCircle, LockKeyhole, MessageCircle, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, ChevronDown, HelpCircle, LockKeyhole, MessageCircle, Sparkles } from 'lucide-react';
 
 const ROLE_GUIDANCE = {
   agent: {
@@ -50,73 +51,142 @@ const ROLE_GUIDANCE = {
   },
 };
 
-export default function PublicGuidanceSection({ profile }) {
-  const content = ROLE_GUIDANCE[profile?.professional_type] || ROLE_GUIDANCE.agent;
+export default function PublicGuidanceSection({ profile, content = {} }) {
+  const [openFaq, setOpenFaq] = useState(0);
+  const base = ROLE_GUIDANCE[profile?.professional_type] || ROLE_GUIDANCE.agent;
+  const steps = Array.isArray(content.steps) && content.steps.length
+    ? content.steps
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          const [title = '', text = ''] = item.split('|').map((part) => part.trim());
+          return title ? { title, text } : null;
+        }
+        return item.title ? { title: item.title, text: item.text || '' } : null;
+      })
+      .filter(Boolean)
+    : base.steps;
+  const faqs = Array.isArray(content.faqs) && content.faqs.length
+    ? content.faqs
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          const [q = '', a = ''] = item.split('|').map((part) => part.trim());
+          return q ? { q, a } : null;
+        }
+        return item.q ? { q: item.q, a: item.a || '' } : null;
+      })
+      .filter(Boolean)
+    : base.faqs;
+  const resolved = {
+    ...base,
+    eyebrow: content.eyebrow || base.eyebrow,
+    title: content.heading || content.title || base.title,
+    description: content.body || content.description || base.description,
+    steps,
+    faqs,
+  };
 
   return (
-    <section id="guide" className="bg-transparent py-12">
+    <section id="guide" className="bg-transparent py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-white via-slate-50/70 to-primary/5 p-6 shadow-sm">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-              <Sparkles size={12} />
-              {content.eyebrow}
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">{content.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-text-muted">{content.description}</p>
+        <div className="max-w-3xl">
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+            <Sparkles size={11} />
+            {resolved.eyebrow}
+          </p>
+          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            {resolved.title}
+          </h2>
+          <p className="mt-2 text-[13px] leading-5 text-slate-500">{resolved.description}</p>
+        </div>
 
-            <div className="mt-6 space-y-3">
-              {content.steps.map((step, index) => (
-                <div key={step.title} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-bold text-text-heading">
-                      <CheckCircle2 size={14} className="text-primary" />
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)]">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Guided process</p>
+                <h3 className="mt-1 text-base font-semibold text-slate-900">Three clear steps forward</h3>
+              </div>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <CheckCircle2 size={17} />
+              </span>
+            </div>
+
+            <div className="mt-5">
+              {resolved.steps.map((step, index) => (
+                <div key={step.title} className="relative flex gap-3 pb-5 last:pb-0">
+                  {index < resolved.steps.length - 1 ? (
+                    <span className="absolute left-[15px] top-8 h-[calc(100%-1.5rem)] w-px bg-slate-200" />
+                  ) : null}
+                  <span className="relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/15 bg-primary/10 text-[11px] font-bold text-primary">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div className="pt-0.5">
+                    <div className="text-sm font-semibold text-slate-900">
                       {step.title}
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-text-muted">{step.text}</p>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-500">{step.text}</p>
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-5 grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-2">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5">
+                <MessageCircle size={14} className="shrink-0 text-primary" />
+                <span className="text-[11px] font-medium text-slate-600">Guided chat support</span>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5">
+                <LockKeyhole size={14} className="shrink-0 text-primary" />
+                <span className="text-[11px] font-medium text-slate-600">Organized professional handoff</span>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Helpful Questions</div>
-                <h3 className="mt-1 text-xl font-bold text-text-heading">Common things visitors ask</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Helpful questions</p>
+                <h3 className="mt-1 text-base font-semibold text-slate-900">What clients often ask</h3>
               </div>
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary">
-                <HelpCircle size={20} />
-              </div>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <HelpCircle size={17} />
+              </span>
             </div>
 
-            <div className="grid gap-3">
-              {content.faqs.map((item) => (
-                <div key={item.q} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                  <div className="flex items-start gap-2 text-sm font-bold text-text-heading">
-                    <BookOpen size={14} className="mt-0.5 shrink-0 text-primary" />
-                    {item.q}
+            <div className="mt-5 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200">
+              {resolved.faqs.map((item, index) => {
+                const isOpen = openFaq === index;
+                return (
+                  <div key={item.q} className="bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? -1 : index)}
+                      aria-expanded={isOpen}
+                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+                    >
+                      <span className="text-[12px] font-semibold leading-5 text-slate-800">{item.q}</span>
+                      <ChevronDown
+                        size={15}
+                        className={`shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`}
+                      />
+                    </button>
+                    <div className={`grid transition-all duration-200 ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <p className="px-4 pb-3 text-[12px] leading-5 text-slate-500">{item.a}</p>
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-1.5 pl-6 text-xs leading-5 text-text-muted">{item.a}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
-                <MessageCircle size={17} className="mb-2 text-primary" />
-                <div className="text-sm font-bold text-text-heading">Use the chat bubble</div>
-                <p className="mt-1 text-xs leading-5 text-text-muted">Questions and inquiries start through a guided assistant tailored to this role.</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <LockKeyhole size={17} className="mb-2 text-primary" />
-                <div className="text-sm font-bold text-text-heading">Clear handoff</div>
-                <p className="mt-1 text-xs leading-5 text-text-muted">Your answers are organized into useful context before professional follow-up.</p>
-              </div>
+            <div className="mt-4 rounded-lg border border-primary/15 bg-primary/5 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-800">Need a more specific answer?</p>
+              <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                Use the chat bubble to share your goals and carry useful context into the conversation.
+              </p>
             </div>
           </div>
         </div>

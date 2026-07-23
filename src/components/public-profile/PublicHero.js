@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Mail, Menu, Phone, ShieldCheck, UserPlus, X } from 'lucide-react';
+import { Building2, Menu, UserPlus, X } from 'lucide-react';
 
 const ROLE_HERO = {
   agent: {
@@ -12,7 +12,6 @@ const ROLE_HERO = {
     fallbackTagline:
       'Get guided support for buying, selling, pricing, showings, and consultation requests in one organized experience.',
     cardSubtitle: 'Local Real Estate Agent',
-    trustItems: ['Buyer & seller guidance', 'Property inquiry support', 'AI organized follow-up'],
   },
   mortgage_broker: {
     eyebrow: 'Mortgage Strategy Partner',
@@ -20,7 +19,6 @@ const ROLE_HERO = {
     fallbackTagline:
       'Start a guided mortgage inquiry for pre-approval, affordability, refinancing, and document readiness.',
     cardSubtitle: 'Mortgage Planning Specialist',
-    trustItems: ['Pre-approval guidance', 'Affordability review', 'Loan strategy follow-up'],
   },
   lawyer: {
     eyebrow: 'Real Estate Legal Partner',
@@ -28,18 +26,18 @@ const ROLE_HERO = {
     fallbackTagline:
       'Ask about contracts, title matters, closing timelines, and legal transaction support before your next step.',
     cardSubtitle: 'Real Estate Legal Advisor',
-    trustItems: ['Contract review support', 'Closing timeline guidance', 'Secure legal intake'],
   },
 };
 
-export default function PublicHero({ profile, onCTAClick, onDirectLeadClick }) {
+export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, block, flushTop = false }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const professionalType = profile.professional_type;
+  const sectionLayout = block?.data?.layout || block?.layout || {};
+  const heroVariant = sectionLayout.variant || 'standard';
+  const isPremium = heroVariant === 'premium';
   const heroContent = ROLE_HERO[professionalType] || ROLE_HERO.agent;
   const professionalProfile = profile.professional_profile || {};
   const companyName = professionalProfile.company_name || '';
-  const email = profile.email || '';
-  const phone = professionalProfile.phone || profile.phone || '';
   const roleLabel =
     professionalType === 'mortgage_broker'
       ? 'Mortgage Broker'
@@ -82,7 +80,7 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick }) {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-transparent pt-16">
+    <section className={`relative overflow-hidden bg-white ${flushTop ? '' : 'pt-16'}`}>
       <header className="fixed inset-x-0 top-0 z-[1000] border-b border-border/70 bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
@@ -90,17 +88,22 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick }) {
             className="flex items-center gap-2.5 rounded-xl px-2 py-1 transition hover:bg-primary/5"
           >
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg overflow-hidden">
-              <Image
-                src="/logo/logo.png"
-                alt="Nesti AI logo"
-                width={40}
-                height={40}
-                className="h-10 w-10 object-cover"
-              />
+              {profile.storefront_logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.storefront_logo_url} alt={`${profile.professional_name || 'Professional'} logo`} className="h-10 w-10 object-contain" />
+              ) : (
+                <Image
+                  src="/logo/logo.png"
+                  alt="Nesti AI logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 object-cover"
+                />
+              )}
             </span>
             <span className="flex min-h-10 flex-col justify-center leading-tight">
-              <span className="text-base font-semibold tracking-tight text-text-heading">Nesti AI</span>
-              <span className="mt-0.5 text-[11px] font-medium text-slate-500">Real Estate Intelligence</span>
+              <span className="text-base font-semibold tracking-tight text-text-heading">{profile.storefront_logo_url ? profile.professional_name : 'Nesti AI'}</span>
+              <span className="mt-0.5 text-[11px] font-medium text-slate-500">{profile.storefront_logo_url ? roleLabel : 'Real Estate Intelligence'}</span>
             </span>
           </Link>
 
@@ -112,7 +115,7 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick }) {
             ))}
           </nav>
 
-          <div className="hidden items-center gap-3 sm:inline-flex">
+          <div className="hidden items-center gap-3 lg:inline-flex">
             <span className="relative h-10 w-10 overflow-hidden rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
               {profile.profile_photo_url ? (
                 <Image
@@ -166,147 +169,91 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick }) {
         )}
       </header>
 
-      <div className="relative min-h-[430px] overflow-hidden">
-        {profile.cover_photo_url ? (
-          <Image
-            src={profile.cover_photo_url}
-            alt="Cover"
-            fill
-            sizes="100vw"
-            className="object-cover object-center"
-            priority
-          />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-r from-primary/20 via-white to-primary/30" />
-        )}
-        {/* Desktop/tablet overlay — light premium fade without hard edges */}
-        <div className="absolute inset-0 hidden sm:block"
-          style={{
-            background: [
-              'linear-gradient(to right, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 30%, rgba(255,255,255,0.42) 54%, rgba(255,255,255,0.08) 72%, transparent 88%)',
-              'linear-gradient(to top,   rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.30) 30%, transparent 56%)',
-            ].join(', '),
-          }}
-        />
-        {/* Tablet overlay — stronger than desktop for text contrast on medium screens */}
-        <div
-          className="absolute inset-0 hidden md:block lg:hidden"
-          style={{
-            background: [
-              'linear-gradient(to right, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.90) 42%, rgba(255,255,255,0.62) 68%, rgba(255,255,255,0.26) 84%, transparent 96%)',
-              'linear-gradient(to top, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.44) 36%, rgba(255,255,255,0.12) 68%, transparent 100%)',
-            ].join(', '),
-          }}
-        />
-        {/* Mobile overlay — stronger readability over busy cover photos */}
-        <div className="absolute inset-0 sm:hidden"
-          style={{
-            background: [
-              'linear-gradient(to bottom, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.86) 42%, rgba(255,255,255,0.74) 72%, rgba(255,255,255,0.88) 100%)',
-              'linear-gradient(to right, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.78) 58%, rgba(255,255,255,0.34) 100%)',
-            ].join(', '),
-          }}
-        />
+      <div className="relative border-b border-slate-200 bg-white">
+        {/* Cover spans the contained col-12 canvas (not viewport full-bleed). */}
+        <div className="relative h-44 w-full overflow-hidden sm:h-56 lg:h-64">
+          {profile.cover_photo_url ? (
+            <Image
+              src={profile.cover_photo_url}
+              alt={`${profile.professional_name || 'Professional'} cover`}
+              fill
+              sizes="(min-width: 1280px) 1280px, 100vw"
+              className="object-cover object-center"
+              priority
+            />
+          ) : (
+            <div className={`absolute inset-0 ${isPremium ? 'bg-gradient-to-r from-slate-900 via-slate-700 to-primary/80' : 'bg-gradient-to-r from-primary/30 via-slate-200 to-primary/20'}`} />
+          )}
+        </div>
 
-        <div className="relative z-10 mx-auto grid min-h-[430px] max-w-7xl grid-cols-1 items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-12 lg:px-8">
-          <div className="rounded-2xl bg-white/72 p-4 backdrop-blur-[1.5px] sm:p-5 md:p-6 lg:col-span-7 lg:max-w-2xl lg:rounded-none lg:bg-transparent lg:p-0 lg:backdrop-blur-0">
-            <span className="inline-flex rounded-full border border-primary/15 bg-primary/5 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-primary">
-              {heroContent.eyebrow}
-            </span>
-
-            <h1 className="mt-3 max-w-2xl text-2xl font-semibold leading-[1.12] tracking-tight text-text-heading sm:text-3xl lg:text-[38px]">
-              {profile.headline || heroContent.fallbackHeadline(profile.professional_name || 'this professional')}
-            </h1>
-
-            <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-text-heading/85 lg:text-text-body">
-              {profile.tagline || heroContent.fallbackTagline}
-            </p>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {heroContent.trustItems.map((item) => (
-                <span
-                  key={item}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-[11px] font-semibold text-text-body shadow-sm"
-                >
-                  <ShieldCheck size={12} className="text-primary" />
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onDirectLeadClick}
-                className="rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-dark"
-              >
-                Submit inquiry
-              </button>
-              <button
-                onClick={handleConsultationClick}
-                className="rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-dark"
-              >
-                Book a Free Consultation
-              </button>
-              {inviteShareUrl ? (
-                <a
-                  href={inviteShareUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-white/95 px-4 py-2.5 text-xs font-bold text-primary shadow-lg shadow-primary/10 ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-primary hover:text-white hover:shadow-primary/20"
-                >
-                  <span className="grid h-6 w-6 place-items-center rounded-lg bg-primary/10 text-primary transition group-hover:bg-white/20 group-hover:text-white">
-                    <UserPlus size={14} />
-                  </span>
-                  Join Nesti
-                  <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-                </a>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="hidden lg:col-span-5 lg:block">
-            <div className="ml-auto w-fit min-w-[18rem] max-w-[24rem] rounded-2xl bg-white p-3 text-left text-text-heading shadow-xl shadow-slate-900/10">
-              <div className="flex items-start gap-2.5">
-                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-primary/15 bg-primary/10 shadow-sm ring-1 ring-slate-200">
-                  {profile.profile_photo_url ? (
-                    <Image
-                      src={profile.profile_photo_url}
-                      alt={profile.professional_name}
-                      fill
-                      sizes="56px"
-                      className="object-cover object-center"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-lg font-bold text-primary">
-                      {profile.professional_name?.charAt(0) || 'P'}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold leading-tight">{profile.professional_name}</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">{heroContent.cardSubtitle}</div>
-                  {companyName ? <div className="mt-1 truncate text-xs font-semibold text-text-heading">{companyName}</div> : null}
-                </div>
+        <div className="relative px-4 pb-5 sm:px-6 lg:px-8">
+          <div className="relative -mt-14 flex items-start gap-4 sm:-mt-16 sm:gap-5">
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-[4px] border-white bg-slate-100 shadow-md sm:h-36 sm:w-36">
+                {profile.profile_photo_url ? (
+                  <Image
+                    src={profile.profile_photo_url}
+                    alt={profile.professional_name || roleLabel}
+                    fill
+                    sizes="144px"
+                    className="object-cover object-top"
+                    priority
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-4xl font-bold text-primary">
+                    {profile.professional_name?.charAt(0) || 'P'}
+                  </div>
+                )}
               </div>
 
-              {(email || phone) ? (
-                <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs font-medium text-slate-600">
-                  {email ? (
-                    <div className="flex min-w-0 items-start gap-2">
-                      <Mail size={13} className="mt-0.5 shrink-0 text-primary" />
-                      <span className="min-w-0 break-all">{email}</span>
-                    </div>
+            <div className="relative mt-16 min-w-0 flex-1 sm:mt-[4.5rem] lg:pr-52">
+              <div className="flex min-w-0 items-center gap-4">
+                <h1 className="shrink-0 text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                  {profile.professional_name || 'Professional'}
+                </h1>
+              </div>
+              <p className="mt-1 text-sm font-medium leading-5 text-slate-700">
+                {profile.headline || heroContent.fallbackHeadline(profile.professional_name || 'this professional')}
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={onDirectLeadClick}
+                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-md"
+                  >
+                    Submit inquiry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConsultationClick}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-300 bg-white px-3.5 text-[11px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-slate-50"
+                  >
+                    {profile.hero_cta_label || 'Book a Free Consultation'}
+                  </button>
+                  {inviteShareUrl ? (
+                    <a
+                      href={inviteShareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-slate-50"
+                    >
+                      <UserPlus size={12} />
+                      Join Nesti
+                    </a>
                   ) : null}
-                  {phone ? (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Phone size={13} className="shrink-0 text-primary" />
-                      <span className="min-w-0">{phone}</span>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+              </div>
 
+              {companyName ? (
+                <>
+                  <span className="absolute right-0 top-1/2 hidden max-w-48 -translate-y-1/2 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-800 shadow-sm lg:inline-flex">
+                    <Building2 size={15} className="shrink-0 text-primary" />
+                    <span className="truncate">{companyName}</span>
+                  </span>
+                  <span className="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm lg:hidden">
+                    <Building2 size={13} className="shrink-0 text-primary" />
+                    <span className="truncate">{companyName}</span>
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

@@ -43,93 +43,71 @@ const ROLE_CONTENT = {
   },
 };
 
-export default function PublicCTA({ profile, onDirectLeadClick }) {
-  const content = ROLE_CONTENT[profile.professional_type] || ROLE_CONTENT.agent;
+export default function PublicCTA({ profile, onDirectLeadClick, content = {} }) {
+  const base = ROLE_CONTENT[profile.professional_type] || ROLE_CONTENT.agent;
+  const steps = Array.isArray(content.steps) && content.steps.length
+    ? content.steps
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          const [title = '', description = ''] = item.split('|').map((part) => part.trim());
+          return title ? { label: title, title, description } : null;
+        }
+        const title = item.title || item.label || '';
+        return title ? { label: item.label || title, title, description: item.description || item.text || '' } : null;
+      })
+      .filter(Boolean)
+    : base.steps;
+  const resolved = {
+    ...base,
+    eyebrow: content.eyebrow || base.eyebrow,
+    title: content.heading || content.title || base.title,
+    description: content.body || content.description || base.description,
+    steps,
+  };
 
   return (
-    <section id="contact" className="bg-transparent py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.06)] sm:p-7 lg:p-8">
-            <div className="absolute right-10 top-10 h-32 w-32 rounded-full bg-primary/5 blur-3xl" />
-            <div className="relative">
-            <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              {content.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 gap-y-2">
-              <h2 className="max-w-3xl text-2xl font-semibold leading-tight tracking-[-0.03em] text-text-heading md:text-[32px]">
-                {content.title}
+    <section id="contact" className="bg-transparent py-12 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {resolved.eyebrow}
+          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[28px]">
+                {resolved.title}
               </h2>
-              <button
-                type="button"
-                onClick={onDirectLeadClick}
-                className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-primary/25 ring-1 ring-primary/15 transition duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/35"
-              >
-                Submit inquiry
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:bg-white/25">
-                  <ArrowRight size={13} className="transition duration-300 group-hover:translate-x-0.5" />
-                </span>
-              </button>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                {resolved.description}
+              </p>
             </div>
-            <p className="mt-4 max-w-3xl text-[15px] leading-7 text-text-muted">
-              {content.description}
-            </p>
+            <button
+              type="button"
+              onClick={onDirectLeadClick}
+              className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            >
+              Submit inquiry
+              <ArrowRight size={14} />
+            </button>
+          </div>
 
-              <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
-              <div
-                className="mb-5 hidden gap-2 md:grid"
-                style={{ gridTemplateColumns: `repeat(${content.steps.length}, minmax(0, 1fr))` }}
-              >
-                {content.steps.map((step, index) => (
-                  <div
-                    key={step.label}
-                    className="relative flex min-h-[42px] items-center justify-center"
-                  >
-                    <div
-                      className={`relative z-10 flex w-full items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[10px] font-bold uppercase tracking-[0.12em] ring-1 lg:text-[11px] ${
-                        index === 0
-                          ? 'bg-primary text-white ring-primary'
-                          : 'bg-slate-50 text-text-muted ring-slate-200'
-                      }`}
-                    >
-                      <span
-                        className={`grid h-5 w-5 place-items-center rounded-full text-[10px] ${
-                          index === 0
-                            ? 'bg-white/20 text-white'
-                            : 'bg-white text-text-muted ring-1 ring-slate-200'
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      {step.label}
-                    </div>
-                    {index < content.steps.length - 1 && (
-                      <div className="pointer-events-none absolute left-[calc(100%-4px)] top-1/2 z-0 hidden h-px w-4 -translate-y-1/2 bg-primary/25 md:block">
-                        <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-primary/40" />
-                      </div>
-                    )}
-                  </div>
-                ))}
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            {resolved.steps.map((step, index) => (
+              <div key={step.title} className="rounded-lg border border-slate-100 bg-slate-50/80 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+                    {index + 1}
+                  </span>
+                  <CheckCircle2 size={14} className="text-primary" />
+                  <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
+                </div>
+                <p className="mt-2 pl-8 text-[12px] leading-5 text-slate-500">{step.description}</p>
               </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                {content.steps.map((step, index) => (
-                  <div key={step.title} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                        {index + 1}
-                      </span>
-                      <CheckCircle2 size={14} className="text-primary" />
-                      <h3 className="text-sm font-bold text-text-heading">{step.title}</h3>
-                    </div>
-                    <p className="mt-2 pl-9 text-[12px] leading-5 text-text-muted">{step.description}</p>
-                  </div>
-                ))}
-              </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
+      </div>
     </section>
   );
 }

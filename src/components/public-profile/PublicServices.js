@@ -29,45 +29,53 @@ const fallbackServices = {
   ],
 };
 
-export default function PublicServices({ services = [], professionalType, onServiceClick }) {
+export default function PublicServices({ services = [], professionalType, onServiceClick, content = {} }) {
   const displayServices = services?.length ? services : (fallbackServices[professionalType] || fallbackServices.agent);
+  const title = content.heading
+    || (professionalType === 'agent'
+      ? 'Real estate guidance built around your next move'
+      : professionalType === 'mortgage_broker'
+        ? 'Mortgage guidance from first question to next step'
+        : 'Legal support for clearer real estate decisions');
+  const description = content.body
+    || (professionalType === 'agent'
+      ? 'Personalized real estate services designed to help you achieve your goals.'
+      : professionalType === 'mortgage_broker'
+        ? 'Comprehensive mortgage solutions tailored to your financial needs.'
+        : 'Expert legal services for all your real estate transactions.');
 
   return (
-    <section id="services" className="bg-transparent py-14">
+    <section id="services" className="bg-transparent py-12 sm:py-14">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="mb-3 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+        <div className="mb-10 max-w-2xl text-center mx-auto">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
             Services
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-text-heading mb-4">
-            {professionalType === 'agent' && 'Real estate guidance built around your next move'}
-            {professionalType === 'mortgage_broker' && 'Mortgage guidance from first question to next step'}
-            {professionalType === 'lawyer' && 'Legal support for clearer real estate decisions'}
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            {title}
           </h2>
-          <p className="text-sm leading-6 text-text-muted max-w-2xl mx-auto">
-            {professionalType === 'agent' && 'Personalized real estate services designed to help you achieve your goals.'}
-            {professionalType === 'mortgage_broker' && 'Comprehensive mortgage solutions tailored to your financial needs.'}
-            {professionalType === 'lawyer' && 'Expert legal services for all your real estate transactions.'}
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            {description}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-5">
           {displayServices.map((service, index) => (
             <div
               key={index}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 transition duration-300 cursor-pointer group"
+              className="cursor-pointer rounded-xl border border-slate-200/90 bg-white p-5 transition duration-200 hover:border-slate-300 hover:shadow-md group"
               onClick={() => onServiceClick?.(service)}
             >
               <div className="flex items-start gap-4">
-                <div className="grid h-12 w-12 flex-shrink-0 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg bg-slate-50 text-primary transition-transform group-hover:scale-105">
                   {service.icon && iconMap[service.icon] ? (
                     iconMap[service.icon]
                   ) : (
-                    <Handshake size={32} />
+                    <Handshake size={28} />
                   )}
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-text-heading mb-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-slate-900 mb-1.5">
                     {service.title}
                   </h3>
                   <p className="text-sm leading-6 text-text-muted">
