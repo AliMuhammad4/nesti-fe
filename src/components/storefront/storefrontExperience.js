@@ -26,17 +26,6 @@ export const STOREFRONT_EXPERIENCE_CSS = `
     background: #ffffff;
   }
 
-  .storefront-page-col12 {
-    isolation: isolate;
-  }
-
-  .storefront-page-col12 .storefront-canvas,
-  .storefront-page-col12 [class*='storefront-experience-'] {
-    background: transparent !important;
-    background-image: none !important;
-    padding-bottom: 0 !important;
-  }
-
   .storefront-public-band {
     overflow: hidden;
   }

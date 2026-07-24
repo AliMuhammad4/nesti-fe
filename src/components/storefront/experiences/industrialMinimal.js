@@ -7,7 +7,7 @@ export const industrialMinimalExperience = {
       background-color: #ffffff;
     }
 
-    /* Keep builder preview subtle; public pages use the col-12 shell. */
+    /* Keep the builder preview subtle while the public page stays full-width. */
     [data-preview='true'] .storefront-experience-industrial {
       background-color: #f8fafc;
     }

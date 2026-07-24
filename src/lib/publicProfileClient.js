@@ -38,7 +38,8 @@ export async function getPublicProfile(slug) {
 
 export async function getPublishedStorefront(slug) {
   const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/storefront`, {
-    next: { revalidate: 10 },
+    // Published media changes should be visible immediately after Update live.
+    cache: 'no-store',
   });
   if (!res.ok) return null;
   return res.json();

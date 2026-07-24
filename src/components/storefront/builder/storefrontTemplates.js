@@ -38,8 +38,8 @@ export const STOREFRONT_TEMPLATES = {
     role: 'agent',
     label: 'Realtor Classic',
     tagline: 'Full-service buyer & seller storefront',
-    description: 'Hero, listings, valuation lead magnet, social proof, and consultation CTA.',
-    features: ['Home valuation', 'Featured listings', 'Sold proof', 'Inquiry CTA'],
+    description: 'Hero, listings, social proof, services, and consultation CTA.',
+    features: ['Featured listings', 'Buyer and seller support', 'Sold proof', 'Inquiry CTA'],
     brand: brand('#0f766e', '#f59e0b', 'Manrope', 'rounded', 'editorial'),
     blocks: (ctx) => [
       block(T.HERO, {
@@ -52,7 +52,6 @@ export const STOREFRONT_TEMPLATES = {
       block(T.ROLE_DETAILS),
       block(T.ABOUT, { heading: `Meet ${ctx.name}`, body: ctx.about || 'A relationship-first advisor focused on clear next steps for buyers and sellers.' }),
       block(T.PROPERTIES),
-      block(T.HOME_VALUATION, { heading: 'What could your home be worth?', body: 'Request a personalized local market review — no pressure, just clarity.' }),
       block(T.TESTIMONIALS, { heading: 'Client outcomes', body: 'Recent wins from buyers, sellers, and relocating families.' }),
       block(T.FEATURED_LISTINGS, { heading: 'Featured opportunities', body: 'Hand-picked listings ready for private showings.' }),
       block(T.SERVICES, { heading: 'How we work together', body: 'Search strategy, pricing guidance, and closing coordination.' }),
@@ -79,7 +78,6 @@ export const STOREFRONT_TEMPLATES = {
       block(T.ABOUT, { heading: 'A quieter standard of service', body: ctx.about || 'White-glove representation with market intelligence and off-market access.' }),
       block(T.SERVICES, { heading: 'Concierge services', body: 'Acquisition strategy, staging direction, and global buyer outreach.' }),
       block(T.TESTIMONIALS, { heading: 'Client confidence', body: 'Trusted by families who value privacy and precision.' }),
-      block(T.HOME_VALUATION, { heading: 'Confidential valuation', body: 'Receive a private market assessment for your residence.' }),
       block(T.CTA, { heading: 'Begin a private conversation', body: 'Share your timing and objectives for a tailored advisory call.', cta_label: 'Arrange a meeting' }),
     ],
   },
@@ -88,8 +86,8 @@ export const STOREFRONT_TEMPLATES = {
     role: 'agent',
     label: 'First Home Specialist',
     tagline: 'Warm guidance for first-time buyers',
-    description: 'Education-first layout with valuation, guides, and low-pressure CTAs.',
-    features: ['Buyer education', 'Valuation tool', 'Step-by-step guide', 'Friendly CTA'],
+    description: 'Education-first layout with guides, listings, and low-pressure CTAs.',
+    features: ['Buyer education', 'Property search', 'Step-by-step guide', 'Friendly CTA'],
     brand: brand('#1d4ed8', '#fb7185', 'DM Sans', 'pill', 'warm'),
     blocks: (ctx) => [
       block(T.HERO, {
@@ -100,7 +98,6 @@ export const STOREFRONT_TEMPLATES = {
       }),
       block(T.GUIDANCE, { heading: 'What happens next', body: 'A simple path from pre-approval to keys.' }),
       block(T.SERVICES, { heading: 'Built for first-time buyers', body: 'Budget mapping, neighborhood tours, and offer coaching.' }),
-      block(T.HOME_VALUATION, { heading: 'Curious what you can afford nearby?', body: 'Share a target area and get a realistic starting range.' }),
       block(T.PROPERTIES),
       block(T.TESTIMONIALS, { heading: 'Buyers who started here', body: 'Stories from people who bought their first place with clarity.' }),
       block(T.ABOUT, { heading: `Hi, I'm ${ctx.name}`, body: ctx.about || 'Patient, practical guidance for people buying their first home.' }),
@@ -135,14 +132,13 @@ export const STOREFRONT_TEMPLATES = {
         faqs: [
           'Can I ask about a specific opportunity?|Yes. Open a property card or use the chat assistant to carry the listing context into your inquiry.',
           'Can first-time investors use this page?|Yes. The guided flow helps clarify budget, goals, financing readiness, and next steps.',
-          'How do I request a portfolio review?|Use the valuation or consultation options and share the property and investment context.',
+          'How do I request a portfolio review?|Use the consultation option and share the property and investment context.',
         ],
       }),
       block(T.ABOUT, {
         heading: `About ${ctx.name}`,
         body: ctx.about || `${ctx.name} provides investment-focused real estate guidance across acquisitions, property evaluation, and portfolio decisions.`,
       }),
-      block(T.HOME_VALUATION, { heading: 'Portfolio check-in', body: 'Request a quick mark-to-market review on a property you hold.' }),
       block(T.TESTIMONIALS, { heading: 'Investor partners', body: 'Operators and first-time investors who rely on this desk.' }),
       block(T.CTA, { heading: 'Get the next brief', body: 'Tell us your target yield, markets, and hold period.', cta_label: 'Join the deal list' }),
     ],
@@ -152,17 +148,16 @@ export const STOREFRONT_TEMPLATES = {
     role: 'agent',
     label: 'Seller Expert',
     tagline: 'Conversion-focused seller landing page',
-    description: 'Valuation-first funnel with staging, pricing, and sold proof.',
-    features: ['Valuation lead', 'Sold proof', 'Seller services', 'Urgent CTA'],
+    description: 'Seller-focused funnel with staging, pricing strategy, and sold proof.',
+    features: ['Pricing strategy', 'Sold proof', 'Seller services', 'Urgent CTA'],
     brand: brand('#9f1239', '#f59e0b', 'DM Sans', 'rounded', 'bold'),
     blocks: (ctx) => [
       block(T.HERO, {
         heading: ctx.headline || `Sell with a pricing plan that protects value`,
         body: ctx.tagline || 'Positioning, launch timing, and negotiation strategy built around your home.',
-        cta_label: 'Get my home valuation',
+        cta_label: 'Book a seller consultation',
         eyebrow: 'Seller specialist',
       }),
-      block(T.HOME_VALUATION, { heading: 'Start with your number', body: 'Enter your address for a personalized seller consultation.' }),
       block(T.SERVICES, { heading: 'Seller playbook', body: 'Prep, marketing, offer review, and closing coordination.' }),
       block(T.TESTIMONIALS, { heading: 'Seller reviews', body: 'Homeowners who sold with clarity and speed.' }),
       block(T.ABOUT, { heading: 'Why sellers choose this team', body: ctx.about || 'A seller-first process designed to reduce surprises and maximize net proceeds.' }),
@@ -190,7 +185,6 @@ export const STOREFRONT_TEMPLATES = {
       block(T.FEATURED_LISTINGS, { heading: `Homes in ${ctx.area || 'your area'}`, body: 'Active inventory selected for this community.' }),
       block(T.GUIDANCE, { heading: 'Local buying & selling guide', body: 'What newcomers and move-up buyers ask most.' }),
       block(T.TESTIMONIALS, { heading: 'Neighbors we’ve helped', body: 'Families relocating into and within this community.' }),
-      block(T.HOME_VALUATION, { heading: 'Local home value check', body: 'Get a neighborhood-calibrated estimate conversation.' }),
       block(T.CTA, { heading: 'Talk local with someone who knows', body: `Ask ${ctx.name} about streets, schools, and timing.`, cta_label: 'Message me' }),
     ],
   },
@@ -448,7 +442,7 @@ export function buildTemplateContext(profile = {}) {
 function visualTreatmentForTemplate(templateId, type, index) {
   const isHero = type === T.HERO;
   const isListing = [T.PROPERTIES, T.FEATURED_LISTINGS, T.TOP_LISTINGS, T.SOLD_LISTINGS].includes(type);
-  const isTool = [T.HOME_VALUATION, T.MORTGAGE_CALCULATOR, T.CLOSING_COST_ESTIMATOR].includes(type);
+  const isTool = [T.MORTGAGE_CALCULATOR, T.CLOSING_COST_ESTIMATOR].includes(type);
   const palette = {
     'agent-luxury-advisor': {
       bg: index % 2 === 0 ? '#faf7ef' : '#ffffff',
@@ -488,8 +482,8 @@ function visualTreatmentForTemplate(templateId, type, index) {
     },
     'agent-seller-expert': {
       bg: index % 2 === 0 ? '#fff1f2' : '#fffbeb',
-      align: isHero || type === T.HOME_VALUATION ? 'center' : 'left',
-      padding: type === T.HOME_VALUATION ? 'large' : 'medium',
+      align: isHero ? 'center' : 'left',
+      padding: 'medium',
       radius: 'large',
       variant: isTool ? 'lead-magnet' : isHero ? 'split' : 'standard',
       cardStyle: 'elevated',

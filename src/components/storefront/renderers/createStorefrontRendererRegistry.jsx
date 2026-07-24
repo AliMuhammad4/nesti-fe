@@ -14,7 +14,6 @@ import LawyerPracticeAreasSection from '@/components/public-profile/lawyer/Lawye
 import BrokerProgramsSection from '@/components/public-profile/mortgage-broker/BrokerProgramsSection';
 import {
   ClosingCostEstimator,
-  HomeValuationLeadBlock,
   MortgageAffordabilityCalculator,
 } from '../SmartToolsBlocks';
 import { STOREFRONT_BLOCK_TYPES as T } from '../storefrontPresets';
@@ -34,16 +33,12 @@ import {
 } from './variants/experienceSections';
 import {
   FunnelAboutSection,
-  FunnelCtaSection,
   FunnelHeroSection,
   IndustrialAboutSection,
-  IndustrialCtaSection,
   IndustrialHeroSection,
   LuxuryAboutSection,
-  LuxuryCtaSection,
   LuxuryHeroSection,
   WarmAboutSection,
-  WarmCtaSection,
   WarmHeroSection,
 } from './variants/experienceIdentitySections';
 
@@ -53,6 +48,7 @@ const sharedRegistry = {
       profile={profile}
       onCTAClick={actions.onCtaClick}
       onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
       block={block}
       flushTop
     />
@@ -85,7 +81,13 @@ const sharedRegistry = {
     <PublicGuidanceSection profile={profile} content={block?.data?.content || {}} />
   ),
   [T.CTA]: ({ profile, actions, block }) => (
-    <PublicCTA profile={profile} onDirectLeadClick={actions.onDirectLeadClick} content={block?.data?.content || {}} />
+    <PublicCTA
+      profile={profile}
+      onDirectLeadClick={actions.onDirectLeadClick}
+      onCtaClick={actions.onCtaClick}
+      onAppointmentClick={actions.onAppointmentClick}
+      content={block?.data?.content || {}}
+    />
   ),
   [T.FOOTER]: ({ profile, block }) => (
     <PublicStorefrontFooter profile={profile} content={block?.data?.content || {}} />
@@ -136,9 +138,6 @@ const roleRegistry = {
         builderAccessToken={profile.storefront_builder_access_token}
       />
     ),
-    [T.HOME_VALUATION]: ({ actions }) => (
-      <HomeValuationLeadBlock onLeadClick={actions.onDirectLeadClick} />
-    ),
   },
   mortgage_broker: {
     [T.MORTGAGE_CALCULATOR]: () => (
@@ -174,7 +173,6 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <LuxuryCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
@@ -205,7 +203,6 @@ const experienceOverrides = {
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <LuxuryCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <LuxuryMortgageProgramsSection profile={profile} actions={actions} />,
@@ -213,7 +210,6 @@ const experienceOverrides = {
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <LuxuryCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
@@ -222,7 +218,6 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <IndustrialCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
@@ -253,7 +248,6 @@ const experienceOverrides = {
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <IndustrialCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <IndustrialMortgageProgramsSection profile={profile} actions={actions} />,
@@ -261,7 +255,6 @@ const experienceOverrides = {
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <IndustrialCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
@@ -270,14 +263,12 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <WarmCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <WarmCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <WarmMortgageProgramsSection profile={profile} actions={actions} />,
@@ -285,7 +276,6 @@ const experienceOverrides = {
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <WarmCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
@@ -294,14 +284,12 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <FunnelCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <FunnelCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <FunnelMortgageProgramsSection profile={profile} actions={actions} />,
@@ -309,7 +297,6 @@ const experienceOverrides = {
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.CTA]: ({ profile, actions }) => <FunnelCtaSection profile={profile} actions={actions} />,
       [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },

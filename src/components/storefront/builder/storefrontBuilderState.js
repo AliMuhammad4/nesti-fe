@@ -14,7 +14,6 @@ export const BLOCK_LIBRARY = {
   agent: [
     STOREFRONT_BLOCK_TYPES.PROPERTIES,
     STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
-    STOREFRONT_BLOCK_TYPES.HOME_VALUATION,
   ],
   mortgage_broker: [
     STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR,
@@ -34,12 +33,11 @@ export function labelForBlock(type) {
 }
 
 const DEFAULT_CONTENT = {
-  [STOREFRONT_BLOCK_TYPES.HERO]: { heading: '', body: '', cta_label: 'Book a consultation', cta_url: '' },
+  [STOREFRONT_BLOCK_TYPES.HERO]: { heading: '', cta_label: 'Book a Free Consultation' },
   [STOREFRONT_BLOCK_TYPES.ABOUT]: { heading: 'About', body: '' },
   [STOREFRONT_BLOCK_TYPES.SERVICES]: { heading: 'Services', body: 'Personalized support designed around your next decision.' },
   [STOREFRONT_BLOCK_TYPES.TESTIMONIALS]: { heading: 'Client stories', body: 'Outcomes from people who worked with this professional.' },
   [STOREFRONT_BLOCK_TYPES.CTA]: { heading: 'Ready for the next step?', body: 'Share your goals and get a clear plan.', cta_label: 'Start a conversation' },
-  [STOREFRONT_BLOCK_TYPES.HOME_VALUATION]: { heading: 'What could your home be worth?', body: 'Request a personalized local market review.' },
   [STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR]: { heading: 'Affordability calculator', body: 'Estimate purchasing power before you tour homes.' },
   [STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR]: { heading: 'Closing cost estimator', body: 'Model fees before you commit.' },
   [STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS]: { heading: 'Featured listings', body: 'Hand-picked opportunities ready for private showings.' },
@@ -101,13 +99,19 @@ const DEFAULT_LAYOUT = {
 };
 
 export function createBlock(type) {
+  const isHero = type === STOREFRONT_BLOCK_TYPES.HERO;
   return {
     id: `${type}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`,
     type,
     data: {
       enabled: true,
       content: { ...(DEFAULT_CONTENT[type] || {}) },
-      layout: { ...DEFAULT_LAYOUT },
+      layout: {
+        ...DEFAULT_LAYOUT,
+        // Hero cover only renders when mediaPosition !== 'none'
+        mediaPosition: isHero ? 'background' : DEFAULT_LAYOUT.mediaPosition,
+        cardStyle: isHero ? 'elevated' : DEFAULT_LAYOUT.cardStyle,
+      },
       style: { background: '', textColor: '', radius: 'default', shadow: 'none' },
     },
   };
@@ -145,6 +149,7 @@ export function normalizeBlocks(blocks = []) {
   const deprecatedListingTypes = new Set([
     STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
     STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+    'home-valuation',
   ]);
   const normalized = blocks
     .filter((block) => !deprecatedListingTypes.has(block?.type))

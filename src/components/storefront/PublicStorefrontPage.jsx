@@ -42,6 +42,7 @@ export default function PublicStorefrontPage({ profile }) {
       setChatbotOpen(true);
     },
     onDirectLeadClick: () => openLeadModal(),
+    onAppointmentClick: () => track('cta_click', { cta_type: 'book_consultation' }),
     onPropertyInquiry: (property) => openLeadModal(property),
     onServiceClick: async (service) => {
       await track('service_click', { service_id: service?._id || service?.id || null });
@@ -52,10 +53,10 @@ export default function PublicStorefrontPage({ profile }) {
   return (
     <>
       <div
-        className="storefront-page-col12 mx-auto w-full max-w-6xl px-3 pb-10 pt-[4.75rem] sm:px-5 sm:pb-12 sm:pt-20 lg:px-6"
-        data-layout="col-12"
+        className="w-full pb-10 pt-[4.75rem] sm:pb-12 sm:pt-20"
+        data-layout="full-width"
       >
-        <div className="overflow-hidden rounded-xl bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/80 sm:rounded-2xl">
+        <div className="w-full bg-white">
           <StorefrontBlockRenderer
             profile={profile}
             blocks={profile.storefront_blocks}

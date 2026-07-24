@@ -138,8 +138,8 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
   };
 
   return (
-    <section id="reviews" className="px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <section id="reviews" className="w-full px-5 py-6 sm:px-8 sm:py-8 lg:px-12 xl:px-16">
+      <div className="w-full">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">

@@ -53,6 +53,12 @@ export default function StorefrontBlockRenderer({
   const experience = resolveTemplateExperience(templateRef);
   const role = profile.professional_type || 'agent';
   const blockRegistry = createStorefrontRendererRegistry({ role, experience });
+  const expertiseBlock = resolvedBlocks.find(
+    (block) => block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE,
+  );
+  const storefrontExpertiseAreas = expertiseBlock?.data?.content?.areas
+    || expertiseBlock?.content?.areas
+    || [];
   const experienceClass = experienceCanvasClass(experience);
   const templateBrand = getStorefrontTemplate(templateRef)?.brand || {};
   const explicitTheme = theme || profile.storefront_theme || {};
@@ -85,6 +91,7 @@ export default function StorefrontBlockRenderer({
           ...profile,
           storefront_builder_preview: preview,
           storefront_section_content: content,
+          storefront_expertise_areas: storefrontExpertiseAreas,
           ...(block.type === STOREFRONT_BLOCK_TYPES.HERO
             ? {
                 headline: content.heading || profile.headline,

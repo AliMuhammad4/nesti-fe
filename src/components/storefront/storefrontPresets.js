@@ -12,7 +12,6 @@ export const STOREFRONT_BLOCK_TYPES = {
   MORTGAGE_PROGRAMS: 'mortgage-programs',
   PRACTICE_AREAS: 'practice-areas',
   CREDENTIALS: 'credentials',
-  HOME_VALUATION: 'home-valuation',
   MORTGAGE_CALCULATOR: 'mortgage-calculator',
   CLOSING_COST_ESTIMATOR: 'closing-cost-estimator',
   GUIDANCE: 'guidance',
@@ -36,7 +35,6 @@ export const STOREFRONT_TEMPLATE_PRESETS = {
   agent: [
     ...sharedBlocks.slice(0, 4),
     { type: STOREFRONT_BLOCK_TYPES.PROPERTIES },
-    { type: STOREFRONT_BLOCK_TYPES.HOME_VALUATION },
     sharedBlocks[4],
     sharedBlocks[5],
     { type: STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS, when: 'featured_listings' },
@@ -80,6 +78,7 @@ export function resolveStorefrontBlocks(profile, blocks = profile?.storefront_bl
     .filter((block) => ![
       STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
       STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+      'home-valuation',
     ].includes(block.type))
     .filter((block) => {
       if (!block.when) return true;

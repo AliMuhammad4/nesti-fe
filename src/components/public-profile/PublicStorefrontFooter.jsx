@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight, Globe, Mail, MapPin, MessageCircle, Phone, ShieldCheck } from 'lucide-react';
+import { resolvePublicProfileAreas } from '@/lib/publicProfileAreas';
 
 export default function PublicStorefrontFooter({ profile, content = {} }) {
   const socialLinks = profile.social_links || {};
@@ -17,32 +18,8 @@ export default function PublicStorefrontFooter({ profile, content = {} }) {
   const email = profile.email;
   const phone = profile.professional_profile?.phone;
   const description = content.body || profile.tagline || profile.about || 'Professional real estate services backed by guided AI support.';
-  const serviceAreas = profile.service_areas || profile.professional_profile?.service_areas;
-  const normalizeCity = (value) => String(value || '')
-    .trim()
-    .replace(/^(?:and|&)\s+/i, '')
-    .replace(/^[,\s]+|[.,\s]+$/g, '')
-    .trim();
-  const areas = (Array.isArray(serviceAreas) ? serviceAreas : [])
-    .map(normalizeCity)
-    .filter(Boolean);
-  const descriptionMatch = String(description || '').trim().match(/^(.*?)\s+\bin\b\s+(.+)$/i);
-  let descriptionPrefix = String(description || '').trim();
-  let descriptionCities = [];
-  if (areas.length) {
-    descriptionPrefix = descriptionMatch ? descriptionMatch[1].trim() : descriptionPrefix;
-    descriptionCities = areas;
-  } else if (descriptionMatch) {
-    const afterIn = descriptionMatch[2].trim();
-    const looksLikeCityList = /,/.test(afterIn) || /\band\b/i.test(afterIn);
-    if (looksLikeCityList) {
-      descriptionPrefix = descriptionMatch[1].trim();
-      descriptionCities = afterIn
-        .split(/\s*,\s*|\s+and\s+/i)
-        .map(normalizeCity)
-        .filter(Boolean);
-    }
-  }
+  const descriptionPrefix = String(description || '').trim();
+  const descriptionCities = resolvePublicProfileAreas(profile, profile.storefront_expertise_areas);
   const customLinks = Array.isArray(content.items) ? content.items.filter((item) => item?.label) : [];
   const defaultLinks = [
     { label: 'About', url: '#about' },
@@ -56,7 +33,7 @@ export default function PublicStorefrontFooter({ profile, content = {} }) {
 
   return (
     <footer id="contact" className="border-t border-primary/10 bg-white/90 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="w-full px-5 py-10 sm:px-8 lg:px-12 xl:px-16">
         <div className="grid gap-8 md:grid-cols-[1.1fr_0.65fr_0.85fr]">
           <div>
             <div className="flex items-start gap-4">

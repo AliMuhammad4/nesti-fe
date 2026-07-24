@@ -19,8 +19,20 @@ const FALLBACK_SERVICES = {
   ],
 };
 
-function serviceItems(services = [], role = 'agent') {
-  return (services?.length ? services : FALLBACK_SERVICES[role] || FALLBACK_SERVICES.agent).slice(0, 6);
+function serviceItems(services = [], role = 'agent', customItems = []) {
+  const source = customItems?.length
+    ? customItems
+    : services?.length
+      ? services
+      : FALLBACK_SERVICES[role] || FALLBACK_SERVICES.agent;
+  return source
+    .map((item) => ({
+      ...item,
+      title: item?.title || item?.name || '',
+      description: item?.description || item?.text || '',
+    }))
+    .filter((item) => item.title)
+    .slice(0, 6);
 }
 
 function testimonialItems(testimonials = [], profile) {
@@ -65,7 +77,11 @@ function SectionHeader({ eyebrow, heading, body, tone = 'primary', align = 'cent
 }
 
 export function LuxuryServicesSection({ profile, actions }) {
-  const items = serviceItems(profile.services, profile.professional_type);
+  const items = serviceItems(
+    profile.services,
+    profile.professional_type,
+    profile.storefront_section_content?.items,
+  );
   const copy = sectionCopy(profile, { eyebrow: 'Private advisory', heading: 'Concierge services' });
   return (
     <section id="services" className="px-4 py-10 sm:px-8 sm:py-14">
@@ -91,7 +107,8 @@ export function LuxuryServicesSection({ profile, actions }) {
 }
 
 export function IndustrialServicesSection({ profile, actions }) {
-  const resolvedItems = serviceItems(profile.services, profile.professional_type);
+  const customItems = profile.storefront_section_content?.items;
+  const resolvedItems = serviceItems(profile.services, profile.professional_type, customItems);
   const supplementalService = {
     agent: {
       title: 'Portfolio Growth Strategy',
@@ -106,14 +123,14 @@ export function IndustrialServicesSection({ profile, actions }) {
       description: 'Get clear legal guidance for complex property decisions before moving forward.',
     },
   };
-  const items = resolvedItems.length === 5
+  const items = !customItems?.length && resolvedItems.length === 5
     ? [...resolvedItems, supplementalService[profile.professional_type] || supplementalService.agent]
     : resolvedItems;
   const copy = sectionCopy(profile, { eyebrow: 'Capabilities', heading: 'Service modules' });
   const capabilityIcons = [Target, Building2, Home, Percent, Handshake, ShieldCheck];
   return (
-    <section id="services" className="px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <section id="services" className="w-full px-5 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:px-12 xl:px-16">
+      <div className="w-full">
         <div className="max-w-2xl">
           {copy.eyebrow ? (
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
@@ -161,7 +178,11 @@ export function IndustrialServicesSection({ profile, actions }) {
 }
 
 export function WarmServicesSection({ profile, actions }) {
-  const items = serviceItems(profile.services, profile.professional_type);
+  const items = serviceItems(
+    profile.services,
+    profile.professional_type,
+    profile.storefront_section_content?.items,
+  );
   const copy = sectionCopy(profile, { eyebrow: 'How we help', heading: 'Support built around you' });
   return (
     <section id="services" className="px-4 py-10 sm:py-14">
@@ -189,7 +210,11 @@ export function WarmServicesSection({ profile, actions }) {
 }
 
 export function FunnelServicesSection({ profile, actions }) {
-  const items = serviceItems(profile.services, profile.professional_type);
+  const items = serviceItems(
+    profile.services,
+    profile.professional_type,
+    profile.storefront_section_content?.items,
+  );
   const copy = sectionCopy(profile, { eyebrow: 'Choose your path', heading: 'Start with the right service' });
   return (
     <section id="services" className="px-4 py-10 sm:py-12">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Building2, Menu, UserPlus, X } from 'lucide-react';
+import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
 
 const ROLE_HERO = {
   agent: {
@@ -29,12 +30,43 @@ const ROLE_HERO = {
   },
 };
 
-export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, block, flushTop = false }) {
+export default function PublicHero({
+  profile,
+  onCTAClick,
+  onDirectLeadClick,
+  onAppointmentClick,
+  block,
+  flushTop = false,
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const professionalType = profile.professional_type;
   const sectionLayout = block?.data?.layout || block?.layout || {};
   const heroVariant = sectionLayout.variant || 'standard';
   const isPremium = heroVariant === 'premium';
+  const clamp = (value, min, max, fallback) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  };
+  const coverPosition = profile.storefront_cover_position || {};
+  const coverX = clamp(coverPosition.x, 0, 100, 50);
+  const coverY = clamp(coverPosition.y, 0, 100, 50);
+  const coverZoom = clamp(profile.storefront_cover_zoom, 1, 3, 1);
+  const profilePosition = profile.storefront_profile_position || {};
+  const profileX = clamp(profilePosition.x, 0, 100, 50);
+  const profileY = clamp(profilePosition.y, 0, 100, 25);
+  const profileZoom = clamp(profile.storefront_profile_zoom, 1, 3, 1);
+  const coverPhotoStyle = {
+    objectPosition: `${coverX}% ${coverY}%`,
+    transform: `scale(${coverZoom})`,
+    transformOrigin: `${coverX}% ${coverY}%`,
+  };
+  const profilePhotoStyle = {
+    objectPosition: `${profileX}% ${profileY}%`,
+    transform: `scale(${profileZoom})`,
+    transformOrigin: `${profileX}% ${profileY}%`,
+  };
+  const coverRenderKey = `${profile.cover_photo_url}-${coverX}-${coverY}-${coverZoom}`;
+  const profileRenderKey = `${profile.profile_photo_url}-${profileX}-${profileY}-${profileZoom}`;
   const heroContent = ROLE_HERO[professionalType] || ROLE_HERO.agent;
   const professionalProfile = profile.professional_profile || {};
   const companyName = professionalProfile.company_name || '';
@@ -46,22 +78,11 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
         : 'Real Estate Agent';
   const inviteShareUrl = String(profile.invite_link?.share_url || '').trim();
   const calendlyLink = profile.professional_profile?.calendly_link || '';
-  const trackedCalendlyLink = (() => {
-    if (!calendlyLink) return '';
-    try {
-      const url = new URL(calendlyLink);
-      url.searchParams.set('utm_source', 'nesti_public_profile');
-      url.searchParams.set('utm_campaign', profile.professional_user_id || profile.id || profile.slug || '');
-      url.searchParams.set('utm_content', 'public_profile_consultation');
-      return url.toString();
-    } catch {
-      return calendlyLink;
-    }
-  })();
+  const trackedCalendlyLink = buildTrackedCalendlyUrl(calendlyLink, profile);
   const handleConsultationClick = () => {
     if (trackedCalendlyLink) {
       window.open(trackedCalendlyLink, '_blank', 'noopener,noreferrer');
-      onCTAClick?.('book_consultation');
+      onAppointmentClick?.();
       return;
     }
     onCTAClick?.('book_consultation');
@@ -82,15 +103,25 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
   return (
     <section className={`relative overflow-hidden bg-white ${flushTop ? '' : 'pt-16'}`}>
       <header className="fixed inset-x-0 top-0 z-[1000] border-b border-border/70 bg-white/95 shadow-sm backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 w-full items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-16">
           <Link
             href="/"
-            className="flex items-center gap-2.5 rounded-xl px-2 py-1 transition hover:bg-primary/5"
+            className="flex min-w-0 items-center gap-3 rounded-lg py-1"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg overflow-hidden">
+            <span
+              className={`flex h-10 shrink-0 items-center justify-center overflow-hidden ${
+                profile.storefront_logo_url
+                  ? 'w-20 border-r border-slate-200 pr-3'
+                  : 'w-10 rounded-lg'
+              }`}
+            >
               {profile.storefront_logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.storefront_logo_url} alt={`${profile.professional_name || 'Professional'} logo`} className="h-10 w-10 object-contain" />
+                <img
+                  src={profile.storefront_logo_url}
+                  alt={`${profile.professional_name || 'Professional'} logo`}
+                  className="max-h-9 w-auto max-w-full object-contain"
+                />
               ) : (
                 <Image
                   src="/logo/logo.png"
@@ -101,9 +132,13 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
                 />
               )}
             </span>
-            <span className="flex min-h-10 flex-col justify-center leading-tight">
-              <span className="text-base font-semibold tracking-tight text-text-heading">{profile.storefront_logo_url ? profile.professional_name : 'Nesti AI'}</span>
-              <span className="mt-0.5 text-[11px] font-medium text-slate-500">{profile.storefront_logo_url ? roleLabel : 'Real Estate Intelligence'}</span>
+            <span className="flex min-h-10 min-w-0 flex-col justify-center leading-tight">
+              <span className="truncate text-sm font-bold tracking-tight text-slate-900 sm:text-[15px]">
+                {profile.storefront_logo_url ? profile.professional_name : 'Nesti AI'}
+              </span>
+              <span className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                {profile.storefront_logo_url ? roleLabel : 'Real Estate Intelligence'}
+              </span>
             </span>
           </Link>
 
@@ -119,10 +154,12 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
             <span className="relative h-10 w-10 overflow-hidden rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
               {profile.profile_photo_url ? (
                 <Image
+                  key={`header-${profileRenderKey}`}
                   src={profile.profile_photo_url}
                   alt={profile.professional_name || roleLabel}
                   fill
                   className="object-cover object-center"
+                  style={profilePhotoStyle}
                 />
               ) : (
                 <span className="grid h-full w-full place-items-center text-sm font-bold">
@@ -152,8 +189,8 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
         </div>
 
         {mobileMenuOpen && (
-          <div className="border-t border-slate-100 bg-white/98 px-4 py-3 shadow-lg backdrop-blur lg:hidden">
-            <nav className="mx-auto grid max-w-7xl gap-1 text-sm font-medium text-text-heading">
+          <div className="border-t border-slate-100 bg-white/98 px-5 py-3 shadow-lg backdrop-blur sm:px-8 lg:hidden">
+            <nav className="grid w-full gap-1 text-sm font-medium text-text-heading">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
@@ -174,11 +211,13 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
         <div className="relative h-44 w-full overflow-hidden sm:h-56 lg:h-64">
           {profile.cover_photo_url ? (
             <Image
+              key={coverRenderKey}
               src={profile.cover_photo_url}
               alt={`${profile.professional_name || 'Professional'} cover`}
               fill
               sizes="(min-width: 1280px) 1280px, 100vw"
               className="object-cover object-center"
+              style={coverPhotoStyle}
               priority
             />
           ) : (
@@ -191,11 +230,13 @@ export default function PublicHero({ profile, onCTAClick, onDirectLeadClick, blo
             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-[4px] border-white bg-slate-100 shadow-md sm:h-36 sm:w-36">
                 {profile.profile_photo_url ? (
                   <Image
+                    key={`hero-${profileRenderKey}`}
                     src={profile.profile_photo_url}
                     alt={profile.professional_name || roleLabel}
                     fill
                     sizes="144px"
                     className="object-cover object-top"
+                    style={profilePhotoStyle}
                     priority
                   />
                 ) : (

@@ -29,22 +29,26 @@ export default function PublicPropertiesPage({ profile }) {
       <div className="min-h-screen bg-slate-100">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
           <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-6">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg">
+            <Link href={profileHref} className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={`flex h-10 shrink-0 items-center justify-center overflow-hidden ${
+                  profile.storefront_logo_url ? 'w-20' : 'w-10 rounded-lg'
+                }`}
+              >
                 {profile.storefront_logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={profile.storefront_logo_url}
                     alt={`${profile.professional_name || 'Professional'} logo`}
-                    className="h-9 w-9 object-contain"
+                    className="max-h-9 w-auto max-w-full object-contain"
                   />
                 ) : (
                   <Image
                     src="/logo/logo.png"
                     alt="Nesti AI logo"
-                    width={36}
-                    height={36}
-                    className="h-9 w-9 object-cover"
+                    width={40}
+                    height={40}
+                    className="h-full w-full object-cover"
                   />
                 )}
               </span>

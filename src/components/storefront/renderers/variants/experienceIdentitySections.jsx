@@ -1,4 +1,10 @@
-import { ArrowRight, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  ShieldCheck,
+} from 'lucide-react';
 import PublicHero from '@/components/public-profile/PublicHero';
 
 function withForcedHeroVariant(block, variant) {
@@ -20,6 +26,7 @@ export function LuxuryHeroSection({ profile, actions, block }) {
       profile={profile}
       onCTAClick={actions.onCtaClick}
       onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
       block={withForcedHeroVariant(block, 'premium')}
       flushTop
     />
@@ -32,6 +39,7 @@ export function IndustrialHeroSection({ profile, actions, block }) {
       profile={profile}
       onCTAClick={actions.onCtaClick}
       onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
       block={withForcedHeroVariant(block, 'minimal')}
       flushTop
     />
@@ -44,6 +52,7 @@ export function WarmHeroSection({ profile, actions, block }) {
       profile={profile}
       onCTAClick={actions.onCtaClick}
       onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
       block={withForcedHeroVariant(block, 'editorial')}
       flushTop
     />
@@ -56,6 +65,7 @@ export function FunnelHeroSection({ profile, actions, block }) {
       profile={profile}
       onCTAClick={actions.onCtaClick}
       onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
       block={withForcedHeroVariant(block, 'lead-magnet')}
       flushTop
     />
@@ -106,15 +116,77 @@ export function LuxuryAboutSection({ profile }) {
 
 export function IndustrialAboutSection({ profile }) {
   const paragraphs = aboutParagraphs(profile);
-  const copy = identityCopy(profile, { eyebrow: 'Profile', heading: 'Operator background' });
+  const copy = identityCopy(profile, {
+    eyebrow: 'Professional profile',
+    heading: `About ${profile?.professional_name || 'Your Advisor'}`,
+  });
+  const name = profile?.professional_name || 'Trusted Professional';
+  const profilePosition = profile?.storefront_profile_position || {};
+  const profileX = Math.min(100, Math.max(0, Number(profilePosition.x ?? 50)));
+  const profileY = Math.min(100, Math.max(0, Number(profilePosition.y ?? 25)));
+  const profileZoom = Math.min(3, Math.max(1, Number(profile?.storefront_profile_zoom ?? 1)));
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
   if (!paragraphs.length) return null;
   return (
-    <section id="about" className="px-4 py-10 sm:py-12">
-      <div className="mx-auto max-w-7xl border-y border-slate-200 bg-white/90 px-1 py-7 sm:px-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{copy.eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-bold uppercase tracking-[0.08em] text-slate-900">{copy.heading}</h2>
-        <div className="mt-4 space-y-3">
-          {paragraphs.map((paragraph, index) => <p key={index} className="text-sm leading-7 text-text-body">{paragraph}</p>)}
+    <section id="about" className="border-y border-slate-200 bg-white">
+      <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+        <div className="grid gap-9 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center lg:gap-10">
+          <div>
+            <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 shadow-[0_18px_45px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
+              {profile?.profile_photo_url ? (
+                <Image
+                  src={profile.profile_photo_url}
+                  alt={name}
+                  fill
+                  sizes="(min-width: 1280px) 272px, (min-width: 1024px) 240px, 80vw"
+                  className="object-cover"
+                  style={{
+                    objectPosition: `${profileX}% ${profileY}%`,
+                    transform: `scale(${profileZoom})`,
+                    transformOrigin: `${profileX}% ${profileY}%`,
+                  }}
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-4xl font-bold text-slate-400">
+                  {initials}
+                </div>
+              )}
+            </div>
+            <div className="border-b border-slate-200 py-4">
+              <h3 className="text-base font-bold text-slate-900">{name}</h3>
+              <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                {roleHeadline(profile)}
+              </p>
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <div className="border-l-2 border-slate-900 pl-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                {copy.eyebrow}
+              </p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                {copy.heading}
+              </h2>
+            </div>
+            <div className="mt-6 space-y-4">
+              {paragraphs.map((paragraph, index) => (
+                <p
+                  key={index}
+                  className={`${index === 0 ? 'text-base leading-8 text-slate-700' : 'text-sm leading-7 text-slate-600'}`}
+                >
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+
+          </div>
         </div>
       </div>
     </section>

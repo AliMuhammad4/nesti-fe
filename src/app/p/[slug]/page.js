@@ -69,7 +69,20 @@ export default async function PublicProfilePage({ params }) {
               : '0.75rem',
         },
         storefront_logo_url: published.brandKit?.logo_url || '',
-      storefront_template_key: published.template?.id || '',
+        storefront_logo_size: published.brandKit?.logo_size || 40,
+        storefront_template_key: published.template?.id || '',
+        cover_photo_url: published.brandKit?.cover_url || profile.cover_photo_url,
+        profile_photo_url: published.brandKit?.profile_photo_url || profile.profile_photo_url,
+        storefront_cover_position: {
+          x: Number(published.brandKit?.cover_position_x ?? 50),
+          y: Number(published.brandKit?.cover_position_y ?? 50),
+        },
+        storefront_cover_zoom: Math.max(1, Number(published.brandKit?.cover_zoom ?? 1)),
+        storefront_profile_position: {
+          x: Number(published.brandKit?.profile_position_x ?? 50),
+          y: Number(published.brandKit?.profile_position_y ?? 25),
+        },
+        storefront_profile_zoom: Number(published.brandKit?.profile_zoom ?? 1),
       }
     : profile;
 

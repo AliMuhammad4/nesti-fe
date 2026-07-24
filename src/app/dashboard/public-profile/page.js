@@ -54,6 +54,15 @@ function buildStorefrontDraft(editorData) {
     },
     brandKit: {
       logo_url: editorData.brand_kit.logo_url || null,
+      cover_url: editorData.brand_kit.cover_url || null,
+      profile_photo_url: editorData.brand_kit.profile_photo_url || null,
+      logo_size: Number(editorData.brand_kit.logo_size) || 40,
+      cover_position_x: Number(editorData.brand_kit.cover_position_x ?? 50),
+      cover_position_y: Number(editorData.brand_kit.cover_position_y ?? 50),
+      cover_zoom: Math.max(1, Number(editorData.brand_kit.cover_zoom ?? 1)),
+      profile_position_x: Number(editorData.brand_kit.profile_position_x ?? 50),
+      profile_position_y: Number(editorData.brand_kit.profile_position_y ?? 25),
+      profile_zoom: Number(editorData.brand_kit.profile_zoom ?? 1),
       primary_color: editorData.brand_kit.primary_color || null,
       secondary_color: editorData.brand_kit.accent_color || null,
       accent_color: editorData.brand_kit.accent_color || null,
@@ -287,6 +296,15 @@ export default function PublicProfilePage() {
           business_name: savedBrandKit.business_name || professional.company_name || '',
           logo_url: savedBrandKit.logo_url || '',
           logo_dark_url: savedBrandKit.logo_dark_url || '',
+          cover_url: savedBrandKit.cover_url || '',
+          profile_photo_url: savedBrandKit.profile_photo_url || '',
+          logo_size: Number(savedBrandKit.logo_size) || 40,
+          cover_position_x: Number(savedBrandKit.cover_position_x ?? 50),
+          cover_position_y: Number(savedBrandKit.cover_position_y ?? 50),
+          cover_zoom: Math.max(1, Number(savedBrandKit.cover_zoom ?? 1)),
+          profile_position_x: Number(savedBrandKit.profile_position_x ?? 50),
+          profile_position_y: Number(savedBrandKit.profile_position_y ?? 25),
+          profile_zoom: Number(savedBrandKit.profile_zoom ?? 1),
           primary_color: savedBrandKit.primary_color || '#0f766e',
           accent_color: savedBrandKit.accent_color || '#f59e0b',
           font: savedBrandKit.font_family || savedBrandKit.font || 'Manrope',
@@ -303,6 +321,15 @@ export default function PublicProfilePage() {
           business_name: professional.company_name || '',
           logo_url: '',
           logo_dark_url: '',
+          cover_url: '',
+          profile_photo_url: '',
+          logo_size: 40,
+          cover_position_x: 50,
+          cover_position_y: 50,
+          cover_zoom: 1,
+          profile_position_x: 50,
+          profile_position_y: 25,
+          profile_zoom: 1,
           primary_color: '#0f766e',
           accent_color: '#f59e0b',
           font: 'Manrope',
@@ -420,12 +447,15 @@ export default function PublicProfilePage() {
   const uploadStorefrontMedia = async (kind, file) => {
     if (!file) return;
     try {
-      const response = await uploadMedia.mutateAsync({ kind, file });
-      const url = response?.url || (kind === 'cover' ? response?.cover_image : response?.profile_image);
+      const response = await uploadMedia.mutateAsync({ kind, file, scope: 'storefront' });
+      const url = response?.url || '';
       if (!url) throw new Error('Upload did not return an image URL');
       if (kind === 'logo') updateBrandKit({ logo_url: url });
-      queryClient.invalidateQueries(['own-public-profile']);
-      toast.success(`${kind === 'profile' ? 'Profile photo' : kind === 'cover' ? 'Cover photo' : 'Logo'} uploaded`);
+      if (kind === 'cover') updateBrandKit({ cover_url: url });
+      if (kind === 'profile') updateBrandKit({ profile_photo_url: url });
+      toast.success(
+        `${kind === 'profile' ? 'Page profile photo' : kind === 'cover' ? 'Page cover photo' : 'Logo'} updated for this storefront only`,
+      );
     } catch (error) {
       toast.error(error?.message || 'Image upload failed');
     }
@@ -498,9 +528,15 @@ export default function PublicProfilePage() {
       onSuccess: () => toast.success('Public page published'),
     });
     const publish = () => publishStorefrontMutation.mutate(undefined, { onSuccess: enablePublicPage });
-    if (editorDirty) {
-      handleSave();
-      toast.info('Save the storefront draft, then publish it.');
+    if (editorDirty && editorData) {
+      const draft = buildStorefrontDraft(editorData);
+      saveStorefrontMutation.mutate(draft, {
+        onSuccess: () => {
+          lastSavedDraftSignatureRef.current = draftSignature(draft);
+          setEditorDirty(false);
+          publish();
+        },
+      });
       return;
     }
     publish();
@@ -603,15 +639,27 @@ export default function PublicProfilePage() {
               <button type="button" onClick={handleSave} disabled={!hasUnsavedChanges || saveStorefrontMutation.isPending} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-40">
                 {saveStorefrontMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />} Save
               </button>
-              <button type="button" onClick={handlePublish} disabled={!canPublish || publishStorefrontMutation.isPending} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-white disabled:opacity-40">
-                {publishStorefrontMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : <Globe2 size={15} />}{isLive ? 'Update live' : 'Publish'}
+              <button type="button" onClick={handlePublish} disabled={!canPublish || saveStorefrontMutation.isPending || publishStorefrontMutation.isPending} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-white disabled:opacity-40">
+                {saveStorefrontMutation.isPending || publishStorefrontMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : <Globe2 size={15} />}{isLive ? 'Update live' : 'Publish'}
               </button>
             </div>
           </header>
           <StorefrontBuilderWorkspace
             accessToken={token}
             role={professionalProfile.professional_type || profileData?.professional_type || profile?.professional_type}
-            profile={{ ...profile, professional_name: displayName, professional_profile: professionalProfile, profile_photo_url: user.profile_image || profile?.profile_photo_url, cover_photo_url: user.cover_image || profile?.cover_photo_url }}
+            profile={{
+              ...profile,
+              professional_name: displayName,
+              professional_profile: professionalProfile,
+              profile_photo_url:
+                editorData.brand_kit.profile_photo_url
+                || user.profile_image
+                || profile?.profile_photo_url,
+              cover_photo_url:
+                editorData.brand_kit.cover_url
+                || user.cover_image
+                || profile?.cover_photo_url,
+            }}
             brandKit={editorData.brand_kit}
             templateKey={editorData.template_key}
             onTemplateChange={selectTemplate}
@@ -619,7 +667,10 @@ export default function PublicProfilePage() {
             onChange={(blocks) => updateEditor({ blocks })}
             onBrandKitChange={updateBrandKit}
             onMediaUpload={uploadStorefrontMedia}
-            media={{ cover: user.cover_image || profile?.cover_photo_url, profile: user.profile_image || profile?.profile_photo_url }}
+            media={{
+              cover: editorData.brand_kit.cover_url || '',
+              profile: editorData.brand_kit.profile_photo_url || '',
+            }}
             saving={saveStorefrontMutation.isPending}
             saveState={hasUnsavedChanges ? 'unsaved' : 'saved'}
           />
@@ -708,11 +759,11 @@ export default function PublicProfilePage() {
                 <button
                   type="button"
                   onClick={handlePublish}
-                  disabled={!canPublish || updateMutation.isPending || publishStorefrontMutation.isPending}
+                  disabled={!canPublish || updateMutation.isPending || saveStorefrontMutation.isPending || publishStorefrontMutation.isPending}
                   className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-                  title={hasUnsavedChanges ? 'Save your changes before publishing' : 'Publish your saved public page'}
+                  title={hasUnsavedChanges ? 'Save changes and update the live page' : 'Publish your saved public page'}
                 >
-                  {updateMutation.isPending || publishStorefrontMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Globe2 size={15} />}
+                  {updateMutation.isPending || saveStorefrontMutation.isPending || publishStorefrontMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Globe2 size={15} />}
                   {hasUnsavedChanges ? 'Save to publish' : isLive ? 'Update live page' : 'Publish'}
                 </button>
               ) : null}
@@ -816,18 +867,21 @@ export default function PublicProfilePage() {
                       onUpload={(file) => uploadStorefrontMedia('logo', file)}
                     />
                     <MediaUploadControl
-                      label="Cover photo"
-                      imageUrl={user.cover_image || profile?.cover_photo_url}
+                      label="Page cover photo"
+                      imageUrl={editorData.brand_kit.cover_url}
                       busy={uploadMedia.isPending}
                       onUpload={(file) => uploadStorefrontMedia('cover', file)}
                     />
                     <MediaUploadControl
-                      label="Profile photo"
-                      imageUrl={user.profile_image || profile?.profile_photo_url}
+                      label="Page profile photo"
+                      imageUrl={editorData.brand_kit.profile_photo_url}
                       busy={uploadMedia.isPending}
                       onUpload={(file) => uploadStorefrontMedia('profile', file)}
                       circle
                     />
+                    <p className="sm:col-span-3 text-[11px] leading-4 text-slate-500">
+                      Cover and profile photos here apply only to this professional page, not your account-wide profile.
+                    </p>
                   </div>
                 </EditorCard>
                 </div>
