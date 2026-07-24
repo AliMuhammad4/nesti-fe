@@ -30,6 +30,25 @@ import {
   SavingsDonutChart,
   SavingsProjectionChart,
 } from "@/components/client-dashboard/ClientDashboardCharts";
+import ClientDashboardStartGuide from "@/components/client-dashboard/ClientDashboardStartGuide";
+
+const readLocalStorage = (key) => {
+  if (typeof window === "undefined" || !key) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeLocalStorage = (key, value) => {
+  if (typeof window === "undefined" || !key) return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // The guide still works when browser storage is unavailable.
+  }
+};
 
 const PROFILE_COMPLETION_SECTIONS = [
   {
@@ -205,6 +224,11 @@ export default function ClientDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [guideDismissed, setGuideDismissed] = useState(true);
+  const guideStorageKey = useMemo(() => {
+    const identity = user?._id || user?.id || user?.email || "workspace";
+    return `nesti_client_dashboard_user_guide_${identity}`;
+  }, [user?._id, user?.email, user?.id]);
 
   const profileCompletion = useMemo(() => {
     if (!profile) {
@@ -282,6 +306,11 @@ export default function ClientDashboardPage() {
     setHydrated(true);
     setChartsReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    setGuideDismissed(Boolean(readLocalStorage(guideStorageKey)));
+  }, [guideStorageKey, hydrated]);
 
   // Handle authentication and role checks
   useEffect(() => {
@@ -366,6 +395,11 @@ export default function ClientDashboardPage() {
   const missingFieldsPreview = profileCompletion.missing.slice(0, 3).map((item) => item.label);
   const topPriorityTags = Array.isArray(profile?.priority_tags) ? profile.priority_tags.slice(0, 4) : [];
   const PRIMARY_COLOR = "#16a34a";
+  const showClientGuide = hydrated && Boolean(profile) && !guideDismissed;
+  const dismissClientGuide = (status) => {
+    writeLocalStorage(guideStorageKey, status || "dismissed");
+    setGuideDismissed(true);
+  };
 
   const journeySteps = [
     {
@@ -442,6 +476,10 @@ export default function ClientDashboardPage() {
             </div>
           </div>
         </motion.header>
+
+        {showClientGuide ? (
+          <ClientDashboardStartGuide onDismiss={dismissClientGuide} />
+        ) : null}
 
         <div className="grid gap-4 lg:grid-cols-3">
           <motion.section
