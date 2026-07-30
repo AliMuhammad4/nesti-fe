@@ -4,11 +4,9 @@ export const conversionFunnelExperience = {
   variantLabelClass: 'text-primary',
   css: `
     .storefront-experience-funnel {
-      background: #ffffff;
-    }
-
-    [data-preview='true'] .storefront-experience-funnel {
-      background: linear-gradient(180deg, #f8fffd 0%, #ffffff 36%);
+      width: 100%;
+      max-width: none;
+      background: var(--storefront-canvas, #ffffff);
     }
   `,
   frame() {

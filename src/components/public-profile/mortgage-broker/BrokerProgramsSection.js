@@ -22,6 +22,7 @@ export default function BrokerProgramsSection({ programs, onProgramClick, conten
           {programs.map((program, index) => (
             <div
               key={index}
+              data-storefront-anim-item="true"
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer group"
               onClick={() => onProgramClick?.('pre_approval')}
             >

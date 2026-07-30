@@ -47,6 +47,11 @@ function RatingStars({ value, size = 14 }) {
 }
 
 export default function IndustrialClientFeedbackSection({ profile, testimonials = [], copy = {} }) {
+  const isPreview = Boolean(profile?.storefront_builder_preview);
+  const previewMode = profile?.storefront_preview_mode || 'desktop';
+  const forceMobilePreview = isPreview && previewMode === 'mobile';
+  const forceTabletPreview = isPreview && previewMode === 'tablet';
+  const forceCompactPreview = forceMobilePreview || forceTabletPreview;
   const carouselRef = useRef(null);
   const initialFeedbackRef = useRef(testimonials);
   const [databaseFeedback, setDatabaseFeedback] = useState(testimonials);
@@ -138,9 +143,9 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
   };
 
   return (
-    <section id="reviews" className="w-full px-5 py-6 sm:px-8 sm:py-8 lg:px-12 xl:px-16">
+    <section id="reviews" className={`w-full px-5 py-6 ${forceCompactPreview ? '' : 'sm:px-8 sm:py-8 lg:px-12 xl:px-16'}`}>
       <div className="w-full">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className={`flex flex-col gap-5 ${forceMobilePreview ? '' : 'sm:flex-row sm:items-end sm:justify-between'}`}>
           <div className="max-w-2xl">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
               {copy.eyebrow || 'Client feedback'}
@@ -153,7 +158,7 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className={`flex items-center gap-2 self-start ${forceMobilePreview ? '' : 'sm:self-auto'}`}>
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <span className="text-2xl font-bold tracking-tight text-slate-900">
                 {reviews.length ? averageRating.toFixed(1) : '—'}
@@ -189,7 +194,7 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
         </div>
 
         {feedbackLoading ? (
-          <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className={`mt-6 grid gap-3 ${forceMobilePreview ? 'grid-cols-1' : forceTabletPreview ? 'sm:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
             {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="h-44 animate-pulse rounded-xl border border-slate-200 bg-slate-100/70" />
             ))}
@@ -202,7 +207,8 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
             {reviews.map((item, index) => (
             <article
               key={`${item.client_name}-${index}`}
-              className="flex min-w-full snap-start flex-col rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm sm:min-w-[calc(50%-0.375rem)] lg:min-w-[calc(33.333%-0.5rem)]"
+              data-storefront-anim-item="true"
+              className={`flex min-w-full snap-start flex-col rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm ${forceMobilePreview ? '' : forceTabletPreview ? 'sm:min-w-[calc(50%-0.375rem)]' : 'sm:min-w-[calc(50%-0.375rem)] lg:min-w-[calc(33.333%-0.5rem)]'}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <RatingStars value={item.rating} size={12} />
@@ -238,7 +244,7 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
           </div>
         )}
 
-        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 ${forceMobilePreview ? '' : 'sm:flex-row sm:items-center sm:justify-between'}`}>
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-primary shadow-sm ring-1 ring-slate-200">
               <MessageSquareText size={16} />
@@ -259,7 +265,7 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
       </div>
 
       {formOpen ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-transparent p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="feedback-title" className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
             <div className="flex items-start justify-between border-b border-slate-100 px-4 py-3.5">
               <div>
@@ -308,7 +314,7 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
                   </div>
                 </div>
 
-                <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className={`grid gap-2.5 ${forceMobilePreview ? '' : 'sm:grid-cols-2'}`}>
                   <label className="text-[11px] font-semibold text-slate-700">
                     Your name
                     <input

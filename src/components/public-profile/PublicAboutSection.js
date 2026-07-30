@@ -18,9 +18,15 @@ const getInitials = (name) =>
     .toUpperCase();
 
 export default function PublicAboutSection({ about, profile, role = 'agent' }) {
+  const content = profile?.storefront_section_content || {};
+  const sectionStyle = profile?.storefront_section_style || {};
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
   const professionalProfile = profile?.professional_profile || {};
-  const professionalName = profile?.professional_name || 'Trusted Professional';
+  const professionalName = content.name || profile?.professional_name || 'Trusted Professional';
+  const professionalRole = content.role || professionalProfile.company_name || toTitleCase(profile?.professional_type);
   const profilePhoto = profile?.profile_photo_url;
+  const eyebrow = content.eyebrow || 'About';
+  const heading = content.heading || `About ${professionalName}`;
   const detailItems = [
     { label: 'Availability', value: professionalProfile.availability, icon: CalendarCheck },
     { label: 'Response Time', value: professionalProfile.response_time, icon: Clock3 },
@@ -37,18 +43,22 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
   const paragraphs = String(about || '')
     .split('\n')
     .map((p) => p.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((paragraph, index, items) => items.indexOf(paragraph) === index);
 
   if (!paragraphs.length) return null;
 
   return (
-    <section id="about" className="bg-transparent py-16 sm:py-20">
+    <section id="about" className="bg-transparent py-10 sm:py-14 lg:py-16" style={{ color: sectionStyle.textColor || undefined }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Main content row – both columns stretch to the same height */}
-        <div className="flex flex-col gap-10 lg:flex-row lg:items-stretch lg:gap-14">
-          {/* Left - Compact portrait */}
-          <div className="flex flex-col items-center lg:w-48 lg:shrink-0 lg:items-start">
-            <div className="relative h-40 w-40 overflow-hidden rounded-2xl bg-slate-100 shadow-md ring-1 ring-slate-200/80 sm:h-44 sm:w-44">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch lg:gap-14">
+          <div className="flex flex-col items-center lg:w-48 lg:shrink-0 lg:items-start" data-storefront-anim-item="true">
+            <div
+              data-storefront-field="brandKit.profile_photo_url"
+              data-storefront-source="profile"
+              data-storefront-label="Profile photo"
+              className="relative h-32 w-32 overflow-hidden rounded-2xl bg-slate-100 shadow-md ring-1 ring-slate-200/80 sm:h-40 sm:w-40 md:h-44 md:w-44"
+            >
               {profilePhoto ? (
                 <Image
                   src={profilePhoto}
@@ -63,26 +73,43 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
                 </div>
               )}
             </div>
-            <h3 className="mt-3 text-center text-sm font-semibold text-text-heading lg:text-left">
+            <h3 data-storefront-field="content.name" data-storefront-source={content.name ? 'persisted' : 'fallback'} data-storefront-label="Professional name" className={`mt-2.5 text-center text-sm font-semibold lg:text-left ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}>
               {professionalName}
             </h3>
-            <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-widest text-primary lg:text-left">
-              {professionalProfile.company_name || toTitleCase(profile?.professional_type)}
+            <p data-storefront-field="content.role" data-storefront-source={content.role ? 'persisted' : 'fallback'} data-storefront-label="Company or role" className={`mt-0.5 text-center text-[10px] font-medium uppercase tracking-widest lg:text-left ${hasCustomTextColor ? 'text-current' : 'text-primary'}`} style={hasCustomTextColor ? { opacity: 0.78 } : undefined}>
+              {professionalRole}
             </p>
           </div>
 
-          {/* Right - Bio */}
-          <div className="flex flex-1 flex-col justify-center lg:pt-2">
-            <div className="mb-2 inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Get to know me
-            </div>
-            <h2 className="mb-5 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">
-              The story behind the service
+          <div className="flex flex-1 flex-col justify-center lg:pt-2" data-storefront-anim-item="true">
+            <p
+              data-storefront-field="content.eyebrow"
+              data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+              data-storefront-label="About eyebrow"
+              className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${hasCustomTextColor ? 'text-current' : 'text-primary'}`}
+              style={hasCustomTextColor ? { opacity: 0.78 } : undefined}
+            >
+              {eyebrow}
+            </p>
+            <h2
+              data-storefront-field="content.heading"
+              data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+              data-storefront-label="About heading"
+              className={`mb-4 text-2xl font-bold tracking-tight sm:text-3xl ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}
+            >
+              {heading}
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3.5 sm:space-y-4">
               {paragraphs.map((paragraph, index) => (
-                <p key={index} className="text-[15px] leading-8 text-text-body">
+                <p
+                  key={index}
+                  data-storefront-field="content.body"
+                  data-storefront-source={content.body ? 'persisted' : 'fallback'}
+                  data-storefront-instance={index}
+                  data-storefront-label="About description"
+                  className={`text-[14px] leading-7 sm:text-[15px] sm:leading-8 ${hasCustomTextColor ? 'text-current' : 'text-text-body'}`}
+                  style={hasCustomTextColor ? { opacity: 0.9 } : undefined}
+                >
                   {paragraph}
                 </p>
               ))}
@@ -90,10 +117,9 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
           </div>
         </div>
 
-        {/* Bottom - Detail chips */}
-        {detailItems.length > 0 && (
-          <div className="mt-10 border-t border-slate-100 pt-8">
-            <div className="flex flex-wrap justify-center gap-4">
+        {detailItems.length > 0 ? (
+          <div className="mt-8 border-t border-slate-100 pt-6 sm:mt-10 sm:pt-8">
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
               {detailItems.slice(0, 5).map((item) => {
                 const Icon = item.icon;
                 return (
@@ -115,20 +141,8 @@ export default function PublicAboutSection({ about, profile, role = 'agent' }) {
               })}
             </div>
           </div>
-        )}
-
-        {!detailItems.length && (
-          <div className="mt-10 border-t border-slate-100 pt-8">
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
-                <ShieldCheck size={15} />
-              </span>
-              <span className="text-sm text-text-muted">Client-first approach with responsive communication</span>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );
 }
-

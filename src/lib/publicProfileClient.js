@@ -235,7 +235,8 @@ export async function saveStorefrontDraft(token, draft) {
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to save storefront draft' }));
-    throw new Error(error.message || 'Failed to save storefront draft');
+    const details = Array.isArray(error.details) ? error.details.filter(Boolean).join(', ') : '';
+    throw new Error(details || error.message || 'Failed to save storefront draft');
   }
   return res.json();
 }

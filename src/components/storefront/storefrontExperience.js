@@ -1,16 +1,8 @@
-import { STOREFRONT_BLOCK_TYPES } from './storefrontPresets';
 import {
   allExperienceCss,
   experienceIdFromTemplateKey,
   getStorefrontExperience,
 } from './experiences';
-
-const CARD_STYLE_SHADOW = {
-  flat: 'none',
-  bordered: 'inset 0 0 0 1px rgba(15, 23, 42, 0.08)',
-  elevated: '0 24px 70px rgba(15, 23, 42, 0.12)',
-  glass: 'inset 0 0 0 1px rgba(255, 255, 255, 0.62), 0 24px 80px rgba(15, 23, 42, 0.11)',
-};
 
 const EXPLICIT_SHADOW = {
   none: 'none',
@@ -23,11 +15,22 @@ export const STOREFRONT_EXPERIENCE_CSS = `
   ${allExperienceCss()}
 
   .storefront-canvas {
-    background: #ffffff;
+    width: 100%;
+    max-width: none;
+    background: var(--storefront-canvas, #ffffff);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
   }
 
   .storefront-public-band {
-    overflow: hidden;
+    width: 100%;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .storefront-canvas > .storefront-public-band[data-storefront-block='footer'] {
+    margin-top: auto;
   }
 
   .storefront-section--premium > * {
@@ -57,7 +60,7 @@ export const STOREFRONT_EXPERIENCE_CSS = `
   }
 
   .storefront-listings-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(var(--storefront-section-columns, 4), minmax(0, 1fr)) !important;
   }
 
   @media (max-width: 1023px) {
@@ -70,6 +73,15 @@ export const STOREFRONT_EXPERIENCE_CSS = `
     .storefront-listings-grid {
       grid-template-columns: minmax(0, 1fr) !important;
     }
+  }
+
+  /* Builder device preview: frame is scaled, so viewport media queries do not apply. */
+  .storefront-canvas.storefront-preview-tablet .storefront-listings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .storefront-canvas.storefront-preview-mobile .storefront-listings-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .storefront-section--lead-magnet form,
@@ -100,41 +112,22 @@ export function experienceVariantLabelClass(experience) {
 }
 
 export function sectionFrameStyle(layout = {}, style = {}, type, experience = 'classic-balanced', index = 0) {
-  const cardStyle = layout.cardStyle || 'bordered';
   const variant = layout.variant || 'standard';
-  const baseShadow = CARD_STYLE_SHADOW[cardStyle] || CARD_STYLE_SHADOW.bordered;
-
-  const framedVariant = variant !== 'standard' && variant !== 'minimal';
-  const frameByVariant = {
-    editorial: { maxWidth: '1180px', margin: '1.5rem auto', border: '1px solid rgba(15, 23, 42, 0.08)' },
-    split: { maxWidth: '1200px', margin: '1.75rem auto', border: '1px solid rgba(15, 23, 42, 0.08)' },
-    'feature-grid': { maxWidth: '1240px', margin: '1.25rem auto' },
-    'lead-magnet': { maxWidth: '1080px', margin: '2rem auto', border: '1px solid rgba(15, 23, 42, 0.08)' },
-    premium: { maxWidth: '1220px', margin: type === STOREFRONT_BLOCK_TYPES.HERO ? '0 auto 2rem' : '2rem auto', border: '1px solid rgba(201, 162, 39, 0.22)' },
-  }[variant] || {};
-
   const experienceFrame = getStorefrontExperience(experience).frame?.(type, index) || {};
-
-  const chosenShadow = EXPLICIT_SHADOW[style.shadow] ?? (variant === 'minimal' ? 'none' : baseShadow);
+  const chosenShadow = EXPLICIT_SHADOW[style.shadow] ?? (variant === 'minimal' ? 'none' : undefined);
 
   return {
     position: 'relative',
-    ...(framedVariant ? frameByVariant : {}),
-    ...(framedVariant ? { width: '100%' } : {}),
     ...experienceFrame,
-    // Every block owns a full-width canvas band. Layout width only constrains
-    // the inner content, matching the hero section and modern page builders.
+    // Full-bleed section band. Content width is controlled by sectionInnerClass.
     width: '100%',
     maxWidth: 'none',
-    marginLeft: 0,
-    marginRight: 0,
-    boxShadow: chosenShadow,
-    backdropFilter: cardStyle === 'glass' ? 'blur(16px)' : undefined,
-    backgroundImage: variant === 'premium'
-      ? 'radial-gradient(circle at top right, rgba(255,255,255,0.9), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.18), transparent)'
-      : variant === 'lead-magnet'
-        ? 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.16))'
-        : undefined,
+    margin: 0,
+    border: 'none',
+    borderRadius: 0,
+    boxShadow: chosenShadow === 'none' ? 'none' : undefined,
+    backdropFilter: undefined,
+    backgroundImage: undefined,
   };
 }
 
@@ -142,9 +135,9 @@ export function sectionInnerClass(layout = {}) {
   const variant = layout.variant || 'standard';
   const mediaPosition = layout.mediaPosition || 'none';
   const widthClass = {
-    full: 'max-w-none',
-    contained: 'max-w-7xl',
-    narrow: 'max-w-5xl',
+    full: 'w-full max-w-none',
+    contained: 'w-full max-w-7xl',
+    narrow: 'w-full max-w-5xl',
   }[layout.width || 'full'];
   const variantClass = {
     standard: '',
@@ -156,5 +149,5 @@ export function sectionInnerClass(layout = {}) {
     minimal: 'storefront-section--minimal',
   }[variant] || '';
   const mediaClass = mediaPosition === 'background' ? 'is-media-background' : mediaPosition === 'left' ? 'is-media-left' : mediaPosition === 'right' ? 'is-media-right' : '';
-  return `mx-auto ${widthClass} ${variantClass} ${mediaClass}`.trim();
+  return `mx-auto ${widthClass} px-0 ${variantClass} ${mediaClass}`.trim();
 }

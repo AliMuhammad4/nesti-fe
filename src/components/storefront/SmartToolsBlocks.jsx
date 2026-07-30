@@ -9,7 +9,7 @@ function ToolShell({ icon: Icon, title, description, children }) {
   return (
     <section className="border-y border-slate-100 bg-transparent py-12 sm:py-14">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="w-full rounded-xl border border-slate-200 bg-white p-5 sm:p-7">
+        <div className="w-full rounded-xl border border-slate-200 bg-white p-5 sm:p-7" data-storefront-anim-item="true">
           <div className="mb-5 flex items-start gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon size={20} /></div>
             <div className="min-w-0 flex-1">

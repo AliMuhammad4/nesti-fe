@@ -42,6 +42,14 @@ import {
   WarmHeroSection,
 } from './variants/experienceIdentitySections';
 
+function listingBlockProps(block, profile = {}) {
+  return {
+    content: block?.data?.content || {},
+    layout: block?.data?.layout || {},
+    sectionStyle: block?.data?.style || profile?.storefront_section_style || {},
+  };
+}
+
 const sharedRegistry = {
   [T.HERO]: ({ profile, actions, block }) => (
     <PublicHero
@@ -54,10 +62,22 @@ const sharedRegistry = {
     />
   ),
   [T.EXPERTISE]: ({ profile, actions, block }) => (
-    <PublicExpertiseBand profile={profile} onCTAClick={actions.onCtaClick} content={block?.data?.content || {}} />
+    <PublicExpertiseBand
+      profile={profile}
+      onCTAClick={actions.onCtaClick}
+      content={block?.data?.content || {}}
+      sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+    />
   ),
   [T.ROLE_DETAILS]: ({ profile, block }) => (
-    <PublicRoleDetailSection profile={profile} content={block?.data?.content || {}} />
+    <PublicRoleDetailSection
+      profile={profile}
+      content={block?.data?.content || {}}
+      sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+      layout={block?.data?.layout || profile?.storefront_section_layout || {}}
+      preview={profile.storefront_builder_preview}
+      previewMode={profile.storefront_preview_mode}
+    />
   ),
   [T.ABOUT]: ({ profile }) => (
     <PublicAboutSection
@@ -69,16 +89,23 @@ const sharedRegistry = {
   [T.TESTIMONIALS]: ({ profile }) => (
     <PublicHappyClientsSlider testimonials={profile.testimonials} profile={profile} />
   ),
-  [T.SERVICES]: ({ profile, actions, block }) => (
+  [T.SERVICES]: ({ profile, block }) => (
     <PublicServices
       services={profile.services}
       professionalType={profile.professional_type}
-      onServiceClick={actions.onServiceClick}
       content={block?.data?.content || {}}
+      sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+      layout={block?.data?.layout || profile?.storefront_section_layout || {}}
+      preview={profile.storefront_builder_preview}
+      previewMode={profile.storefront_preview_mode}
     />
   ),
   [T.GUIDANCE]: ({ profile, block }) => (
-    <PublicGuidanceSection profile={profile} content={block?.data?.content || {}} />
+    <PublicGuidanceSection
+      profile={profile}
+      content={block?.data?.content || {}}
+      previewMode={profile.storefront_preview_mode}
+    />
   ),
   [T.CTA]: ({ profile, actions, block }) => (
     <PublicCTA
@@ -90,7 +117,11 @@ const sharedRegistry = {
     />
   ),
   [T.FOOTER]: ({ profile, block }) => (
-    <PublicStorefrontFooter profile={profile} content={block?.data?.content || {}} />
+    <PublicStorefrontFooter
+      profile={profile}
+      content={block?.data?.content || {}}
+      sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+    />
   ),
 };
 
@@ -100,7 +131,7 @@ const roleRegistry = {
       <AgentPropertiesSection
         profile={profile}
         onPropertyInquiry={actions.onPropertyInquiry}
-        content={block?.data?.content || {}}
+        {...listingBlockProps(block, profile)}
       />
     ),
     [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
@@ -114,6 +145,7 @@ const roleRegistry = {
         preview={profile.storefront_builder_preview}
         builderAccessToken={profile.storefront_builder_access_token}
         onPropertyInquiry={actions.onPropertyInquiry}
+        {...listingBlockProps(block, profile)}
       />
     ),
     [T.TOP_LISTINGS]: ({ profile, block }) => (
@@ -125,6 +157,7 @@ const roleRegistry = {
         profileSlug={profile.slug}
         preview={profile.storefront_builder_preview}
         builderAccessToken={profile.storefront_builder_access_token}
+        {...listingBlockProps(block, profile)}
       />
     ),
     [T.SOLD_LISTINGS]: ({ profile, block }) => (
@@ -136,6 +169,7 @@ const roleRegistry = {
         profileSlug={profile.slug}
         preview={profile.storefront_builder_preview}
         builderAccessToken={profile.storefront_builder_access_token}
+        {...listingBlockProps(block, profile)}
       />
     ),
   },
@@ -173,7 +207,7 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <LuxuryServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
         <AgentListingsSection
@@ -186,6 +220,7 @@ const experienceOverrides = {
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
           onPropertyInquiry={actions.onPropertyInquiry}
+          {...listingBlockProps(block, profile)}
         />
       ),
       [T.SOLD_LISTINGS]: ({ profile, block }) => (
@@ -197,28 +232,29 @@ const experienceOverrides = {
           profileSlug={profile.slug}
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
+          {...listingBlockProps(block, profile)}
         />
       ),
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <LuxuryServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <LuxuryMortgageProgramsSection profile={profile} actions={actions} />,
     },
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <LuxuryHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <LuxuryServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <LuxuryServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
   },
   'industrial-minimal': {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
-      [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
+      [T.ABOUT]: ({ profile, block }) => <IndustrialAboutSection profile={profile} content={block?.data?.content || {}} block={block} />,
+      [T.SERVICES]: ({ profile }) => <IndustrialServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
         <AgentListingsSection
@@ -231,6 +267,7 @@ const experienceOverrides = {
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
           onPropertyInquiry={actions.onPropertyInquiry}
+          {...listingBlockProps(block, profile)}
         />
       ),
       [T.SOLD_LISTINGS]: ({ profile, block }) => (
@@ -242,20 +279,21 @@ const experienceOverrides = {
           profileSlug={profile.slug}
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
+          {...listingBlockProps(block, profile)}
         />
       ),
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
-      [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
+      [T.ABOUT]: ({ profile, block }) => <IndustrialAboutSection profile={profile} content={block?.data?.content || {}} block={block} />,
+      [T.SERVICES]: ({ profile }) => <IndustrialServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <IndustrialMortgageProgramsSection profile={profile} actions={actions} />,
     },
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
-      [T.ABOUT]: ({ profile }) => <IndustrialAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <IndustrialServicesSection profile={profile} actions={actions} />,
+      [T.ABOUT]: ({ profile, block }) => <IndustrialAboutSection profile={profile} content={block?.data?.content || {}} block={block} />,
+      [T.SERVICES]: ({ profile }) => <IndustrialServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
   },
@@ -263,20 +301,20 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <WarmServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <WarmServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <WarmMortgageProgramsSection profile={profile} actions={actions} />,
     },
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <WarmServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <WarmServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
   },
@@ -284,20 +322,20 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <FunnelServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <FunnelServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.MORTGAGE_PROGRAMS]: ({ profile, actions }) => <FunnelMortgageProgramsSection profile={profile} actions={actions} />,
     },
     lawyer: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
       [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
-      [T.SERVICES]: ({ profile, actions }) => <FunnelServicesSection profile={profile} actions={actions} />,
+      [T.SERVICES]: ({ profile }) => <FunnelServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
     },
   },

@@ -1,34 +1,44 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { Building2, Menu, UserPlus, X } from 'lucide-react';
+import { Building2, UserPlus } from 'lucide-react';
 import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
+import PublicStorefrontHeader from '@/components/public-profile/PublicStorefrontHeader';
 
 const ROLE_HERO = {
   agent: {
-    eyebrow: 'Local Market Partner',
     fallbackHeadline: (name) => `Move smarter with ${name}`,
     fallbackTagline:
       'Get guided support for buying, selling, pricing, showings, and consultation requests in one organized experience.',
     cardSubtitle: 'Local Real Estate Agent',
   },
   mortgage_broker: {
-    eyebrow: 'Mortgage Strategy Partner',
     fallbackHeadline: (name) => `Plan your financing with ${name}`,
     fallbackTagline:
       'Start a guided mortgage inquiry for pre-approval, affordability, refinancing, and document readiness.',
     cardSubtitle: 'Mortgage Planning Specialist',
   },
   lawyer: {
-    eyebrow: 'Real Estate Legal Partner',
     fallbackHeadline: (name) => `Close with clarity beside ${name}`,
     fallbackTagline:
       'Ask about contracts, title matters, closing timelines, and legal transaction support before your next step.',
     cardSubtitle: 'Real Estate Legal Advisor',
   },
 };
+
+function hexLuminance(hex) {
+  const value = String(hex || '').trim();
+  if (!/^#[0-9a-f]{6}$/i.test(value)) return null;
+  const channels = [value.slice(1, 3), value.slice(3, 5), value.slice(5, 7)]
+    .map((part) => parseInt(part, 16) / 255)
+    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function isDarkHex(hex) {
+  const lum = hexLuminance(hex);
+  return lum != null ? lum < 0.42 : false;
+}
 
 export default function PublicHero({
   profile,
@@ -38,11 +48,10 @@ export default function PublicHero({
   block,
   flushTop = false,
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const professionalType = profile.professional_type;
   const sectionLayout = block?.data?.layout || block?.layout || {};
-  const heroVariant = sectionLayout.variant || 'standard';
-  const isPremium = heroVariant === 'premium';
+  const heroMediaPosition = sectionLayout.mediaPosition || 'background';
+  const showCover = heroMediaPosition !== 'none';
   const clamp = (value, min, max, fallback) => {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
@@ -68,8 +77,18 @@ export default function PublicHero({
   const coverRenderKey = `${profile.cover_photo_url}-${coverX}-${coverY}-${coverZoom}`;
   const profileRenderKey = `${profile.profile_photo_url}-${profileX}-${profileY}-${profileZoom}`;
   const heroContent = ROLE_HERO[professionalType] || ROLE_HERO.agent;
+  const content = profile.storefront_section_content || {};
+  const isBuilderPreview = Boolean(profile.storefront_builder_preview);
+  const previewMode = profile.storefront_preview_mode || 'desktop';
+  const forceCompactPreview = isBuilderPreview && (previewMode === 'mobile' || previewMode === 'tablet');
+  const forceMobilePreview = isBuilderPreview && previewMode === 'mobile';
   const professionalProfile = profile.professional_profile || {};
   const companyName = professionalProfile.company_name || '';
+  const heroName = content.hero_name || profile.professional_name || 'Professional';
+  const heroSubtitle = content.hero_subtitle
+    || profile.headline
+    || heroContent.fallbackHeadline(profile.professional_name || 'this professional');
+  const heroCompanyBadge = content.hero_company_badge || companyName;
   const roleLabel =
     professionalType === 'mortgage_broker'
       ? 'Mortgage Broker'
@@ -87,129 +106,60 @@ export default function PublicHero({
     }
     onCTAClick?.('book_consultation');
   };
-  const navLinks = [
-    { href: '#about', label: 'About' },
-    { href: '#services', label: 'Services' },
-    ...(professionalType === 'agent'
-      ? [{ href: '#properties', label: 'Properties' }]
-      : professionalType === 'mortgage_broker'
-        ? [{ href: '#programs', label: 'Programs' }]
-        : []),
-    { href: '#reviews', label: 'Reviews' },
-    { href: '#guide', label: 'Guide' },
-    { href: '#contact', label: 'Contact' },
-  ];
+  const heroCardBackground = content.hero_card_background || '';
+  const heroCardTextColor = content.hero_card_text_color || '';
+  const heroStripBackground = content.hero_strip_background || '';
+  const primaryCtaLabel = content.primary_cta_label || 'Submit inquiry';
+  const secondaryCtaLabel = content.cta_label || profile.hero_cta_label || 'Book a Free Consultation';
+  const primaryButtonBackground = content.primary_button_background || '';
+  const primaryButtonTextColor = content.primary_button_text_color || '';
+  const secondaryButtonBackground = content.secondary_button_background || '';
+  const secondaryButtonTextColor = content.secondary_button_text_color || '';
+  const cardBgForContrast = heroCardBackground || '#ffffff';
+  const cardBgIsDark = isDarkHex(cardBgForContrast);
+  const headingColor = heroCardTextColor || (cardBgIsDark ? '#f8fafc' : '#0f172a');
+  const subtitleColor = heroCardTextColor || (cardBgIsDark ? '#dbeafe' : '#475569');
+  const badgeBackground = cardBgIsDark ? 'rgba(255,255,255,0.12)' : '#ffffff';
+  const badgeBorder = cardBgIsDark ? 'rgba(255,255,255,0.25)' : '#e2e8f0';
+  const badgeTextColor = cardBgIsDark ? '#f8fafc' : '#1e293b';
+  const resolvedPrimaryButtonTextColor = primaryButtonTextColor
+    || (primaryButtonBackground ? (isDarkHex(primaryButtonBackground) ? '#f8fafc' : '#0f172a') : '');
+  const resolvedSecondaryButtonTextColor = secondaryButtonTextColor
+    || (secondaryButtonBackground ? (isDarkHex(secondaryButtonBackground) ? '#f8fafc' : '#0f172a') : '');
+  const primaryButtonClass = primaryButtonBackground
+    ? 'storefront-btn inline-flex h-10 items-center justify-center px-5 text-[13px] font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.20)] transition hover:-translate-y-px hover:opacity-95'
+    : 'storefront-btn inline-flex h-10 items-center justify-center bg-primary px-5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(15,118,110,0.28)] transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-[0_14px_30px_rgba(15,118,110,0.38)]';
+  const secondaryButtonClass = secondaryButtonBackground
+    ? 'storefront-btn inline-flex h-10 items-center justify-center border px-5 text-[13px] font-semibold transition hover:-translate-y-px hover:opacity-95 whitespace-nowrap'
+    : 'storefront-btn inline-flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-[13px] font-semibold text-slate-700 transition hover:-translate-y-px hover:border-primary/40 hover:bg-primary/5 hover:text-primary whitespace-nowrap';
+  const heroCardDesktopPaddingClass = forceCompactPreview ? '' : 'lg:pr-56';
+  const heroCompanyBadgeClass = forceCompactPreview
+    ? 'mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-[12px] font-bold shadow-sm'
+    : 'mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-[12px] font-bold shadow-sm lg:absolute lg:right-6 lg:top-1/2 lg:mt-0 lg:max-w-48 lg:-translate-y-1/2 lg:px-3.5 lg:py-2 lg:text-sm';
+
+  const sectionStyle = block?.data?.style || block?.style || {};
+  // Prefer the live brand kit canvas from the renderer theme.
+  const pageCanvas = profile?.storefront_theme?.canvas || '#ffffff';
+  const rawHeroBand = String(sectionStyle.background || '').trim();
+  // Behind the profile card follows Design → Page background unless an explicit override is set.
+  const heroBandBackground = rawHeroBand || pageCanvas;
+  const resolvedHeroStripBackground = heroStripBackground || heroBandBackground;
 
   return (
-    <section className={`relative overflow-hidden bg-white ${flushTop ? '' : 'pt-16'}`}>
-      <header className="fixed inset-x-0 top-0 z-[1000] border-b border-border/70 bg-white/95 shadow-sm backdrop-blur">
-        <div className="flex h-16 w-full items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-16">
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-3 rounded-lg py-1"
-          >
-            <span
-              className={`flex h-10 shrink-0 items-center justify-center overflow-hidden ${
-                profile.storefront_logo_url
-                  ? 'w-20 border-r border-slate-200 pr-3'
-                  : 'w-10 rounded-lg'
-              }`}
-            >
-              {profile.storefront_logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.storefront_logo_url}
-                  alt={`${profile.professional_name || 'Professional'} logo`}
-                  className="max-h-9 w-auto max-w-full object-contain"
-                />
-              ) : (
-                <Image
-                  src="/logo/logo.png"
-                  alt="Nesti AI logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 object-cover"
-                />
-              )}
-            </span>
-            <span className="flex min-h-10 min-w-0 flex-col justify-center leading-tight">
-              <span className="truncate text-sm font-bold tracking-tight text-slate-900 sm:text-[15px]">
-                {profile.storefront_logo_url ? profile.professional_name : 'Nesti AI'}
-              </span>
-              <span className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                {profile.storefront_logo_url ? roleLabel : 'Real Estate Intelligence'}
-              </span>
-            </span>
-          </Link>
+    <section
+      className="relative pt-16"
+      style={{ backgroundColor: heroBandBackground }}
+    >
+      <PublicStorefrontHeader
+        profile={profile}
+        forceCompactPreview={forceCompactPreview}
+        forceMobilePreview={forceMobilePreview}
+      />
 
-          <nav className="hidden items-center gap-5 text-[13px] font-semibold text-text-heading lg:flex">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="hover:text-primary">
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="hidden items-center gap-3 lg:inline-flex">
-            <span className="relative h-10 w-10 overflow-hidden rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
-              {profile.profile_photo_url ? (
-                <Image
-                  key={`header-${profileRenderKey}`}
-                  src={profile.profile_photo_url}
-                  alt={profile.professional_name || roleLabel}
-                  fill
-                  className="object-cover object-center"
-                  style={profilePhotoStyle}
-                />
-              ) : (
-                <span className="grid h-full w-full place-items-center text-sm font-bold">
-                  {profile.professional_name?.charAt(0) || 'P'}
-                </span>
-              )}
-            </span>
-            <span>
-              <span className="block text-base font-bold leading-tight text-text-heading">
-                {profile.professional_name || 'Nesti Professional'}
-              </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.24em] text-text-muted">
-                {roleLabel}
-              </span>
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-text-muted transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary lg:hidden"
-            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X size={19} /> : <Menu size={20} />}
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="border-t border-slate-100 bg-white/98 px-5 py-3 shadow-lg backdrop-blur sm:px-8 lg:hidden">
-            <nav className="grid w-full gap-1 text-sm font-medium text-text-heading">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-3 py-2 transition hover:bg-primary/5 hover:text-primary"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </div>
-        )}
-      </header>
-
-      <div className="relative border-b border-slate-200 bg-white">
+      <div className="relative border-b border-slate-200/70" style={{ backgroundColor: resolvedHeroStripBackground }}>
         {/* Cover spans the contained col-12 canvas (not viewport full-bleed). */}
-        <div className="relative h-44 w-full overflow-hidden sm:h-56 lg:h-64">
-          {profile.cover_photo_url ? (
+        <div data-storefront-field="brandKit.cover_url" data-storefront-source="profile" data-storefront-label="Cover image" className="relative h-48 w-full overflow-hidden sm:h-56 md:h-64 lg:h-80">
+          {showCover && profile.cover_photo_url ? (
             <Image
               key={coverRenderKey}
               src={profile.cover_photo_url}
@@ -221,79 +171,119 @@ export default function PublicHero({
               priority
             />
           ) : (
-            <div className={`absolute inset-0 ${isPremium ? 'bg-gradient-to-r from-slate-900 via-slate-700 to-primary/80' : 'bg-gradient-to-r from-primary/30 via-slate-200 to-primary/20'}`} />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-slate-100 to-primary/15" />
           )}
         </div>
 
-        <div className="relative px-4 pb-5 sm:px-6 lg:px-8">
-          <div className="relative -mt-14 flex items-start gap-4 sm:-mt-16 sm:gap-5">
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-[4px] border-white bg-slate-100 shadow-md sm:h-36 sm:w-36">
+        <div className="relative px-4 pb-8 sm:px-6 lg:px-8">
+          <div className={`relative -mt-16 flex flex-col items-start gap-4 sm:-mt-20 ${forceMobilePreview ? '' : 'md:-mt-24 md:flex-row md:items-start md:gap-6'}`}>
+            <div data-storefront-field="brandKit.profile_photo_url" data-storefront-source="profile" data-storefront-label="Profile photo" className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-[5px] border-white bg-slate-100 shadow-[0_18px_40px_rgba(15,23,42,0.18)] sm:h-32 sm:w-32 md:h-40 md:w-40">
                 {profile.profile_photo_url ? (
                   <Image
                     key={`hero-${profileRenderKey}`}
                     src={profile.profile_photo_url}
                     alt={profile.professional_name || roleLabel}
                     fill
-                    sizes="144px"
+                    sizes="160px"
                     className="object-cover object-top"
                     style={profilePhotoStyle}
                     priority
                   />
                 ) : (
-                  <div className="grid h-full w-full place-items-center text-4xl font-bold text-primary">
+                  <div className="grid h-full w-full place-items-center text-5xl font-bold text-primary">
                     {profile.professional_name?.charAt(0) || 'P'}
                   </div>
                 )}
               </div>
 
-            <div className="relative mt-16 min-w-0 flex-1 sm:mt-[4.5rem] lg:pr-52">
-              <div className="flex min-w-0 items-center gap-4">
-                <h1 className="shrink-0 text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-                  {profile.professional_name || 'Professional'}
-                </h1>
-              </div>
-              <p className="mt-1 text-sm font-medium leading-5 text-slate-700">
-                {profile.headline || heroContent.fallbackHeadline(profile.professional_name || 'this professional')}
+            <div
+              className={`relative mt-0 w-full min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_22px_56px_rgba(15,23,42,0.14)] sm:p-5 ${forceMobilePreview ? '' : 'md:mt-16 md:flex-1 md:p-6'} ${heroCardDesktopPaddingClass}`}
+              style={{
+                ...(heroCardBackground ? { backgroundColor: heroCardBackground } : {}),
+                ...(heroCardTextColor ? { color: heroCardTextColor } : {}),
+              }}
+            >
+              <h1
+                data-storefront-field="content.hero_name"
+                data-storefront-source={content.hero_name ? 'persisted' : 'fallback'}
+                data-storefront-label="Hero card name"
+                className="text-2xl font-bold tracking-tight sm:text-[30px] md:text-3xl"
+                style={{ color: headingColor }}
+              >
+                {heroName}
+              </h1>
+              <p
+                data-storefront-field="content.hero_subtitle"
+                data-storefront-source={content.hero_subtitle ? 'persisted' : 'fallback'}
+                data-storefront-label="Hero card subtitle"
+                className="mt-2 text-[14px] leading-6 md:text-[15px]"
+                style={{ color: subtitleColor, opacity: heroCardTextColor ? 0.92 : 1 }}
+              >
+                {heroSubtitle}
               </p>
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <div className={`mt-4 flex items-center gap-2 ${forceMobilePreview ? 'flex-col items-stretch' : 'flex-wrap'}`}>
                   <button
                     type="button"
                     onClick={onDirectLeadClick}
-                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-md"
+                    data-storefront-field="content.primary_cta_label"
+                    data-storefront-source={content.primary_cta_label ? 'persisted' : 'fallback'}
+                    data-storefront-label="Primary hero button"
+                    className={`${primaryButtonClass} w-full whitespace-nowrap sm:w-auto`}
+                    style={{
+                      borderRadius: 'var(--storefront-radius)',
+                      ...(primaryButtonBackground ? { backgroundColor: primaryButtonBackground } : {}),
+                      ...(resolvedPrimaryButtonTextColor ? { color: resolvedPrimaryButtonTextColor } : {}),
+                    }}
                   >
-                    Submit inquiry
+                    {primaryCtaLabel}
                   </button>
                   <button
                     type="button"
                     onClick={handleConsultationClick}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-300 bg-white px-3.5 text-[11px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-slate-50"
+                    data-storefront-field="content.cta_label"
+                    data-storefront-source={content.cta_label ? 'persisted' : (profile.hero_cta_label ? 'persisted' : 'fallback')}
+                    data-storefront-label="Consultation button"
+                    className={`${secondaryButtonClass} w-full sm:w-auto`}
+                    style={{
+                      borderRadius: 'var(--storefront-radius)',
+                      ...(secondaryButtonBackground ? {
+                        backgroundColor: secondaryButtonBackground,
+                        borderColor: secondaryButtonBackground,
+                      } : {}),
+                      ...(resolvedSecondaryButtonTextColor ? { color: resolvedSecondaryButtonTextColor } : {}),
+                    }}
                   >
-                    {profile.hero_cta_label || 'Book a Free Consultation'}
+                    {secondaryCtaLabel}
                   </button>
                   {inviteShareUrl ? (
                     <a
                       href={inviteShareUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-slate-50"
+                      className="storefront-btn inline-flex h-10 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-4 text-[13px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary whitespace-nowrap sm:w-auto"
+                      style={{ borderRadius: 'var(--storefront-radius)' }}
                     >
-                      <UserPlus size={12} />
+                      <UserPlus size={14} />
                       Join Nesti
                     </a>
                   ) : null}
               </div>
 
-              {companyName ? (
-                <>
-                  <span className="absolute right-0 top-1/2 hidden max-w-48 -translate-y-1/2 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-800 shadow-sm lg:inline-flex">
-                    <Building2 size={15} className="shrink-0 text-primary" />
-                    <span className="truncate">{companyName}</span>
-                  </span>
-                  <span className="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm lg:hidden">
-                    <Building2 size={13} className="shrink-0 text-primary" />
-                    <span className="truncate">{companyName}</span>
-                  </span>
-                </>
+              {heroCompanyBadge ? (
+                <span
+                  data-storefront-field="content.hero_company_badge"
+                  data-storefront-source={content.hero_company_badge ? 'persisted' : 'fallback'}
+                  data-storefront-label="Hero company badge"
+                  className={heroCompanyBadgeClass}
+                  style={{
+                    backgroundColor: badgeBackground,
+                    borderColor: badgeBorder,
+                    color: badgeTextColor,
+                  }}
+                >
+                  <Building2 size={14} className="shrink-0" style={{ color: 'currentColor', opacity: 0.92 }} />
+                  <span className="truncate">{heroCompanyBadge}</span>
+                </span>
               ) : null}
             </div>
           </div>

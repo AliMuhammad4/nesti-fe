@@ -72,11 +72,12 @@ export function FunnelHeroSection({ profile, actions, block }) {
   );
 }
 
-function aboutParagraphs(profile) {
-  return String(profile?.about || '')
+function aboutParagraphs(body) {
+  return String(body || '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+    .filter((line, index, lines) => lines.indexOf(line) === index)
     .slice(0, 3);
 }
 
@@ -97,34 +98,98 @@ function identityCopy(profile, defaults = {}) {
 }
 
 export function LuxuryAboutSection({ profile }) {
-  const paragraphs = aboutParagraphs(profile);
+  const sectionStyle = profile?.storefront_section_style || {};
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const paragraphs = aboutParagraphs(profile?.storefront_section_content?.body ?? profile?.about);
   const copy = identityCopy(profile, { eyebrow: 'Private profile', heading: profile?.professional_name || 'Trusted advisor' });
   if (!paragraphs.length) return null;
   return (
-    <section id="about" className="px-4 py-10 sm:px-8 sm:py-14">
+    <section id="about" className="px-4 py-10 sm:px-8 sm:py-14" style={{ color: sectionStyle.textColor || undefined }}>
       <div className="mx-auto max-w-7xl rounded-[2rem] border border-amber-300/40 bg-white/95 p-7 shadow-[0_24px_70px_rgba(60,45,10,0.10)] sm:p-9">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-600">{copy.eyebrow}</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-text-heading">{copy.heading}</h2>
-        <p className="mt-1 text-sm font-medium text-text-muted">{roleHeadline(profile)}</p>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.24em] ${hasCustomTextColor ? 'text-current' : 'text-amber-600'}`} style={hasCustomTextColor ? { opacity: 0.78 } : undefined}>{copy.eyebrow}</p>
+        <h2 className={`mt-2 text-3xl font-semibold tracking-tight ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}>{copy.heading}</h2>
+        <p className={`mt-1 text-sm font-medium ${hasCustomTextColor ? 'text-current' : 'text-text-muted'}`} style={hasCustomTextColor ? { opacity: 0.82 } : undefined}>{roleHeadline(profile)}</p>
         <div className="mt-5 space-y-4">
-          {paragraphs.map((paragraph, index) => <p key={index} className="text-[15px] leading-8 text-text-body">{paragraph}</p>)}
+          {paragraphs.map((paragraph, index) => <p key={index} className={`text-[15px] leading-8 ${hasCustomTextColor ? 'text-current' : 'text-text-body'}`} style={hasCustomTextColor ? { opacity: 0.92 } : undefined}>{paragraph}</p>)}
         </div>
       </div>
     </section>
   );
 }
 
-export function IndustrialAboutSection({ profile }) {
-  const paragraphs = aboutParagraphs(profile);
+export function IndustrialAboutSection({ profile, content: blockContent, block }) {
+  const content = blockContent || profile?.storefront_section_content || {};
+  const layout = block?.data?.layout || block?.layout || {};
+  const style = block?.data?.style || block?.style || {};
+  const paragraphs = aboutParagraphs(
+    Object.prototype.hasOwnProperty.call(content, 'body') ? content.body : profile?.about,
+  );
   const copy = identityCopy(profile, {
     eyebrow: 'Professional profile',
     heading: `About ${profile?.professional_name || 'Your Advisor'}`,
   });
-  const name = profile?.professional_name || 'Trusted Professional';
+  const name = content.name || profile?.professional_name || 'Trusted Professional';
+  const role = content.role || roleHeadline(profile);
   const profilePosition = profile?.storefront_profile_position || {};
   const profileX = Math.min(100, Math.max(0, Number(profilePosition.x ?? 50)));
   const profileY = Math.min(100, Math.max(0, Number(profilePosition.y ?? 25)));
   const profileZoom = Math.min(3, Math.max(1, Number(profile?.storefront_profile_zoom ?? 1)));
+  const isPreview = Boolean(profile?.storefront_builder_preview);
+  const previewMode = profile?.storefront_preview_mode || 'desktop';
+  const forceMobilePreview = isPreview && previewMode === 'mobile';
+  const forceTabletPreview = isPreview && previewMode === 'tablet';
+  const forceCompactPreview = forceMobilePreview || forceTabletPreview;
+  const alignment = layout.alignment || 'left';
+  const variant = layout.variant || 'standard';
+  const hasCustomTextColor = Boolean(style.textColor);
+  const radiusByStyle = {
+    none: '0px',
+    default: '12px',
+    large: '24px',
+  }[style.radius || 'default'];
+  const shadowByStyle = {
+    none: 'none',
+    small: '0 10px 28px rgba(15,23,42,0.10)',
+    medium: '0 20px 52px rgba(15,23,42,0.14)',
+    large: '0 30px 74px rgba(15,23,42,0.18)',
+  }[style.shadow || 'none'];
+  const appliedShadow = ['small', 'medium', 'large'].includes(style.shadow)
+    ? shadowByStyle
+    : undefined;
+  const widthClass = 'w-full';
+  const paddingClass = {
+    small: 'px-4 py-8 sm:px-6 sm:py-10',
+    medium: 'px-5 py-12 sm:px-8 sm:py-14',
+    large: 'px-6 py-14 sm:px-10 sm:py-16',
+  }[layout.padding || 'medium'];
+  const headingFrameClass = alignment === 'center'
+    ? 'mx-auto max-w-3xl border-b-2 border-slate-900 pb-4 text-center'
+    : alignment === 'right'
+      ? 'ml-auto max-w-3xl border-b-2 border-slate-900 pb-4 text-right'
+      : 'max-w-3xl border-b-2 border-slate-900 pb-4 text-left';
+  const proseAlignClass = alignment === 'center' ? 'mx-auto max-w-3xl text-center' : alignment === 'right' ? 'ml-auto text-right' : 'text-left';
+  const cardShellClass = layout.cardStyle === 'elevated'
+    ? 'rounded-2xl bg-white shadow-[0_22px_60px_rgba(15,23,42,0.12)]'
+    : layout.cardStyle === 'glass'
+      ? 'rounded-2xl border border-white/60 bg-white/75 shadow-[0_20px_44px_rgba(15,23,42,0.10)] backdrop-blur'
+      : layout.cardStyle === 'bordered'
+        ? 'rounded-2xl border border-slate-200 bg-white'
+        : 'rounded-2xl bg-transparent';
+  const variantShellClass = variant === 'premium'
+    ? 'bg-gradient-to-br from-amber-50/65 via-white to-amber-100/30 ring-1 ring-amber-200/70'
+    : variant === 'editorial'
+      ? 'bg-white ring-1 ring-slate-200/70'
+      : variant === 'lead-magnet'
+        ? 'bg-gradient-to-br from-emerald-50/55 via-white to-cyan-50/40'
+        : variant === 'minimal'
+          ? 'bg-transparent ring-0 shadow-none'
+          : '';
+  const variantGridClass = variant === 'split'
+    ? 'grid gap-9 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center lg:gap-12'
+    : variant === 'feature-grid'
+      ? 'grid gap-10 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-14'
+      : 'grid gap-9 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center lg:gap-10';
+  const compactVariantGridClass = variant === 'feature-grid' ? 'grid gap-8' : 'grid gap-7';
   const initials = name
     .split(' ')
     .filter(Boolean)
@@ -134,11 +199,20 @@ export function IndustrialAboutSection({ profile }) {
     .toUpperCase();
   if (!paragraphs.length) return null;
   return (
-    <section id="about" className="border-y border-slate-200 bg-white">
-      <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
-        <div className="grid gap-9 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center lg:gap-10">
+    <section id="about" className="w-full bg-transparent">
+      <div className={`w-full ${widthClass} ${paddingClass}`}>
+        <div
+          className={`${cardShellClass} ${variantShellClass} p-3 sm:p-5`}
+          style={{
+            backgroundColor: style.background || undefined,
+            color: style.textColor || undefined,
+            borderRadius: radiusByStyle,
+            boxShadow: variant === 'minimal' ? 'none' : appliedShadow,
+          }}
+        >
+        <div className={forceCompactPreview ? compactVariantGridClass : variantGridClass}>
           <div>
-            <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 shadow-[0_18px_45px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
+            <div data-storefront-field="brandKit.profile_photo_url" data-storefront-source="profile" data-storefront-label="Profile photo" className="relative aspect-[4/5] overflow-hidden bg-slate-100 shadow-[0_18px_45px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
               {profile?.profile_photo_url ? (
                 <Image
                   src={profile.profile_photo_url}
@@ -159,27 +233,34 @@ export function IndustrialAboutSection({ profile }) {
               )}
             </div>
             <div className="border-b border-slate-200 py-4">
-              <h3 className="text-base font-bold text-slate-900">{name}</h3>
-              <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                {roleHeadline(profile)}
+              <h3 data-storefront-field="content.name" data-storefront-source={content.name ? 'persisted' : 'fallback'} data-storefront-label="Professional name" className={`text-base font-bold ${hasCustomTextColor ? 'text-current' : 'text-slate-900'}`}>{name}</h3>
+              <p data-storefront-field="content.role" data-storefront-source={content.role ? 'persisted' : 'fallback'} data-storefront-label="Professional role" className={`mt-1 text-xs font-medium uppercase tracking-[0.14em] ${hasCustomTextColor ? 'text-current' : 'text-slate-500'}`} style={hasCustomTextColor ? { opacity: 0.8 } : undefined}>
+                {role}
               </p>
             </div>
           </div>
 
           <div className="min-w-0">
-            <div className="border-l-2 border-slate-900 pl-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                {copy.eyebrow}
-              </p>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            <div className={headingFrameClass}>
+              {copy.eyebrow ? (
+                <p data-storefront-field="content.eyebrow" data-storefront-source={profile?.storefront_section_content?.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="About eyebrow" className={`text-[10px] font-bold uppercase tracking-[0.22em] ${hasCustomTextColor ? 'text-current' : 'text-slate-500'}`} style={hasCustomTextColor ? { opacity: 0.72 } : undefined}>
+                  {copy.eyebrow}
+                </p>
+              ) : null}
+              <h2 data-storefront-field="content.heading" data-storefront-source={profile?.storefront_section_content?.heading ? 'persisted' : 'fallback'} data-storefront-label="About heading" className={`mt-2 text-3xl font-bold tracking-tight sm:text-4xl ${hasCustomTextColor ? 'text-current' : 'text-slate-900'}`}>
                 {copy.heading}
               </h2>
             </div>
-            <div className="mt-6 space-y-4">
+            <div className={`mt-6 space-y-4 ${proseAlignClass}`}>
               {paragraphs.map((paragraph, index) => (
                 <p
                   key={index}
-                  className={`${index === 0 ? 'text-base leading-8 text-slate-700' : 'text-sm leading-7 text-slate-600'}`}
+                  data-storefront-field="content.body"
+                  data-storefront-source={profile?.storefront_section_content?.body ? 'persisted' : 'fallback'}
+                  data-storefront-instance={index}
+                  data-storefront-label="About description"
+                  className={`${index === 0 ? 'text-base leading-8' : 'text-sm leading-7'} ${hasCustomTextColor ? 'text-current' : (index === 0 ? 'text-slate-700' : 'text-slate-600')}`}
+                  style={hasCustomTextColor ? { opacity: index === 0 ? 0.92 : 0.84 } : undefined}
                 >
                   {paragraph}
                 </p>
@@ -188,22 +269,25 @@ export function IndustrialAboutSection({ profile }) {
 
           </div>
         </div>
+        </div>
       </div>
     </section>
   );
 }
 
 export function WarmAboutSection({ profile }) {
-  const paragraphs = aboutParagraphs(profile);
+  const sectionStyle = profile?.storefront_section_style || {};
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const paragraphs = aboutParagraphs(profile?.storefront_section_content?.body ?? profile?.about);
   const copy = identityCopy(profile, { eyebrow: 'Meet your advisor', heading: `Meet ${profile?.professional_name || 'Your Advisor'}` });
   if (!paragraphs.length) return null;
   return (
-    <section id="about" className="px-4 py-10 sm:py-14">
+    <section id="about" className="px-4 py-10 sm:py-14" style={{ color: sectionStyle.textColor || undefined }}>
       <div className="mx-auto max-w-7xl rounded-[2rem] bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/80 sm:p-9">
-        <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-primary">{copy.eyebrow}</p>
-        <h2 className="mt-2 text-center text-3xl font-bold tracking-tight text-text-heading">{copy.heading}</h2>
+        <p className={`text-center text-[10px] font-bold uppercase tracking-[0.22em] ${hasCustomTextColor ? 'text-current' : 'text-primary'}`} style={hasCustomTextColor ? { opacity: 0.78 } : undefined}>{copy.eyebrow}</p>
+        <h2 className={`mt-2 text-center text-3xl font-bold tracking-tight ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}>{copy.heading}</h2>
         <div className="mx-auto mt-5 max-w-3xl space-y-4 text-center">
-          {paragraphs.map((paragraph, index) => <p key={index} className="text-[15px] leading-7 text-text-body">{paragraph}</p>)}
+          {paragraphs.map((paragraph, index) => <p key={index} className={`text-[15px] leading-7 ${hasCustomTextColor ? 'text-current' : 'text-text-body'}`} style={hasCustomTextColor ? { opacity: 0.92 } : undefined}>{paragraph}</p>)}
         </div>
       </div>
     </section>
@@ -211,18 +295,20 @@ export function WarmAboutSection({ profile }) {
 }
 
 export function FunnelAboutSection({ profile }) {
-  const paragraphs = aboutParagraphs(profile);
+  const sectionStyle = profile?.storefront_section_style || {};
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const paragraphs = aboutParagraphs(profile?.storefront_section_content?.body ?? profile?.about);
   const copy = identityCopy(profile, { eyebrow: 'Why choose us', heading: `Why work with ${profile?.professional_name || 'us'}` });
   if (!paragraphs.length) return null;
   return (
-    <section id="about" className="px-4 py-10 sm:py-12">
+    <section id="about" className="px-4 py-10 sm:py-12" style={{ color: sectionStyle.textColor || undefined }}>
       <div className="mx-auto max-w-7xl rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">{copy.eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-text-heading">{copy.heading}</h2>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${hasCustomTextColor ? 'text-current' : 'text-primary'}`} style={hasCustomTextColor ? { opacity: 0.78 } : undefined}>{copy.eyebrow}</p>
+        <h2 className={`mt-2 text-2xl font-bold tracking-tight ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}>{copy.heading}</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {paragraphs.map((paragraph, index) => (
             <div key={index} className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm leading-6 text-text-body">{paragraph}</p>
+              <p className={`text-sm leading-6 ${hasCustomTextColor ? 'text-current' : 'text-text-body'}`} style={hasCustomTextColor ? { opacity: 0.9 } : undefined}>{paragraph}</p>
             </div>
           ))}
         </div>

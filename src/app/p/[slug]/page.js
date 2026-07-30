@@ -57,10 +57,13 @@ export default async function PublicProfilePage({ params }) {
           ...block,
           enabled: block.data?.enabled ?? true,
           content: block.data?.content || {},
+          layout: block.data?.layout || {},
+          style: block.data?.style || {},
         })),
         storefront_theme: {
           primary: published.brandKit?.primary_color || undefined,
           accent: published.brandKit?.accent_color || undefined,
+          canvas: published.brandKit?.page_background || undefined,
           fontFamily: published.brandKit?.font_family || undefined,
           radius: published.brandKit?.button_shape === 'pill'
             ? '999px'
@@ -83,6 +86,7 @@ export default async function PublicProfilePage({ params }) {
           y: Number(published.brandKit?.profile_position_y ?? 25),
         },
         storefront_profile_zoom: Number(published.brandKit?.profile_zoom ?? 1),
+        storefront_show_chatbot: published.brandKit?.show_chatbot !== false,
       }
     : profile;
 

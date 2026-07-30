@@ -3,6 +3,7 @@ import { conversionFunnelExperience } from './conversionFunnel';
 import { industrialMinimalExperience } from './industrialMinimal';
 import { luxuryEditorialExperience } from './luxuryEditorial';
 import { storyWarmExperience } from './storyWarm';
+import { getTemplateExperienceId } from '../templates/registry';
 
 const EXPERIENCES = {
   'luxury-editorial': luxuryEditorialExperience,
@@ -13,6 +14,10 @@ const EXPERIENCES = {
 };
 
 export function experienceIdFromTemplateKey(templateKey = '') {
+  const explicit = getTemplateExperienceId(templateKey);
+  if (explicit) return explicit;
+
+  // Fallback for legacy/custom keys not in the registry.
   const key = String(templateKey || '').toLowerCase();
   if (key.includes('luxury') || key.includes('wealth')) return 'luxury-editorial';
   if (key.includes('commercial') || key.includes('investor')) return 'industrial-minimal';

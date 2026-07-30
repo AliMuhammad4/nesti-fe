@@ -4,12 +4,9 @@ export const industrialMinimalExperience = {
   variantLabelClass: 'text-primary',
   css: `
     .storefront-experience-industrial {
-      background-color: #ffffff;
-    }
-
-    /* Keep the builder preview subtle while the public page stays full-width. */
-    [data-preview='true'] .storefront-experience-industrial {
-      background-color: #f8fafc;
+      width: 100%;
+      max-width: none;
+      background-color: var(--storefront-canvas, #ffffff);
     }
   `,
   frame() {

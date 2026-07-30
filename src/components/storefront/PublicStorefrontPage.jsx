@@ -39,24 +39,22 @@ export default function PublicStorefrontPage({ profile }) {
   const actions = {
     onCtaClick: async (ctaType = 'storefront_cta') => {
       await track('cta_click', { cta_type: String(ctaType) });
-      setChatbotOpen(true);
+      // Default: keep published pages non-intrusive and open the lead form.
+      openLeadModal();
     },
     onDirectLeadClick: () => openLeadModal(),
     onAppointmentClick: () => track('cta_click', { cta_type: 'book_consultation' }),
     onPropertyInquiry: (property) => openLeadModal(property),
     onServiceClick: async (service) => {
       await track('service_click', { service_id: service?._id || service?.id || null });
-      setChatbotOpen(true);
+      // Service cards are informational/read-only on public pages.
     },
   };
 
   return (
     <>
-      <div
-        className="w-full pb-10 pt-[4.75rem] sm:pb-12 sm:pt-20"
-        data-layout="full-width"
-      >
-        <div className="w-full bg-white">
+      <div className="w-full" data-layout="full-width">
+        <div className="w-full">
           <StorefrontBlockRenderer
             profile={profile}
             blocks={profile.storefront_blocks}
@@ -81,7 +79,9 @@ export default function PublicStorefrontPage({ profile }) {
         onClose={() => setChatbotOpen(false)}
         inquiryType="contact"
       />
-      <PublicChatBubble profile={profile} hideWhenOpen={chatbotOpen} />
+      {profile?.storefront_show_chatbot === false ? null : (
+        <PublicChatBubble profile={profile} hideWhenOpen={chatbotOpen} />
+      )}
     </>
   );
 }

@@ -1,15 +1,10 @@
 'use client';
 
-import { Building, DollarSign, FileText, Handshake, Home, KeyRound } from 'lucide-react';
-
-const iconMap = {
-  home: <Home size={32} />,
-  dollar: <DollarSign size={32} />,
-  contract: <FileText size={32} />,
-  handshake: <Handshake size={32} />,
-  building: <Building size={32} />,
-  key: <KeyRound size={32} />,
-};
+import { Handshake } from 'lucide-react';
+import {
+  getServiceIconComponent,
+  resolveServiceIconKey,
+} from '@/components/storefront/builder/storefrontServiceIcons';
 
 const fallbackServices = {
   agent: [
@@ -29,8 +24,32 @@ const fallbackServices = {
   ],
 };
 
-export default function PublicServices({ services = [], professionalType, onServiceClick, content = {} }) {
-  const displayServices = services?.length ? services : (fallbackServices[professionalType] || fallbackServices.agent);
+export default function PublicServices({
+  services = [],
+  professionalType,
+  content = {},
+  sectionStyle = {},
+  layout = {},
+  preview = false,
+  previewMode = 'desktop',
+}) {
+  const forceMobilePreview = Boolean(preview && previewMode === 'mobile');
+  const forceTabletPreview = Boolean(preview && previewMode === 'tablet');
+  const hasCustomServices = Object.prototype.hasOwnProperty.call(content, 'items');
+  const displayServices = (hasCustomServices
+    ? content.items
+    : (services?.length ? services : (fallbackServices[professionalType] || fallbackServices.agent))
+  ).map((service, index) => ({
+    ...service,
+    id: service?.id || `fallback-service-${index}`,
+    title: service?.title || service?.name || '',
+    description: service?.description || service?.text || '',
+    icon: resolveServiceIconKey(service?.icon, index),
+    background: service?.background || '',
+    text_color: service?.text_color || '',
+    icon_background: service?.icon_background || '',
+    icon_color: service?.icon_color || '',
+  })).filter((service) => service.title);
   const title = content.heading
     || (professionalType === 'agent'
       ? 'Real estate guidance built around your next move'
@@ -43,51 +62,130 @@ export default function PublicServices({ services = [], professionalType, onServ
       : professionalType === 'mortgage_broker'
         ? 'Comprehensive mortgage solutions tailored to your financial needs.'
         : 'Expert legal services for all your real estate transactions.');
+  const eyebrow = (content.eyebrow || '').trim() || 'Services';
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const iconBackground = content.icon_background || '';
+  const iconColor = content.icon_color || '';
+  const columns = String(layout.columns || '3');
+  const gridClass = forceMobilePreview
+    ? 'grid-cols-1'
+    : forceTabletPreview
+      ? 'sm:grid-cols-2'
+      : {
+    1: 'md:grid-cols-1 lg:grid-cols-1',
+    2: 'md:grid-cols-2 lg:grid-cols-2',
+    3: 'md:grid-cols-2 lg:grid-cols-3',
+    4: 'md:grid-cols-2 lg:grid-cols-4',
+      }[columns] || 'md:grid-cols-2 lg:grid-cols-3';
 
   return (
-    <section id="services" className="bg-transparent py-12 sm:py-14">
+    <section
+      id="services"
+      className="bg-transparent py-12 sm:py-14"
+      style={{ color: sectionStyle.textColor || undefined }}
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 max-w-2xl text-center mx-auto">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Services
+          <p
+            data-storefront-field="content.eyebrow"
+            data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+            data-storefront-label="Services eyebrow"
+            className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+              hasCustomTextColor ? 'text-current' : 'text-slate-500'
+            }`}
+            style={hasCustomTextColor ? { opacity: 0.72 } : undefined}
+          >
+            {eyebrow}
           </p>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h2
+            data-storefront-field="content.heading"
+            data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+            data-storefront-label="Services heading"
+            className={`text-2xl font-bold tracking-tight sm:text-3xl ${
+              hasCustomTextColor ? 'text-current' : 'text-slate-900'
+            }`}
+          >
             {title}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-500">
+          <p
+            data-storefront-field="content.body"
+            data-storefront-source={content.body ? 'persisted' : 'fallback'}
+            data-storefront-label="Services description"
+            className={`mt-3 text-sm leading-6 ${
+              hasCustomTextColor ? 'text-current' : 'text-slate-500'
+            }`}
+            style={hasCustomTextColor ? { opacity: 0.86 } : undefined}
+          >
             {description}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-5">
-          {displayServices.map((service, index) => (
-            <div
-              key={index}
-              className="cursor-pointer rounded-xl border border-slate-200/90 bg-white p-5 transition duration-200 hover:border-slate-300 hover:shadow-md group"
-              onClick={() => onServiceClick?.(service)}
-            >
-              <div className="flex items-start gap-4">
-                <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg bg-slate-50 text-primary transition-transform group-hover:scale-105">
-                  {service.icon && iconMap[service.icon] ? (
-                    iconMap[service.icon]
-                  ) : (
-                    <Handshake size={28} />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold text-slate-900 mb-1.5">
-                    {service.title}
-                  </h3>
-                  <p className="text-sm leading-6 text-text-muted">
-                    {service.description}
-                  </p>
+        <div className={`grid grid-cols-1 gap-4 ${gridClass} md:gap-5`}>
+          {displayServices.map((service, index) => {
+            const IconComponent = getServiceIconComponent(service.icon);
+            const hasCardText = Boolean(service.text_color);
+            const serviceIconBackground = service.icon_background || iconBackground;
+            const serviceIconColor = service.icon_color || iconColor;
+            return (
+              <div
+                key={service.id || index}
+                data-storefront-anim-item="true"
+                data-storefront-field="content.items"
+                data-storefront-source={hasCustomServices ? 'persisted' : 'fallback'}
+                data-storefront-collection="items"
+                data-storefront-item-id={service.id}
+                data-storefront-item-index={index}
+                data-storefront-item-field="title"
+                data-storefront-label={`Service ${index + 1}`}
+                className="rounded-xl border border-slate-200/90 p-5 transition duration-200 group hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                style={{
+                  backgroundColor: service.background || '#ffffff',
+                  ...(service.text_color ? { color: service.text_color } : {}),
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-lg transition-transform group-hover:scale-105 ${
+                      serviceIconBackground || serviceIconColor ? '' : 'bg-primary/10 text-primary'
+                    }`}
+                    style={{
+                      ...(serviceIconBackground ? { backgroundColor: serviceIconBackground } : {}),
+                      ...(serviceIconColor ? { color: serviceIconColor } : {}),
+                    }}
+                  >
+                    {IconComponent ? <IconComponent size={28} /> : <Handshake size={28} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      data-storefront-field="content.items"
+                      data-storefront-source={hasCustomServices ? 'persisted' : 'fallback'}
+                      data-storefront-collection="items"
+                      data-storefront-item-id={service.id}
+                      data-storefront-item-field="title"
+                      data-storefront-label={`Service ${index + 1} title`}
+                      className={`text-base font-semibold mb-1.5 ${hasCardText || hasCustomTextColor ? 'text-current' : 'text-slate-900'}`}
+                    >
+                      {service.title}
+                    </h3>
+                    <p
+                      data-storefront-field="content.items"
+                      data-storefront-source={hasCustomServices ? 'persisted' : 'fallback'}
+                      data-storefront-collection="items"
+                      data-storefront-item-id={service.id}
+                      data-storefront-item-field="description"
+                      data-storefront-label={`Service ${index + 1} description`}
+                      className={`text-sm leading-6 ${hasCardText || hasCustomTextColor ? 'text-current' : 'text-text-muted'}`}
+                      style={hasCardText || hasCustomTextColor ? { opacity: 0.86 } : undefined}
+                    >
+                      {service.description}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
-

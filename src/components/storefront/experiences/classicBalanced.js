@@ -4,7 +4,9 @@ export const classicBalancedExperience = {
   variantLabelClass: 'text-primary',
   css: `
     .storefront-experience-classic {
-      background: #ffffff;
+      width: 100%;
+      max-width: none;
+      background: var(--storefront-canvas, #ffffff);
     }
   `,
   frame() {

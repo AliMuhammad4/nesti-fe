@@ -24,6 +24,7 @@ export default function LawyerCredentialsSection({ credentials, content = {} }) 
           {items.map((credential, index) => (
             <div
               key={index}
+              data-storefront-anim-item="true"
               className="bg-gray-50 rounded-lg shadow-sm p-6 border-l-4 border-primary"
             >
               <div className="flex items-start gap-4">

@@ -4,11 +4,9 @@ export const storyWarmExperience = {
   variantLabelClass: 'text-primary',
   css: `
     .storefront-experience-story {
-      background: #ffffff;
-    }
-
-    [data-preview='true'] .storefront-experience-story {
-      background: linear-gradient(180deg, #fffaf5 0%, #ffffff 36%);
+      width: 100%;
+      max-width: none;
+      background: var(--storefront-canvas, #ffffff);
     }
   `,
   frame() {

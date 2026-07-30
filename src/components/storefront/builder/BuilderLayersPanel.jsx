@@ -3,7 +3,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { labelForBlock } from './storefrontBuilderState';
 
 function LibraryBlock({ type, onClick }) {
@@ -43,33 +43,71 @@ function SortableLayer({ block, index, selected, onSelect, onToggle, onDelete })
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative flex w-full items-center gap-1.5 rounded-xl border px-1.5 py-1.5 transition ${
+      {...attributes}
+      {...listeners}
+      className={`relative flex w-full cursor-grab items-center gap-1.5 rounded-xl border px-1.5 py-1.5 transition active:cursor-grabbing ${
         selected
           ? 'border-emerald-200 bg-emerald-50/70 text-slate-900 shadow-sm ring-1 ring-emerald-100'
           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
       } ${isDragging ? 'opacity-40' : ''}`}
     >
       {selected ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-emerald-500" /> : null}
-      <button type="button" {...attributes} {...listeners} className="cursor-grab p-1 text-slate-400 active:cursor-grabbing" aria-label="Drag to reorder">
+      <span className="p-1 text-slate-400" aria-hidden>
         <GripVertical size={14} />
-      </button>
+      </span>
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold">
         <span className={`mr-1.5 inline-block w-4 text-[9px] font-bold ${selected ? 'text-emerald-600' : 'text-slate-300'}`}>{index + 1}</span>
         {labelForBlock(block.type)}
       </button>
       <button
         type="button"
+        onPointerDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
         onClick={(event) => { event.stopPropagation(); onToggle(); }}
         className={`h-4 w-7 rounded-full p-0.5 transition ${block.data.enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
         aria-label={block.data.enabled ? 'Hide block' : 'Show block'}
       >
         <span className={`block h-3 w-3 rounded-full bg-white transition ${block.data.enabled ? 'translate-x-3' : ''}`} />
       </button>
-      <button type="button" onClick={(event) => { event.stopPropagation(); onDelete(); }} className="rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete block">
+      <button
+        type="button"
+        onPointerDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        onClick={(event) => { event.stopPropagation(); onDelete(); }}
+        className="rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+        aria-label="Delete block"
+      >
         <Trash2 size={12} />
       </button>
     </div>
   );
 }
 
-export { LibraryBlock, SortableLayer };
+function ChatBubbleLayer({ enabled, onToggle }) {
+  return (
+    <div className="flex w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-slate-700">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary" aria-hidden>
+        <MessageCircle size={13} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] font-semibold">Chat bubble</p>
+        <p className="text-[9px] leading-3 text-slate-400">
+          {enabled ? 'Visible on live page' : 'Hidden on live page'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`h-4 w-7 rounded-full p-0.5 transition ${
+          enabled ? 'bg-emerald-500' : 'bg-slate-300'
+        }`}
+        aria-label={enabled ? 'Hide chat bubble' : 'Show chat bubble'}
+        title={enabled ? 'Hide chat bubble' : 'Show chat bubble'}
+      >
+        <span className={`block h-3 w-3 rounded-full bg-white transition ${enabled ? 'translate-x-3' : ''}`} />
+      </button>
+    </div>
+  );
+}
+
+export { LibraryBlock, SortableLayer, ChatBubbleLayer };

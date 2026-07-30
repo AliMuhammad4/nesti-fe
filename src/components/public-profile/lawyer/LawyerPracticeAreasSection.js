@@ -32,6 +32,7 @@ export default function LawyerPracticeAreasSection({ practiceAreas, onAreaClick,
           {areas.map((area, index) => (
             <div
               key={index}
+              data-storefront-anim-item="true"
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer group text-center"
               onClick={() => onAreaClick?.('consultation')}
             >

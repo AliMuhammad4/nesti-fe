@@ -1,0 +1,142 @@
+@keyframes storefront-anim-body-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--storefront-anim-distance, 18px), 0) scale(var(--storefront-anim-scale, 1));
+    filter: blur(var(--storefront-anim-blur, 0px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes storefront-anim-body-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes storefront-anim-body-slide-left-in {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--storefront-anim-distance, 18px) * -1), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes storefront-anim-body-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--storefront-anim-scale, 0.96));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes storefront-anim-item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Hidden until JS flips data-anim-visible */
+.storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body {
+  opacity: 0;
+  transform: translate3d(0, var(--storefront-anim-distance, 18px), 0) scale(var(--storefront-anim-scale, 1));
+  filter: blur(var(--storefront-anim-blur, 0px));
+  pointer-events: none;
+}
+
+.storefront-public-band[data-anim-type='fade'][data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body {
+  transform: none;
+  filter: none;
+}
+
+.storefront-public-band[data-anim-type='slide-left'][data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body {
+  transform: translate3d(calc(var(--storefront-anim-distance, 18px) * -1), 0, 0);
+  filter: none;
+}
+
+.storefront-public-band[data-anim-type='zoom'][data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body {
+  transform: scale(var(--storefront-anim-scale, 0.96));
+  filter: none;
+}
+
+/*
+  Keyframe entrance with fill-mode: backwards only.
+  After the animation ends, transform is NOT held — hover utilities can run.
+*/
+.storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  pointer-events: auto;
+  animation-name: storefront-anim-body-in;
+  animation-duration: var(--storefront-anim-duration, 500ms);
+  animation-delay: var(--storefront-anim-delay, 0ms);
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: backwards;
+}
+
+.storefront-public-band[data-anim-type='fade'][data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body {
+  animation-name: storefront-anim-body-fade-in;
+}
+
+.storefront-public-band[data-anim-type='slide-left'][data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body {
+  animation-name: storefront-anim-body-slide-left-in;
+}
+
+.storefront-public-band[data-anim-type='zoom'][data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body {
+  animation-name: storefront-anim-body-zoom-in;
+}
+
+.storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] [data-storefront-anim-item='true'] {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  pointer-events: none;
+}
+
+.storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] [data-storefront-anim-item='true'] {
+  opacity: 1;
+  animation-name: storefront-anim-item-in;
+  animation-duration: var(--storefront-anim-duration, 500ms);
+  animation-delay: calc(var(--storefront-anim-delay, 0ms) + var(--storefront-child-stagger, 0ms));
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: backwards;
+  pointer-events: auto;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
+}
+
+/* Built-in hover lift only for marked interactive cards. */
+.storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] [data-storefront-anim-item='true'][data-storefront-anim-hover='lift']:hover {
+  transform: translate3d(0, -5px, 0);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storefront-public-band[data-anim-enabled='true'] .storefront-anim-body,
+  .storefront-public-band[data-anim-enabled='true'] [data-storefront-anim-item='true'] {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body,
+  .storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body,
+  .storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] [data-storefront-anim-item='true'],
+  .storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] [data-storefront-anim-item='true'] {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    pointer-events: auto !important;
+  }
+}

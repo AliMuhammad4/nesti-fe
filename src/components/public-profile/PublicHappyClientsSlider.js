@@ -19,7 +19,7 @@ const US_CA_LOCATIONS = [
   'Ottawa, ON',
 ];
 
-const CARD_HEIGHT = 'h-[304px]';
+const CARD_HEIGHT = 'h-[280px] sm:h-[304px]';
 
 const ROLE_PLACEHOLDERS = {
   mortgage_broker: [
@@ -108,7 +108,10 @@ function storyLocation(index, preferred) {
 
 function ClientCard({ client, className = '' }) {
   return (
-    <article className={`flex ${CARD_HEIGHT} flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${className}`}>
+    <article
+      data-storefront-anim-item="true"
+      className={`flex ${CARD_HEIGHT} flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${className}`}
+    >
       <div className="relative h-28 shrink-0 w-full overflow-hidden bg-slate-100">
         {client.story_image ? (
           <Image
@@ -218,9 +221,9 @@ export default function PublicHappyClientsSlider({ testimonials = [], profile })
   const sliderItems = useMemo(() => [...clients, ...clients], [clients]);
 
   return (
-    <section id="reviews" className="relative bg-transparent py-10 md:py-12">
+    <section id="reviews" className="relative bg-transparent py-8 sm:py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
-        <div className="mb-6 text-center sm:mb-7">
+        <div className="mb-5 text-center sm:mb-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Happy Clients</p>
           <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">Success Stories</h3>
           <p className="mx-auto mt-2 max-w-2xl text-xs leading-5 text-text-muted sm:text-sm">
@@ -228,13 +231,13 @@ export default function PublicHappyClientsSlider({ testimonials = [], profile })
           </p>
         </div>
 
-        <div className="relative overflow-hidden py-3">
-          <div className="success-stories-track relative flex w-max items-stretch gap-4 py-1">
+        <div className="relative overflow-hidden py-2.5 sm:py-3">
+          <div className="success-stories-track relative flex w-max items-stretch gap-3.5 sm:gap-4 py-1">
             {sliderItems.map((client, index) => (
               <ClientCard
                 key={`${client.client_name}-${index}`}
                 client={client}
-                className="w-[16.5rem] shrink-0 sm:w-[17rem] md:w-[17.5rem]"
+                className="w-[15.5rem] shrink-0 sm:w-[17rem] md:w-[17.5rem]"
               />
             ))}
           </div>

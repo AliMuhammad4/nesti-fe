@@ -1,5 +1,6 @@
 const DEFAULT_THEME = {
   primary: '#34C759',
+  accent: '#f59e0b',
   primaryContrast: '#FFFFFF',
   canvas: '#F8FAFC',
   surface: '#FFFFFF',
@@ -16,12 +17,14 @@ export const STOREFRONT_THEME_PRESETS = {
   slate: {
     ...DEFAULT_THEME,
     primary: '#0F766E',
+    accent: '#f59e0b',
     canvas: '#F8FAFC',
     heading: '#0F172A',
   },
   navy: {
     ...DEFAULT_THEME,
     primary: '#1D4ED8',
+    accent: '#22c55e',
     canvas: '#F7F9FF',
     heading: '#172554',
   },
@@ -29,6 +32,7 @@ export const STOREFRONT_THEME_PRESETS = {
 
 const COLOR_KEYS = new Set([
   'primary',
+  'accent',
   'primaryContrast',
   'canvas',
   'surface',
@@ -75,6 +79,7 @@ export function storefrontThemeVariables(theme) {
 
   return {
     '--storefront-primary': resolved.primary,
+    '--storefront-accent': resolved.accent,
     '--storefront-primary-contrast': resolved.primaryContrast,
     '--storefront-canvas': resolved.canvas,
     '--storefront-surface': resolved.surface,
@@ -99,10 +104,13 @@ export function StorefrontTheme({ children, className = '', theme }) {
   const scopedCss = `
     .nesti-storefront .text-primary { color: ${resolved.primary} !important; }
     .nesti-storefront .text-primary\\/40 { color: color-mix(in srgb, ${resolved.primary} 40%, transparent) !important; }
+    .nesti-storefront .text-accent { color: ${resolved.accent} !important; }
     .nesti-storefront .bg-primary { background-color: ${resolved.primary} !important; }
     .nesti-storefront .bg-primary\\/5 { background-color: color-mix(in srgb, ${resolved.primary} 5%, transparent) !important; }
     .nesti-storefront .bg-primary\\/10 { background-color: color-mix(in srgb, ${resolved.primary} 10%, transparent) !important; }
     .nesti-storefront .bg-primary\\/15 { background-color: color-mix(in srgb, ${resolved.primary} 15%, transparent) !important; }
+    .nesti-storefront .bg-accent { background-color: ${resolved.accent} !important; }
+    .nesti-storefront .bg-accent\\/10 { background-color: color-mix(in srgb, ${resolved.accent} 10%, transparent) !important; }
     .nesti-storefront .border-primary { border-color: ${resolved.primary} !important; }
     .nesti-storefront .border-primary\\/15 { border-color: color-mix(in srgb, ${resolved.primary} 15%, transparent) !important; }
     .nesti-storefront .border-primary\\/30 { border-color: color-mix(in srgb, ${resolved.primary} 30%, transparent) !important; }
@@ -115,11 +123,17 @@ export function StorefrontTheme({ children, className = '', theme }) {
     .nesti-storefront .hover\\:bg-primary-dark:hover { background-color: color-mix(in srgb, ${resolved.primary} 88%, black) !important; }
     .nesti-storefront .hover\\:border-primary\\/30:hover { border-color: color-mix(in srgb, ${resolved.primary} 30%, transparent) !important; }
     .nesti-storefront .hover\\:border-primary\\/40:hover { border-color: color-mix(in srgb, ${resolved.primary} 40%, transparent) !important; }
+    .nesti-storefront .storefront-btn,
+    .nesti-storefront a.storefront-btn,
+    .nesti-storefront button.bg-primary,
+    .nesti-storefront a.bg-primary {
+      border-radius: var(--storefront-radius) !important;
+    }
   `;
 
   return (
     <div
-      className={`nesti-storefront bg-[var(--storefront-canvas)] text-[var(--storefront-body)] antialiased ${className}`.trim()}
+      className={`nesti-storefront w-full max-w-none bg-[var(--storefront-canvas)] text-[var(--storefront-body)] antialiased ${className}`.trim()}
       style={{ ...variables, fontFamily: 'var(--storefront-font)' }}
     >
       <style>{scopedCss}</style>

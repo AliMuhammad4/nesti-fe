@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   Bed, Bath, Maximize2, MapPin, Tag, X,
-  ChevronLeft, ChevronRight, Calendar, MessageCircle,
+  ChevronLeft, ChevronRight, Calendar, Loader2, MessageCircle,
 } from 'lucide-react';
 import { getSellerProperties } from '@/lib/publicProfileClient';
 
@@ -23,6 +23,7 @@ function formatPrice(val) {
 /* ─── Property Detail Modal ───────────────────────────────── */
 export function PropertyModal({ property, profile, onClose, onInquire }) {
   const [imgIdx, setImgIdx] = useState(0);
+  const [imageLoading, setImageLoading] = useState(true);
   const imgs = property.images?.length
     ? property.images
     : property.photos?.length
@@ -31,6 +32,15 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
         ? [property.image_url]
         : [];
   const displayPrice = property.expected_price || property.price;
+  const activeImage = imgs[imgIdx];
+
+  useEffect(() => {
+    setImgIdx(0);
+  }, [property?.id, property?._id]);
+
+  useEffect(() => {
+    setImageLoading(Boolean(activeImage));
+  }, [activeImage]);
 
   return (
     <div
@@ -53,12 +63,26 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
           {imgs.length > 0 ? (
             <>
               <Image
+                key={activeImage}
                 src={imgs[imgIdx]}
                 alt={`Property image ${imgIdx + 1}`}
                 fill
-                className="object-contain object-center"
+                className={`object-contain object-center transition-opacity duration-200 ${
+                  imageLoading ? 'opacity-0' : 'opacity-100'
+                }`}
                 sizes="(max-width: 672px) 100vw, 672px"
+                onLoadingComplete={() => setImageLoading(false)}
               />
+              {imageLoading ? (
+                <div className="absolute inset-0 z-[15] bg-slate-950/60">
+                  <div className="pointer-events-none absolute left-1/2 top-1/2 z-[16] -translate-x-1/2 -translate-y-1/2">
+                    <div className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-slate-900/85 px-4 py-2 text-white shadow-xl backdrop-blur-md">
+                      <Loader2 size={15} className="animate-spin" />
+                      <p className="text-[12px] font-semibold tracking-wide">Loading image</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {imgs.length > 1 && (
                 <>
                   <button
@@ -160,6 +184,7 @@ function PropertyCard({ property, onViewDetails }) {
 
   return (
     <div
+      data-storefront-anim-item="true"
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
       onClick={() => onViewDetails(property)}
     >
@@ -232,8 +257,15 @@ function PropertyCard({ property, onViewDetails }) {
 }
 
 /* ─── Main Section ────────────────────────────────────────── */
-export default function AgentPropertiesSection({ profile, onPropertyInquiry, content = {} }) {
+export default function AgentPropertiesSection({
+  profile,
+  onPropertyInquiry,
+  content = {},
+  sectionStyle = {},
+}) {
   const PAGE_SIZE = 6;
+  const eyebrow = (content.eyebrow || '').trim() || 'Available now';
+  const hasSectionText = Boolean(sectionStyle.textColor);
 
   const hasCustomProperties = Array.isArray(profile?.custom_properties) && profile.custom_properties.length > 0;
   const [properties, setProperties] = useState(hasCustomProperties ? profile.custom_properties : []);
@@ -276,11 +308,15 @@ export default function AgentPropertiesSection({ profile, onPropertyInquiry, con
 
   if (loading) {
     return (
-      <section className="bg-transparent py-12">
+      <section className="bg-transparent py-12" style={{ color: sectionStyle.textColor || undefined }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Available Now</p>
-            <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">{content.heading || 'Properties for Sale'}</h3>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${hasSectionText ? 'text-current' : 'text-primary'}`}>
+              {eyebrow}
+            </p>
+            <h3 className={`mt-1 text-2xl font-bold tracking-tight sm:text-3xl ${hasSectionText ? 'text-current' : 'text-text-heading'}`}>
+              {content.heading || 'Properties for Sale'}
+            </h3>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -300,14 +336,35 @@ export default function AgentPropertiesSection({ profile, onPropertyInquiry, con
 
   return (
     <>
-      <section id="properties" className="bg-transparent py-12">
+      <section id="properties" className="bg-transparent py-12" style={{ color: sectionStyle.textColor || undefined }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
           <div className="mb-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Available Now</p>
-            <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">{content.heading || 'Properties for Sale'}</h3>
-            <p className="mt-1.5 text-sm text-text-muted">
+            <p
+              data-storefront-field="content.eyebrow"
+              data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties eyebrow"
+              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${hasSectionText ? 'text-current' : 'text-primary'}`}
+              style={hasSectionText ? { opacity: 0.78 } : undefined}
+            >
+              {eyebrow}
+            </p>
+            <h3
+              data-storefront-field="content.heading"
+              data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties heading"
+              className={`mt-1 text-2xl font-bold tracking-tight sm:text-3xl ${hasSectionText ? 'text-current' : 'text-text-heading'}`}
+            >
+              {content.heading || 'Properties for Sale'}
+            </h3>
+            <p
+              data-storefront-field="content.body"
+              data-storefront-source={content.body ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties description"
+              className={`mt-1.5 text-sm ${hasSectionText ? 'text-current' : 'text-text-muted'}`}
+              style={hasSectionText ? { opacity: 0.86 } : undefined}
+            >
               {content.body || `Browse active listings managed by ${profile?.professional_name}. Click any property to view details and start your inquiry.`}
             </p>
           </div>

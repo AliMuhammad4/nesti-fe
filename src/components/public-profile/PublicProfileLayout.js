@@ -35,8 +35,11 @@ export default function PublicProfileLayout({ profile, children }) {
   const hasStorefrontFooter = profile.storefront_blocks?.some((block) => block.type === 'footer');
 
   return (
-    <div className="min-h-screen bg-slate-100/80">
-      <main className="relative z-10 flex-1">
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ backgroundColor: profile?.storefront_theme?.canvas || '#ffffff' }}
+    >
+      <main className="relative z-10 w-full flex-1">
         {children}
       </main>
 

@@ -1,34 +1,5 @@
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
 
-const parseListingLine = (line) => {
-  const [title = '', price = '', address = '', bedrooms = '', bathrooms = '', square_footage = '', status = ''] = line.split('|').map((part) => part.trim());
-  return {
-    title,
-    price,
-    expected_price: price,
-    address,
-    location: address,
-    bedrooms,
-    bathrooms,
-    square_footage,
-    status,
-    image_url: '',
-    photos: [],
-    images: [],
-    property_type: '',
-  };
-};
-
-const formatListingLine = (item = {}) => [
-  item.title || '',
-  item.price || item.expected_price || '',
-  item.address || item.location || '',
-  item.bedrooms || '',
-  item.bathrooms || '',
-  item.square_footage || '',
-  item.status || '',
-].filter(Boolean).join(' | ');
-
 const CONTENT_COLLECTIONS = {
   [STOREFRONT_BLOCK_TYPES.SERVICES]: {
     label: 'Service cards',
@@ -74,30 +45,6 @@ const CONTENT_COLLECTIONS = {
       .map((item) => [item.name, item.description, item.min_credit_score, item.down_payment_min].filter(Boolean).join(' | '))
       .join('\n'),
     hint: 'One per line: Name | Description | Min Credit | Down Payment',
-  },
-  [STOREFRONT_BLOCK_TYPES.PROPERTIES]: {
-    label: 'Property cards',
-    parse: (raw) => raw.split('\n').map((line) => line.trim()).filter(Boolean).map(parseListingLine).filter((item) => item.title || item.address || item.price),
-    format: (items) => (items || []).map(formatListingLine).join('\n'),
-    hint: 'One per line: Title | Price | Address | Beds | Baths | Sqft | Status',
-  },
-  [STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS]: {
-    label: 'Featured listing cards',
-    parse: (raw) => raw.split('\n').map((line) => line.trim()).filter(Boolean).map(parseListingLine).filter((item) => item.title || item.address || item.price),
-    format: (items) => (items || []).map(formatListingLine).join('\n'),
-    hint: 'One per line: Title | Price | Address | Beds | Baths | Sqft | Status',
-  },
-  [STOREFRONT_BLOCK_TYPES.TOP_LISTINGS]: {
-    label: 'Top listing cards',
-    parse: (raw) => raw.split('\n').map((line) => line.trim()).filter(Boolean).map(parseListingLine).filter((item) => item.title || item.address || item.price),
-    format: (items) => (items || []).map(formatListingLine).join('\n'),
-    hint: 'One per line: Title | Price | Address | Beds | Baths | Sqft | Status',
-  },
-  [STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS]: {
-    label: 'Sold listing cards',
-    parse: (raw) => raw.split('\n').map((line) => line.trim()).filter(Boolean).map(parseListingLine).filter((item) => item.title || item.address || item.price),
-    format: (items) => (items || []).map(formatListingLine).join('\n'),
-    hint: 'One per line: Title | Price | Address | Beds | Baths | Sqft | Status',
   },
   [STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS]: {
     label: 'Practice areas',
