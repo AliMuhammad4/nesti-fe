@@ -395,7 +395,7 @@ function AboutDifferentiatorsSection({ section }) {
               {featured.item.paragraphs?.map((paragraph) => (
                 <p
                   key={paragraph}
-                  className="mt-2 max-w-3xl text-sm leading-6 text-text-body"
+                  className="mt-2 w-full text-sm leading-6 text-text-body"
                 >
                   {paragraph}
                 </p>
