@@ -134,13 +134,13 @@ export default function Footer() {
 
               <address className="mt-4 grid max-w-md gap-1.5 not-italic">
                 <a
-                  href="mailto:ravinna.raveenthiran@nesti.ca"
+                  href="mailto:ravinnaraveenthiran@nesti.ca"
                   className="group flex items-center gap-2.5 rounded-lg border border-border/80 bg-white/70 px-2.5 py-2 text-[13px] font-semibold text-text-heading transition-all hover:border-primary/25 hover:bg-white hover:text-primary"
                 >
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <Mail size={14} aria-hidden />
                   </span>
-                  <span className="min-w-0 break-all">ravinna.raveenthiran@nesti.ca</span>
+                  <span className="min-w-0 break-all">ravinnaraveenthiran@nesti.ca</span>
                 </a>
                 <a
                   href="tel:+14165654791"

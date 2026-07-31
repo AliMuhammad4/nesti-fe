@@ -232,12 +232,20 @@ export default function ClientSubscriptionPanel({
   };
 
   const currentTier = subscription?.tier;
-  const isActive = subscription?.status === 'active';
+  const periodEndRaw = subscription?.current_period_end;
+  const periodHasEnded = Boolean(
+    periodEndRaw && !Number.isNaN(new Date(periodEndRaw).getTime()) && new Date(periodEndRaw).getTime() <= Date.now()
+  );
+  const cancelAtPeriodEnd = Boolean(subscription?.cancel_at_period_end);
+  const isActive =
+    ['active', 'trialing', 'past_due'].includes(String(subscription?.status || '').toLowerCase()) &&
+    !(cancelAtPeriodEnd && periodHasEnded);
+  const canContinueSubscription = isActive && cancelAtPeriodEnd && !periodHasEnded;
   const pendingTier = String(subscription?.pending_tier || '').trim().toLowerCase();
   const pendingTierEffectiveAt = subscription?.pending_tier_effective_at;
   const pendingPlan = PLANS.find((plan) => plan.tier === pendingTier);
   const currentPlan = PLANS.find((plan) => plan.tier === currentTier);
-  const renewalLabel = formatDate(subscription?.current_period_end);
+  const renewalLabel = formatDate(periodEndRaw);
   const showPlanCards = isSubscriptionPage ? true : (!isActive || showPlanOptions);
   const visiblePlans = isActive && !isSubscriptionPage
     ? PLANS.filter((plan) => getTierRank(plan.tier) > getTierRank(currentTier))
@@ -478,7 +486,7 @@ export default function ClientSubscriptionPanel({
       ) : null}
 
       {isSubscriptionPage && isActive ? (
-        subscription?.cancel_at_period_end ? (
+        canContinueSubscription ? (
           <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-amber-900">
               Access ends <span className="font-bold text-amber-950">{renewalLabel || 'at period end'}</span>.

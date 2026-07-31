@@ -9,17 +9,17 @@ export const PUBLIC_PAGES = {
     sections: [
       {
         paragraphs: [
-          "Nesti is an AI-powered real estate ecosystem designed to transform how modern real estate professionals operate, grow, and connect with clients.",
+          "Nesti is an intelligent real estate ecosystem designed to transform how modern professionals operate, grow, and connect with clients.",
+          "We bring lead intelligence, automation, CRM workflows, client matching, and referral tools together in one platform so teams can work with more clarity and less friction.",
+          "Built for the people who move deals forward every day, Nesti helps professionals stay organized, respond faster, and deliver a stronger client experience from first inquiry to long-term relationship.",
         ],
         bullets: ["Realtor / Agent", "Real Estate Lawyer", "Mortgage Brokers"],
         bulletsLabel: "Built for",
       },
       {
         paragraphs: [
-          "Nesti combines artificial intelligence, intelligent lead infrastructure, automation systems, CRM workflows, client matching, referral ecosystems, and growth tools into one unified platform built for the next generation of real estate business.",
-          "Founded by Ravinna Raveenthiran, Nesti was created from a simple realization: the real estate industry is still operating with fragmented systems, outdated workflows, disconnected communication, and inefficient lead management. Nesti exists to change that.",
-          "Instead of forcing professionals to juggle multiple tools, disconnected CRMs, spreadsheets, marketing platforms, and manual processes, Nesti creates one seamless AI-driven operating system that helps professionals work with more focus, consistency, and visibility across every stage of the client journey.",
-          "From first contact to long-term referrals, the platform is designed to reduce friction, keep teams organized, and give real estate businesses the intelligent infrastructure they need to grow with confidence.",
+          "Nesti combines AI, lead infrastructure, automation, CRM workflows, client matching, and referral tools into one unified platform for modern real estate professionals.",
+          "Founded by Ravinna Raveenthiran, Nesti was built to replace fragmented systems and outdated workflows with one intelligent operating layer that helps professionals grow with clarity and confidence.",
         ],
         bullets: [
           "generate and qualify better leads",
@@ -28,14 +28,6 @@ export const PUBLIC_PAGES = {
           "scale their businesses intelligently",
           "build long-term referral ecosystems",
           "make smarter data-driven decisions",
-        ],
-      },
-      {
-        id: "mission",
-        title: "Our Mission",
-        paragraphs: [
-          "To modernize real estate through intelligent technology that empowers professionals while creating a better experience for consumers.",
-          "Nesti believes the future of real estate should feel personalized, intelligent, automated, transparent, secure, and human-centered. Technology should not replace professionals — it should amplify them.",
         ],
       },
       {
@@ -82,13 +74,6 @@ export const PUBLIC_PAGES = {
         ],
       },
       {
-        id: "vision",
-        title: "Our Vision",
-        paragraphs: [
-          "Nesti is building more than a real estate platform. We are building the intelligent infrastructure layer for the future of real estate — a connected ecosystem where professionals grow faster, consumers make smarter decisions, AI removes friction, and technology creates stronger human relationships.",
-        ],
-      },
-      {
         id: "referral-ecosystem",
         title: "The Nesti Referral Ecosystem",
         paragraphs: [
@@ -99,19 +84,27 @@ export const PUBLIC_PAGES = {
             title: "How It Works",
             bullets: [
               "Refer a client or professional",
-              "The referral connects through the Nesti platform",
-              "A qualifying transaction or conversion occurs",
-              "Eligible referral rewards are issued",
+              "Referral connects through Nesti",
+              "Qualifying transaction or conversion",
+              "Eligible referral rewards issued",
             ],
           },
           {
             title: "Program Benefits",
-            paragraphs: ["Eligible participants may receive referral incentives, exclusive platform rewards, commission-sharing opportunities where applicable, ecosystem growth benefits, and priority platform perks."],
+            bullets: [
+              "Referral incentives for eligible users",
+              "Exclusive rewards and priority perks",
+              "Commission-sharing where applicable",
+              "Ecosystem growth across the network",
+            ],
           },
           {
             title: "Referral Integrity",
-            paragraphs: [
-              "To maintain fairness and trust, referral activity is monitored for fraud prevention, abuse prevention, duplicate submissions, and system manipulation. Nesti may review or deny eligibility when necessary.",
+            bullets: [
+              "Fraud and abuse prevention",
+              "Duplicate submission detection",
+              "System manipulation protection",
+              "Eligibility review when needed",
             ],
           },
         ],
@@ -125,7 +118,7 @@ export const PUBLIC_PAGES = {
         subsections: [
           {
             title: "Email",
-            paragraphs: ["ravinna.raveenthiran@nesti.ca"],
+            paragraphs: ["ravinnaraveenthiran@nesti.ca"],
           },
           {
             title: "Phone",
@@ -160,6 +153,16 @@ export const PUBLIC_PAGES = {
         ],
       },
       {
+        id: "vision",
+        title: "Our Vision",
+        paragraphs: [
+          "Nesti is building more than a real estate platform. We are building the intelligent infrastructure layer for the future of real estate: a connected ecosystem where professionals grow faster, consumers make smarter decisions, and technology creates stronger human relationships.",
+          "Our vision is a market where lead intelligence, workflow automation, and client communication work together as one system. Professionals spend less time on repetitive tasks and more time guiding people through important decisions with clarity and confidence.",
+          "Over time, Nesti becomes the trusted operating layer behind modern real estate businesses: helping teams stay organized, respond faster, nurture relationships, and deliver a seamless experience from first inquiry to long-term partnership.",
+        ],
+      },
+      {
+        id: "closing",
         paragraphs: [
           "Technology should not replace professionals. It should amplify them.",
         ],
