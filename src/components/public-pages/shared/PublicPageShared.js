@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
+  ImageIcon,
 } from "lucide-react";
 
 export const fadeUp = {
@@ -15,6 +16,60 @@ export const fadeUp = {
   viewport: { once: true, margin: "-40px" },
   transition: { duration: 0.35 },
 };
+
+export function ImagePlaceholder({
+  src,
+  label,
+  caption,
+  className = "",
+  iconSize = 24,
+  objectPosition = "object-center",
+  aspectClass = "",
+}) {
+  return (
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-background-light via-white to-primary/[0.07] shadow-[0_12px_32px_rgba(15,23,42,0.06)] ${
+        aspectClass ? "" : "h-full min-h-[220px] sm:min-h-[260px]"
+      } ${className}`}
+    >
+      <div
+        className={`relative w-full overflow-hidden ${
+          aspectClass || "min-h-0 flex-1"
+        }`}
+      >
+        {src ? (
+          <Image
+            src={src}
+            alt={caption || label}
+            fill
+            sizes="(max-width: 1024px) 100vw, 440px"
+            className={`object-cover transition-transform duration-500 group-hover:scale-[1.02] ${objectPosition}`}
+          />
+        ) : (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.14),transparent_55%)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-[0.28] [background-image:linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] [background-size:22px_22px]" />
+            <div className="relative z-10 flex h-full min-h-[180px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/15 bg-white/85 text-primary shadow-sm transition-transform duration-300 group-hover:scale-105">
+                <ImageIcon size={iconSize} strokeWidth={1.7} aria-hidden />
+              </span>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+                {label}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+      {caption ? (
+        <div className="relative z-10 shrink-0 border-t border-border/60 bg-white px-3.5 py-2.5">
+          <p className="text-center text-xs font-semibold leading-snug text-primary">
+            {caption}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function splitTitle(title, highlight) {
   if (!title || !highlight) return { before: "", match: "", after: "" };
@@ -29,7 +84,7 @@ export function splitTitle(title, highlight) {
 
 export function PageCta({
   compact = false,
-  transparentSection = false,
+  transparentSection = true,
   compactHeading = "Ready to grow with intelligent real estate tools?",
 }) {
   if (compact) {

@@ -265,6 +265,11 @@ export default function SubscriptionBillingPanel({
   const periodEndRaw = resolvePeriodEnd({ user, subscription, invoices });
   const periodEndLabel = formatDate(periodEndRaw);
   const isLoadingPeriod = subscriptionQuery.isLoading && !periodEndLabel;
+  const periodHasEnded = Boolean(
+    periodEndRaw && !Number.isNaN(new Date(periodEndRaw).getTime()) && new Date(periodEndRaw).getTime() <= Date.now()
+  );
+  // Resume is only valid while cancel-at-period-end is scheduled and the paid window is still open
+  const canContinueSubscription = cancelAtPeriodEnd && !periodHasEnded;
 
   const handleCancel = async (reason = "") => {
     try {
@@ -398,13 +403,13 @@ export default function SubscriptionBillingPanel({
                 </p>
               </div>
             </div>
-          ) : cancelAtPeriodEnd ? (
+          ) : canContinueSubscription ? (
             <div className="mt-5 space-y-3">
               <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-text-body">
                 <p className="font-semibold text-text-heading">We&apos;re sorry to see you go.</p>
                 <p className="mt-1 leading-relaxed text-text-muted">
                   Your cancellation is confirmed. You still have full access until your billing
-                  period ends — and you can restart your subscription anytime before then if you
+                  period ends, and you can restart your subscription anytime before then if you
                   change your mind.
                 </p>
               </div>
@@ -432,9 +437,13 @@ export default function SubscriptionBillingPanel({
               </button>
             </div>
             </div>
+          ) : cancelAtPeriodEnd && periodHasEnded ? (
+            <div className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Your subscription period has ended. Choose a plan again to restore access.
+            </div>
           ) : null}
 
-          {!cancelAtPeriodEnd ? (
+          {!cancelAtPeriodEnd && !periodHasEnded ? (
             <div className="mt-4 flex justify-end">
               <button
                 type="button"

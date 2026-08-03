@@ -39,7 +39,10 @@ export function useSubscriptionMe() {
       });
     },
     enabled: !!token,
-    staleTime: 45_000,
+    // Keep subscription status fresh so expiry/cancel UI doesn't lag behind backend
+    staleTime: 10_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
