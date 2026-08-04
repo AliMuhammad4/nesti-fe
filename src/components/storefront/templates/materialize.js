@@ -43,7 +43,7 @@ export function materializeTemplate(templateKey, profile = {}, existingBrandKit 
         },
         style: {
           ...created.data.style,
-          background: entry.data?.style?.background || '',
+          background: entry.data?.style?.background || visual.bg || '',
           radius: visual.radius,
           shadow: visual.shadow,
           ...(entry.data?.style || {}),
@@ -109,7 +109,7 @@ export function seedBlockContentFromProfile(blocks = [], profile = {}, templateK
         },
         style: {
           ...block.data.style,
-          background: originalStyle.background || '',
+          background: originalStyle.background || visual.bg || '',
           radius: originalStyle.radius || visual.radius,
           shadow: originalStyle.shadow || visual.shadow,
         },

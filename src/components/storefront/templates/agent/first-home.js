@@ -16,7 +16,20 @@ const agentFirstHome = {
       cta_label: 'Book a buyer consult',
       eyebrow: 'First-home specialist',
     }),
-    block(T.GUIDANCE, { heading: 'What happens next', body: 'A simple path from pre-approval to keys.' }),
+    block(T.GUIDANCE, {
+      heading: 'Your first-home roadmap',
+      body: 'A calm, practical path from your first question to the day you get the keys.',
+      steps: [
+        { title: 'Get financially ready', text: 'Clarify a comfortable budget, save for closing costs, and prepare for pre-approval.' },
+        { title: 'Learn the options', text: 'Compare homes and neighborhoods with straightforward explanations, not pressure.' },
+        { title: 'Write a confident offer', text: 'Understand conditions, timelines, and negotiation before committing to your first purchase.' },
+      ],
+      faqs: [
+        { q: 'Do I need pre-approval before we talk?', a: 'No. We can start with your goals and outline the right financial next step.' },
+        { q: 'How much should I budget beyond the down payment?', a: 'We will walk through closing costs, moving costs, and a comfortable monthly range.' },
+        { q: 'Will I be rushed into an offer?', a: 'No. The process is built around clarity, education, and your timing.' },
+      ],
+    }),
     block(T.SERVICES, { heading: 'Built for first-time buyers', body: 'Budget mapping, neighborhood tours, and offer coaching.' }),
     block(T.PROPERTIES),
     block(T.TESTIMONIALS, { heading: 'Buyers who started here', body: 'Stories from people who bought their first place with clarity.' }),

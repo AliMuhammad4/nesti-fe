@@ -28,6 +28,76 @@ function profileSeedFromData(profileData) {
   };
 }
 
+function cloneEditorData(data) {
+  if (!data) return null;
+  if (typeof structuredClone === 'function') return structuredClone(data);
+  return JSON.parse(JSON.stringify(data));
+}
+
+function editorDataFromDraft(draft, profileSeed, professional, fallbackTemplateKey) {
+  const templateKey = draft?.template?.id || fallbackTemplateKey;
+  const savedBrandKit = draft?.brandKit || {};
+  if (Array.isArray(draft?.blocks) && draft.blocks.length) {
+    return {
+      template_key: templateKey,
+      brand_kit: {
+        business_name: savedBrandKit.business_name || professional.company_name || '',
+        logo_url: savedBrandKit.logo_url || '',
+        logo_dark_url: savedBrandKit.logo_dark_url || '',
+        cover_url: savedBrandKit.cover_url || '',
+        profile_photo_url: savedBrandKit.profile_photo_url || '',
+        logo_size: Number(savedBrandKit.logo_size) || 40,
+        cover_position_x: Number(savedBrandKit.cover_position_x ?? 50),
+        cover_position_y: Number(savedBrandKit.cover_position_y ?? 50),
+        cover_zoom: Math.max(1, Number(savedBrandKit.cover_zoom ?? 1)),
+        profile_position_x: Number(savedBrandKit.profile_position_x ?? 50),
+        profile_position_y: Number(savedBrandKit.profile_position_y ?? 25),
+        profile_zoom: Number(savedBrandKit.profile_zoom ?? 1),
+        primary_color: savedBrandKit.primary_color || '#0f766e',
+        accent_color: savedBrandKit.accent_color || '#f59e0b',
+        page_background: savedBrandKit.page_background || '#ffffff',
+        font: savedBrandKit.font_family || savedBrandKit.font || 'Manrope',
+        button_shape: savedBrandKit.button_shape || 'rounded',
+        image_style: savedBrandKit.image_style || 'editorial',
+        show_chatbot: savedBrandKit.show_chatbot !== false,
+        essentials: savedBrandKit.essentials || {},
+      },
+      blocks: seedBlockContentFromProfile(draft.blocks, profileSeed, templateKey),
+    };
+  }
+
+  const materialized = materializeTemplate(templateKey, profileSeed, {
+    business_name: professional.company_name || '',
+  });
+  return {
+    template_key: templateKey,
+    brand_kit: {
+      business_name: professional.company_name || '',
+      logo_url: '',
+      logo_dark_url: '',
+      cover_url: '',
+      profile_photo_url: '',
+      logo_size: 40,
+      cover_position_x: 50,
+      cover_position_y: 50,
+      cover_zoom: 1,
+      profile_position_x: 50,
+      profile_position_y: 25,
+      profile_zoom: 1,
+      primary_color: '#0f766e',
+      accent_color: '#f59e0b',
+      page_background: '#ffffff',
+      font: 'Manrope',
+      button_shape: 'rounded',
+      image_style: 'editorial',
+      show_chatbot: true,
+      essentials: {},
+      ...(materialized?.brand_kit || {}),
+    },
+    blocks: materialized?.blocks || normalizeBlocks(STOREFRONT_TEMPLATE_PRESETS[professional.professional_type] || []),
+  };
+}
+
 export default function useStorefrontEditorState({
   profileData,
   storefrontDraftData,
@@ -44,6 +114,9 @@ export default function useStorefrontEditorState({
   const editorHydrated = useRef(false);
   const lastSavedDraftSignatureRef = useRef('');
   const lastFailedDraftSignatureRef = useRef('');
+  const templateDraftsRef = useRef({});
+  const latestEditorDataRef = useRef(null);
+  const queuedDraftRef = useRef(null);
 
   useEffect(() => {
     if (!profileData || editorHydrated.current) return;
@@ -52,8 +125,11 @@ export default function useStorefrontEditorState({
     try {
       const savedProfile = profileData.profile || {};
       const professional = profileData.professional_profile || {};
-      const savedDraft = storefrontDraftData?.draft || {};
-      const hasPersistedStorefront = Boolean(savedProfile?._id) || Boolean(savedDraft?.blocks?.length);
+      const legacyDraft = storefrontDraftData?.draft || null;
+      const savedDrafts = Array.isArray(storefrontDraftData?.drafts) && storefrontDraftData.drafts.length
+        ? storefrontDraftData.drafts
+        : (legacyDraft ? [legacyDraft] : []);
+      const hasPersistedStorefront = Boolean(savedProfile?._id) || savedDrafts.some((draft) => draft?.blocks?.length);
       if (!hasPersistedStorefront) {
         setEditorData(null);
         editorHydrated.current = true;
@@ -62,8 +138,6 @@ export default function useStorefrontEditorState({
       const role = normalizeRole(
         professional.professional_type || profileData.professional_type || savedProfile.professional_type,
       );
-      const savedBrandKit = savedDraft.brandKit || {};
-      const templateKey = savedDraft.template?.id || `${role}-classic`;
       const profileSeed = {
         ...profileSeedFromData(profileData),
         headline: savedProfile.headline,
@@ -71,67 +145,24 @@ export default function useStorefrontEditorState({
         about: savedProfile.about,
       };
 
-      let blocks;
-      let brandKit;
-      if (Array.isArray(savedDraft.blocks) && savedDraft.blocks.length) {
-        blocks = seedBlockContentFromProfile(savedDraft.blocks, profileSeed, templateKey);
-        brandKit = {
-          business_name: savedBrandKit.business_name || professional.company_name || '',
-          logo_url: savedBrandKit.logo_url || '',
-          logo_dark_url: savedBrandKit.logo_dark_url || '',
-          cover_url: savedBrandKit.cover_url || '',
-          profile_photo_url: savedBrandKit.profile_photo_url || '',
-          logo_size: Number(savedBrandKit.logo_size) || 40,
-          cover_position_x: Number(savedBrandKit.cover_position_x ?? 50),
-          cover_position_y: Number(savedBrandKit.cover_position_y ?? 50),
-          cover_zoom: Math.max(1, Number(savedBrandKit.cover_zoom ?? 1)),
-          profile_position_x: Number(savedBrandKit.profile_position_x ?? 50),
-          profile_position_y: Number(savedBrandKit.profile_position_y ?? 25),
-          profile_zoom: Number(savedBrandKit.profile_zoom ?? 1),
-          primary_color: savedBrandKit.primary_color || '#0f766e',
-          accent_color: savedBrandKit.accent_color || '#f59e0b',
-          page_background: savedBrandKit.page_background || '#ffffff',
-          font: savedBrandKit.font_family || savedBrandKit.font || 'Manrope',
-          button_shape: savedBrandKit.button_shape || 'rounded',
-          image_style: savedBrandKit.image_style || 'editorial',
-          show_chatbot: savedBrandKit.show_chatbot !== false,
-          essentials: savedBrandKit.essentials || {},
-        };
-      } else {
-        const materialized = materializeTemplate(templateKey, profileSeed, {
-          business_name: professional.company_name || '',
-        });
-        blocks = materialized?.blocks || normalizeBlocks(STOREFRONT_TEMPLATE_PRESETS[role] || []);
-        brandKit = {
-          business_name: professional.company_name || '',
-          logo_url: '',
-          logo_dark_url: '',
-          cover_url: '',
-          profile_photo_url: '',
-          logo_size: 40,
-          cover_position_x: 50,
-          cover_position_y: 50,
-          cover_zoom: 1,
-          profile_position_x: 50,
-          profile_position_y: 25,
-          profile_zoom: 1,
-          primary_color: '#0f766e',
-          accent_color: '#f59e0b',
-          page_background: '#ffffff',
-          font: 'Manrope',
-          button_shape: 'rounded',
-          image_style: 'editorial',
-          show_chatbot: true,
-          essentials: {},
-          ...(materialized?.brand_kit || {}),
-        };
-      }
-
-      setEditorData({
-        template_key: templateKey,
-        brand_kit: brandKit,
-        blocks,
+      const fallbackTemplateKey = `${role}-classic`;
+      const hydratedDrafts = savedDrafts.map((draft) => editorDataFromDraft(
+        draft,
+        profileSeed,
+        professional,
+        fallbackTemplateKey,
+      ));
+      hydratedDrafts.forEach((draft) => {
+        templateDraftsRef.current[draft.template_key] = cloneEditorData(draft);
       });
+      const activeTemplateKey = storefrontDraftData?.active_template_id
+        || legacyDraft?.template?.id
+        || hydratedDrafts[0]?.template_key
+        || fallbackTemplateKey;
+      const activeDraft = templateDraftsRef.current[activeTemplateKey]
+        || editorDataFromDraft(null, profileSeed, professional, activeTemplateKey);
+      templateDraftsRef.current[activeTemplateKey] = cloneEditorData(activeDraft);
+      setEditorData(activeDraft);
       setHasUnpublishedChanges(false);
       editorHydrated.current = true;
     } catch (error) {
@@ -158,9 +189,19 @@ export default function useStorefrontEditorState({
   }, [profileData, storefrontDraftData, storefrontDraftError]);
 
   useEffect(() => {
-    if (!editorData || !editorDirty || saveStorefrontMutation.isPending) return undefined;
+    if (!editorData?.template_key) return;
+    latestEditorDataRef.current = editorData;
+    templateDraftsRef.current[editorData.template_key] = cloneEditorData(editorData);
+  }, [editorData]);
+
+  useEffect(() => {
+    if (!editorData || !editorDirty) return undefined;
     const draft = buildStorefrontDraft(editorData);
     const signature = draftSignature(draft);
+    if (saveStorefrontMutation.isPending) {
+      queuedDraftRef.current = { draft, signature };
+      return undefined;
+    }
     if (signature === lastFailedDraftSignatureRef.current) return undefined;
     if (signature === lastSavedDraftSignatureRef.current) {
       setEditorDirty(false);
@@ -174,7 +215,10 @@ export default function useStorefrontEditorState({
           lastSavedDraftSignatureRef.current = signature;
           lastFailedDraftSignatureRef.current = '';
           window.localStorage.removeItem(backupKey);
-          setEditorDirty(false);
+          const latestSignature = latestEditorDataRef.current
+            ? draftSignature(buildStorefrontDraft(latestEditorDataRef.current))
+            : signature;
+          if (latestSignature === signature) setEditorDirty(false);
         },
         onError: () => {
           lastFailedDraftSignatureRef.current = signature;
@@ -183,6 +227,27 @@ export default function useStorefrontEditorState({
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [editorData, editorDirty, profileData, saveStorefrontMutation]);
+
+  useEffect(() => {
+    if (saveStorefrontMutation.isPending || !queuedDraftRef.current) return;
+    const queued = queuedDraftRef.current;
+    queuedDraftRef.current = null;
+    if (queued.signature === lastSavedDraftSignatureRef.current) return;
+    saveStorefrontMutation.mutate(queued.draft, {
+      onSuccess: () => {
+        lastSavedDraftSignatureRef.current = queued.signature;
+        lastFailedDraftSignatureRef.current = '';
+        const latestSignature = latestEditorDataRef.current
+          ? draftSignature(buildStorefrontDraft(latestEditorDataRef.current))
+          : queued.signature;
+        if (latestSignature === queued.signature) setEditorDirty(false);
+      },
+      onError: () => {
+        lastFailedDraftSignatureRef.current = queued.signature;
+        setEditorDirty(true);
+      },
+    });
+  }, [editorData, editorDirty, saveStorefrontMutation.isPending, saveStorefrontMutation]);
 
   const updateEditor = (updates) => {
     setEditorData((current) => ({ ...current, ...updates }));
@@ -194,6 +259,25 @@ export default function useStorefrontEditorState({
     if (editorData?.template_key === templateKey) return false;
     const template = getStorefrontTemplate(templateKey);
     if (!template) return false;
+
+    if (editorData?.template_key) {
+      templateDraftsRef.current[editorData.template_key] = cloneEditorData(editorData);
+      if (editorDirty) {
+        saveStorefrontMutation.mutate(buildStorefrontDraft(editorData), {
+          onSuccess: () => {
+            lastSavedDraftSignatureRef.current = draftSignature(buildStorefrontDraft(editorData));
+          },
+        });
+      }
+    }
+    const cachedTemplateDraft = templateDraftsRef.current[templateKey];
+    if (cachedTemplateDraft) {
+      setEditorData(cloneEditorData(cachedTemplateDraft));
+      setEditorDirty(true);
+      setHasUnpublishedChanges(true);
+      toast.success(`${template.label} restored`);
+      return true;
+    }
 
     const next = materializeTemplate(templateKey, profileSeedFromData(profileData), editorData.brand_kit);
     if (!next) return false;

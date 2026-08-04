@@ -121,9 +121,9 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
         borderColor: ruleColor,
       }}
     >
-      <div className={`relative w-full px-5 py-12 ${forceCompactPreview ? '' : 'sm:px-8 sm:py-16 lg:px-12 xl:px-16'}`}>
-        <div className="mb-8 sm:mb-9">
-          <div className="max-w-3xl">
+      <div className={`relative w-full px-5 py-8 ${forceCompactPreview ? '' : 'sm:px-8 sm:py-10 lg:px-12 xl:px-14'}`}>
+        <div className="mb-6 sm:mb-7">
+          <div className="max-w-5xl">
             <div
               data-storefront-field="content.eyebrow"
               data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
@@ -146,7 +146,7 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
               data-storefront-field="content.body"
               data-storefront-source={content.body ? 'persisted' : 'fallback'}
               data-storefront-label="Expertise description"
-              className={`mt-3 max-w-2xl text-sm leading-6 ${mutedClass}`}
+              className={`mt-3 max-w-none text-sm leading-6 lg:whitespace-nowrap ${mutedClass}`}
               style={hasCustomTextColor ? { opacity: 0.86 } : undefined}
             >
               {content.body || 'A quick view of what this professional handles, where they work, and the strengths clients can expect.'}
@@ -155,7 +155,7 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
         </div>
 
         <div
-          className={`grid gap-8 border-y py-8 ${forceMobilePreview ? 'grid-cols-1' : forceTabletPreview ? 'sm:grid-cols-2' : 'lg:grid-cols-3 lg:gap-0'}`}
+          className={`grid gap-6 border-y py-6 ${forceMobilePreview ? 'grid-cols-1' : forceTabletPreview ? 'sm:grid-cols-2' : 'lg:grid-cols-3 lg:gap-0'}`}
           style={{ borderColor: ruleColor }}
         >
           {columns.map(({ title, subtitle, Icon, items, collection }, index) => (

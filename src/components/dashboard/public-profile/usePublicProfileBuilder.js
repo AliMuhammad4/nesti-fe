@@ -83,13 +83,15 @@ export default function usePublicProfileBuilder() {
         ...(current || {}),
         success: true,
         draft: data?.draft || current?.draft || null,
+        drafts: data?.drafts || current?.drafts || [],
+        active_template_id: data?.active_template_id || current?.active_template_id || null,
       }));
     },
     onError: (error) => toast.error(error.message || 'Failed to save storefront draft'),
   });
 
   const publishStorefrontMutation = useMutation({
-    mutationFn: () => publishStorefront(token),
+    mutationFn: (draft) => publishStorefront(token, draft),
     onSuccess: () => queryClient.invalidateQueries(['own-storefront-draft']),
     onError: (error) => toast.error(error.message || 'Failed to publish storefront'),
   });
@@ -235,9 +237,10 @@ export default function usePublicProfileBuilder() {
         toast.success('Public page published');
       },
     });
-    const publish = () => publishStorefrontMutation.mutate(undefined, { onSuccess: enablePublicPage });
+    const currentDraft = editor.editorData ? buildStorefrontDraft(editor.editorData) : null;
+    const publish = () => publishStorefrontMutation.mutate(currentDraft, { onSuccess: enablePublicPage });
     if (editor.editorDirty && editor.editorData) {
-      const draft = buildStorefrontDraft(editor.editorData);
+      const draft = currentDraft;
       saveStorefrontMutation.mutate(draft, {
         onSuccess: () => {
           editor.markDraftSaved(draft);

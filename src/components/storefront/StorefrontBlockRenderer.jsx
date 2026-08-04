@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { resolveStorefrontBlocks, STOREFRONT_BLOCK_TYPES } from './storefrontPresets';
+import {
+  normalizeStorefrontRole,
+  resolveStorefrontBlocks,
+  STOREFRONT_BLOCK_TYPES,
+} from './storefrontPresets';
 import {
   experienceCanvasClass,
   resolveTemplateExperience,
@@ -13,6 +17,7 @@ import {
   storefrontBlockRegistry,
 } from './renderers/createStorefrontRendererRegistry';
 import { getStorefrontTemplate } from './templates';
+import { visualTreatmentForTemplate } from './templates/visualTreatments';
 import { normalizeBlock } from './builder/storefrontBuilderState';
 import { StorefrontTheme } from './storefrontTheme';
 import './storefrontAnimations.css';
@@ -305,7 +310,9 @@ export default function StorefrontBlockRenderer({
   if (!profile) return null;
   const templateRef = templateKey || profile.storefront_template_key || '';
   const experience = resolveTemplateExperience(templateRef);
-  const role = profile.professional_type || 'agent';
+  // Profiles can store aliases such as realtor/real_estate_agent; renderer
+  // overrides are registered under canonical storefront roles (agent, etc.).
+  const role = normalizeStorefrontRole(profile.professional_type) || 'agent';
   const blockRegistry = createStorefrontRendererRegistry({ role, experience });
   const expertiseBlock = resolvedBlocks.find(
     (block) => block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE,
@@ -587,9 +594,20 @@ export default function StorefrontBlockRenderer({
 
         const variant = bandLayout.variant || 'standard';
         const columns = String(bandLayout.columns || (isListing ? '4' : '3'));
+        const templateVisual = visualTreatmentForTemplate(templateRef, block.type, index);
+        const storedBackground = String(style.background || '').trim();
+        const templateBackground = String(templateVisual.bg || '').trim();
+        const isTemplateDefaultBackground = Boolean(
+          storedBackground
+          && templateBackground
+          && storedBackground.toLowerCase() === templateBackground.toLowerCase(),
+        );
+        const useTemplateBand = !storedBackground
+          || isTemplateDefaultBackground
+          || TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase());
         const sectionBackground = resolveSectionBandBackground({
           isHero,
-          styleBackground: style.background,
+          styleBackground: useTemplateBand ? '' : storedBackground,
           pageCanvas: resolvedTheme.canvas,
           blockType: block.type,
           index,
@@ -614,6 +632,9 @@ export default function StorefrontBlockRenderer({
           ? (intensity === 'strong' ? 0.9 : intensity === 'subtle' ? 0.98 : 0.95)
           : 1;
         const animationBlur = intensity === 'strong' ? 2 : intensity === 'subtle' ? 0 : 1;
+        const sectionTextOverrideClass = style.textColor && !isHero
+          ? '[&_h1]:!text-current [&_h2]:!text-current [&_h3]:!text-current [&_h4]:!text-current [&_p]:!text-current [&_.text-text-heading]:!text-current [&_.text-text-body]:!text-current [&_.text-text-muted]:!text-current'
+          : '';
 
         return (
           <section
@@ -653,6 +674,7 @@ export default function StorefrontBlockRenderer({
             }}
             className={[
               'storefront-public-band relative w-full max-w-none',
+              sectionTextOverrideClass,
               preview
                 ? `z-[1] cursor-pointer ${selectedBlockId === block.id ? 'outline outline-2 outline-primary outline-offset-[-2px]' : 'hover:outline hover:outline-1 hover:outline-primary/40 hover:outline-offset-[-1px]'}`
                 : '',

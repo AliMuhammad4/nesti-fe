@@ -47,6 +47,7 @@ function RatingStars({ value, size = 14 }) {
 }
 
 export default function IndustrialClientFeedbackSection({ profile, testimonials = [], copy = {} }) {
+  const content = profile?.storefront_section_content || {};
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const previewMode = profile?.storefront_preview_mode || 'desktop';
   const forceMobilePreview = isPreview && previewMode === 'mobile';
@@ -147,13 +148,13 @@ export default function IndustrialClientFeedbackSection({ profile, testimonials 
       <div className="w-full">
         <div className={`flex flex-col gap-5 ${forceMobilePreview ? '' : 'sm:flex-row sm:items-end sm:justify-between'}`}>
           <div className="max-w-2xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+            <p data-storefront-field="content.eyebrow" data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="Testimonials eyebrow" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
               {copy.eyebrow || 'Client feedback'}
             </p>
-            <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            <h2 data-storefront-field="content.heading" data-storefront-source={content.heading ? 'persisted' : 'fallback'} data-storefront-label="Testimonials heading" className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
               {copy.heading || 'Trusted by clients'}
             </h2>
-            <p className="mt-2 text-[13px] leading-5 text-slate-500">
+            <p data-storefront-field="content.body" data-storefront-source={content.body ? 'persisted' : 'fallback'} data-storefront-label="Testimonials description" className="mt-2 text-[13px] leading-5 text-slate-500">
               {copy.body || 'Real experiences from clients who received practical, responsive guidance.'}
             </p>
           </div>

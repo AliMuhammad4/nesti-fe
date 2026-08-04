@@ -1,8 +1,10 @@
 import Image from 'next/image';
 import {
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   ChevronRight,
+  MapPin,
   ShieldCheck,
 } from 'lucide-react';
 import PublicHero from '@/components/public-profile/PublicHero';
@@ -28,6 +30,19 @@ export function LuxuryHeroSection({ profile, actions, block }) {
       onDirectLeadClick={actions.onDirectLeadClick}
       onAppointmentClick={actions.onAppointmentClick}
       block={withForcedHeroVariant(block, 'premium')}
+      flushTop
+    />
+  );
+}
+
+export function ClassicHeroSection({ profile, actions, block }) {
+  return (
+    <PublicHero
+      profile={profile}
+      onCTAClick={actions.onCtaClick}
+      onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
+      block={withForcedHeroVariant(block, 'standard')}
       flushTop
     />
   );
@@ -72,6 +87,19 @@ export function FunnelHeroSection({ profile, actions, block }) {
   );
 }
 
+export function NeighborhoodHeroSection({ profile, actions, block }) {
+  return (
+    <PublicHero
+      profile={profile}
+      onCTAClick={actions.onCtaClick}
+      onDirectLeadClick={actions.onDirectLeadClick}
+      onAppointmentClick={actions.onAppointmentClick}
+      block={withForcedHeroVariant(block, 'editorial')}
+      flushTop
+    />
+  );
+}
+
 function aboutParagraphs(body) {
   return String(body || '')
     .split('\n')
@@ -111,6 +139,94 @@ export function LuxuryAboutSection({ profile }) {
         <p className={`mt-1 text-sm font-medium ${hasCustomTextColor ? 'text-current' : 'text-text-muted'}`} style={hasCustomTextColor ? { opacity: 0.82 } : undefined}>{roleHeadline(profile)}</p>
         <div className="mt-5 space-y-4">
           {paragraphs.map((paragraph, index) => <p key={index} className={`text-[15px] leading-8 ${hasCustomTextColor ? 'text-current' : 'text-text-body'}`} style={hasCustomTextColor ? { opacity: 0.92 } : undefined}>{paragraph}</p>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ClassicAboutSection({ profile }) {
+  const sectionStyle = profile?.storefront_section_style || {};
+  const content = profile?.storefront_section_content || {};
+  const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const paragraphs = aboutParagraphs(content.body ?? profile?.about);
+  const copy = identityCopy(profile, {
+    eyebrow: 'Trusted local guidance',
+    heading: `Meet ${profile?.professional_name || 'Your advisor'}`,
+  });
+  const practiceBadge = content.about_badge || 'A relationship-first real estate practice';
+  const name = profile?.professional_name || 'Your advisor';
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+  const profilePosition = profile?.storefront_profile_position || {};
+  const profileX = Math.min(100, Math.max(0, Number(profilePosition.x ?? 50)));
+  const profileY = Math.min(100, Math.max(0, Number(profilePosition.y ?? 25)));
+  const profileZoom = Math.min(3, Math.max(1, Number(profile?.storefront_profile_zoom ?? 1)));
+  const radiusByStyle = {
+    none: '0px',
+    default: '16px',
+    large: '32px',
+  }[sectionStyle.radius || 'large'];
+  const shadowByStyle = {
+    none: 'none',
+    small: '0 12px 34px rgba(15,23,42,0.08)',
+    medium: '0 22px 60px rgba(15,23,42,0.12)',
+    large: '0 30px 80px rgba(15,23,42,0.16)',
+  }[sectionStyle.shadow || 'medium'];
+  if (!paragraphs.length) return null;
+  return (
+    <section id="about" className="px-4 py-8 sm:px-8 sm:py-10">
+      <div
+        className="mx-auto max-w-7xl overflow-hidden border border-primary/15 bg-white/90"
+        style={{
+          backgroundColor: sectionStyle.background || undefined,
+          color: sectionStyle.textColor || undefined,
+          borderRadius: radiusByStyle,
+          boxShadow: shadowByStyle,
+        }}
+      >
+        <div className="grid sm:grid-cols-[0.9fr_1.1fr]">
+          <div className="relative min-h-[16rem] overflow-hidden bg-slate-100 sm:min-h-full">
+            {profile?.profile_photo_url ? (
+              <Image
+                src={profile.profile_photo_url}
+                alt={name}
+                fill
+                sizes="(min-width: 1024px) 42vw, 100vw"
+                className="object-cover"
+                style={{
+                  objectPosition: `${profileX}% ${profileY}%`,
+                  transform: `scale(${profileZoom})`,
+                  transformOrigin: `${profileX}% ${profileY}%`,
+                }}
+              />
+            ) : (
+              <div className="grid h-full min-h-[22rem] place-items-center bg-primary/10 text-5xl font-bold text-primary">
+                {initials}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" />
+          </div>
+          <div className="p-6 sm:p-7 lg:p-8">
+            <p data-storefront-field="content.eyebrow" data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="About eyebrow" className={`text-[10px] font-bold uppercase tracking-[0.24em] ${hasCustomTextColor ? 'text-current' : 'text-primary'}`} style={hasCustomTextColor ? { opacity: 0.78 } : undefined}>{copy.eyebrow}</p>
+            <h2 data-storefront-field="content.heading" data-storefront-source={content.heading ? 'persisted' : 'fallback'} data-storefront-label="About heading" className={`mt-3 text-3xl font-bold tracking-tight sm:text-4xl ${hasCustomTextColor ? 'text-current' : 'text-text-heading'}`}>{copy.heading}</h2>
+            <p data-storefront-field="content.about_badge" data-storefront-source={content.about_badge ? 'persisted' : 'fallback'} data-storefront-label="About practice badge" className={`mt-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-semibold ${hasCustomTextColor ? 'text-current' : 'text-text-muted'}`} style={hasCustomTextColor ? { opacity: 0.84 } : undefined}>
+              <BookOpen size={14} className={hasCustomTextColor ? 'text-current' : 'text-primary'} />
+              {practiceBadge}
+            </p>
+            <div className="mt-5 space-y-3.5">
+            {paragraphs.map((paragraph, index) => (
+              <p key={index} data-storefront-field="content.body" data-storefront-source={content.body ? 'persisted' : 'fallback'} data-storefront-label="About description" className={`${index === 0 ? 'text-lg leading-8' : 'text-[15px] leading-7'} ${hasCustomTextColor ? 'text-current' : (index === 0 ? 'text-text-heading' : 'text-text-body')}`} style={hasCustomTextColor ? { opacity: index === 0 ? 0.95 : 0.88 } : undefined}>
+                {paragraph}
+              </p>
+            ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -317,6 +433,36 @@ export function FunnelAboutSection({ profile }) {
   );
 }
 
+export function NeighborhoodAboutSection({ profile }) {
+  const paragraphs = aboutParagraphs(profile?.storefront_section_content?.body ?? profile?.about);
+  const copy = identityCopy(profile, {
+    eyebrow: 'The local perspective',
+    heading: `A guide to ${profile?.service_area || 'your next neighborhood'}`,
+  });
+  if (!paragraphs.length) return null;
+  return (
+    <section id="about" className="px-4 py-12 sm:px-8 sm:py-16">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-emerald-100 bg-white shadow-[0_20px_55px_rgba(22,101,52,0.08)]">
+        <div className="grid md:grid-cols-[0.8fr_1.2fr]">
+          <div className="bg-emerald-950 p-7 text-white sm:p-9">
+            <MapPin size={22} className="text-emerald-300" />
+            <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">{copy.heading}</h2>
+            <p className="mt-5 text-sm leading-6 text-emerald-50/80">Local knowledge is more than a map. It is the context behind a confident move.</p>
+          </div>
+          <div className="space-y-4 p-7 sm:p-9">
+            {paragraphs.map((paragraph, index) => (
+              <p key={index} className={`${index === 0 ? 'text-lg leading-8 text-text-heading' : 'text-[15px] leading-7 text-text-body'}`}>
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const CTA_COPY = {
   agent: 'Share your target area and timeline. We will map your next three steps.',
   mortgage_broker: 'Share your income range and goals. We will return with a financing path.',
@@ -340,6 +486,31 @@ export function LuxuryCtaSection({ profile, actions }) {
         <button type="button" onClick={actions.onDirectLeadClick} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">
           {copy.ctaLabel}
           <ArrowRight size={14} />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function ClassicCtaSection({ profile, actions }) {
+  const content = profile?.storefront_section_content || {};
+  const copy = identityCopy(profile, {
+    eyebrow: 'A clear next step',
+    heading: 'Start with a conversation',
+    body: ctaDescription(profile),
+    ctaLabel: 'Plan my next move',
+  });
+  return (
+    <section id="contact" className="px-4 py-8 sm:px-8 sm:py-10">
+      <div className="mx-auto grid max-w-7xl gap-6 overflow-hidden rounded-[2rem] border border-primary/15 bg-white/95 p-7 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-9 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="max-w-3xl">
+          <p data-storefront-field="content.eyebrow" data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="CTA eyebrow" className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">{copy.eyebrow}</p>
+          <h3 data-storefront-field="content.heading" data-storefront-source={content.heading ? 'persisted' : 'fallback'} data-storefront-label="CTA heading" className="mt-3 text-3xl font-bold tracking-tight text-text-heading">{copy.heading}</h3>
+          <p data-storefront-field="content.body" data-storefront-source={content.body ? 'persisted' : 'fallback'} data-storefront-label="CTA description" className="mt-3 max-w-2xl text-sm leading-6 text-text-muted">{copy.body}</p>
+        </div>
+        <button type="button" onClick={actions.onDirectLeadClick} data-storefront-field="content.cta_label" data-storefront-source={content.cta_label ? 'persisted' : 'fallback'} data-storefront-label="CTA button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold shadow-lg shadow-primary/10" style={{ color: 'var(--storefront-primary-contrast)' }}>
+          {copy.ctaLabel}
+          <ArrowRight size={15} />
         </button>
       </div>
     </section>
@@ -410,6 +581,29 @@ export function FunnelCtaSection({ profile, actions }) {
           <ShieldCheck size={12} className="text-primary" />
           Secure inquiry flow
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function NeighborhoodCtaSection({ profile, actions }) {
+  const copy = identityCopy(profile, {
+    eyebrow: 'Ask a local',
+    heading: 'Find the place that fits',
+    body: ctaDescription(profile),
+    ctaLabel: 'Start my neighborhood search',
+  });
+  return (
+    <section id="contact" className="px-4 py-12 sm:px-8 sm:py-16">
+      <div className="mx-auto max-w-7xl rounded-[2rem] bg-emerald-950 px-7 py-9 text-center text-white sm:px-10 sm:py-12">
+        <MapPin size={21} className="mx-auto text-emerald-300" />
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">{copy.eyebrow}</p>
+        <h3 className="mt-3 text-3xl font-bold tracking-tight">{copy.heading}</h3>
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-emerald-50/80">{copy.body}</p>
+        <button type="button" onClick={actions.onDirectLeadClick} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-bold text-emerald-950">
+          {copy.ctaLabel}
+          <ArrowRight size={15} />
+        </button>
       </div>
     </section>
   );

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getPublicProfile, getPublishedStorefront } from '@/lib/publicProfileClient';
 import PublicProfileLayout from '@/components/public-profile/PublicProfileLayout';
 import PublicStorefrontPage from '@/components/storefront/PublicStorefrontPage';
+import { seedBlockContentFromProfile } from '@/components/storefront/templates';
 
 export async function generateMetadata({ params }) {
   try {
@@ -53,7 +54,11 @@ export default async function PublicProfilePage({ params }) {
   const storefrontProfile = published
     ? {
         ...profile,
-        storefront_blocks: (published.blocks || []).map((block) => ({
+        storefront_blocks: seedBlockContentFromProfile(
+          published.blocks || [],
+          profile,
+          published.template?.id || profile.storefront_template_key || '',
+        ).map((block) => ({
           ...block,
           enabled: block.data?.enabled ?? true,
           content: block.data?.content || {},
@@ -72,7 +77,10 @@ export default async function PublicProfilePage({ params }) {
               : '0.75rem',
         },
         storefront_logo_url: published.brandKit?.logo_url || '',
+        storefront_logo_dark_url: published.brandKit?.logo_dark_url || '',
         storefront_logo_size: published.brandKit?.logo_size || 40,
+        storefront_image_style: published.brandKit?.image_style || '',
+        storefront_essentials: published.brandKit?.essentials || {},
         storefront_template_key: published.template?.id || '',
         cover_photo_url: published.brandKit?.cover_url || profile.cover_photo_url,
         profile_photo_url: published.brandKit?.profile_photo_url || profile.profile_photo_url,

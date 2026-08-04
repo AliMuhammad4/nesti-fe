@@ -241,10 +241,11 @@ export async function saveStorefrontDraft(token, draft) {
   return res.json();
 }
 
-export async function publishStorefront(token) {
+export async function publishStorefront(token, draft = null) {
   const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/publish`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: draft ? JSON.stringify({ draft }) : undefined,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to publish storefront' }));

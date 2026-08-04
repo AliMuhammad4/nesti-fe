@@ -48,9 +48,14 @@ export default function Inspector({
   const isItemSelection = selection?.kind === 'item';
   const isProfileSelection = selectedSource === 'profile' && !isItemSelection;
   const isHero = block?.type === STOREFRONT_BLOCK_TYPES.HERO;
+  const isThemeDrivenAgentHero = isHero
+    && String(templateKey || '').startsWith('agent-')
+    && templateKey !== 'agent-investor';
+  // Realtor Classic uses only the cover image in its Hero.
+  const heroUsesProfilePhoto = templateKey !== 'agent-classic';
   const allowHeroContentTabForSelection = isHero
     && isProfileSelection
-    && ['brandKit.cover_url', 'brandKit.profile_photo_url', 'brandKit.logo_url'].includes(selectedField);
+    && ['brandKit.cover_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
   useEffect(() => {
     setCollectionDraft('');
   }, [block?.id]);
@@ -841,20 +846,24 @@ export default function Inspector({
                     onChange={onBrandKitChange}
                   />
                 ) : null}
-                <MediaPicker
-                  label="Page profile"
-                  hint="Displayed inside the hero card"
-                  image={media?.profile || brandKit?.profile_photo_url}
-                  onUpload={(file) => onMediaUpload?.('profile', file)}
-                  circle
-                />
-                {(media?.profile || brandKit?.profile_photo_url) ? (
-                  <ImageAdjustmentControls
-                    image={media?.profile || brandKit?.profile_photo_url}
-                    kind="profile"
-                    values={brandKit}
-                    onChange={onBrandKitChange}
-                  />
+                {heroUsesProfilePhoto ? (
+                  <>
+                    <MediaPicker
+                      label="Page profile"
+                      hint="Displayed inside the hero card"
+                      image={media?.profile || brandKit?.profile_photo_url}
+                      onUpload={(file) => onMediaUpload?.('profile', file)}
+                      circle
+                    />
+                    {(media?.profile || brandKit?.profile_photo_url) ? (
+                      <ImageAdjustmentControls
+                        image={media?.profile || brandKit?.profile_photo_url}
+                        kind="profile"
+                        values={brandKit}
+                        onChange={onBrandKitChange}
+                      />
+                    ) : null}
+                  </>
                 ) : null}
                 <MediaPicker
                   label="Navbar logo"
@@ -884,7 +893,7 @@ export default function Inspector({
                 />
               </Field>
             ) : null}
-            {(block.type === STOREFRONT_BLOCK_TYPES.ABOUT || isListings || isServices || isRoleDetails || block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE) && !isElementSelection ? (
+            {(block.type === STOREFRONT_BLOCK_TYPES.ABOUT || block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS || isListings || isServices || isRoleDetails || block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE) && !isElementSelection ? (
               <Field label="Eyebrow">
                 <input
                   value={contentValue('eyebrow')}
@@ -911,6 +920,16 @@ export default function Inspector({
                   onChange={(event) => onChange(block.id, { content: { body: event.target.value } })}
                   className={`${inputClass} min-h-28 resize-y`}
                   placeholder={placeholders.body || 'Add supporting copy…'}
+                />
+              </Field>
+            ) : null}
+            {block.type === STOREFRONT_BLOCK_TYPES.ABOUT && !isElementSelection ? (
+              <Field label="Practice badge">
+                <input
+                  value={contentValue('about_badge')}
+                  onChange={(event) => onChange(block.id, { content: { about_badge: event.target.value } })}
+                  className={inputClass}
+                  placeholder="A relationship-first real estate practice"
                 />
               </Field>
             ) : null}
@@ -944,22 +963,34 @@ export default function Inspector({
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.HERO && !isElementSelection ? (
               <>
-                <Field label="Hero card name">
+                <Field label="Hero eyebrow">
                   <input
-                    value={contentValue('hero_name')}
-                    onChange={(event) => onChange(block.id, { content: { hero_name: event.target.value } })}
+                    value={contentValue('eyebrow')}
+                    onChange={(event) => onChange(block.id, { content: { eyebrow: event.target.value } })}
                     className={inputClass}
-                    placeholder={profile?.professional_name || 'Professional'}
+                    placeholder="Full-service real estate"
                   />
                 </Field>
-                <Field label="Hero card subtitle">
-                  <input
-                    value={contentValue('hero_subtitle')}
-                    onChange={(event) => onChange(block.id, { content: { hero_subtitle: event.target.value } })}
-                    className={inputClass}
-                    placeholder={profile?.headline || 'Your trusted real estate partner'}
-                  />
-                </Field>
+                {!isThemeDrivenAgentHero ? (
+                  <>
+                    <Field label="Hero card name">
+                      <input
+                        value={contentValue('hero_name')}
+                        onChange={(event) => onChange(block.id, { content: { hero_name: event.target.value } })}
+                        className={inputClass}
+                        placeholder={profile?.professional_name || 'Professional'}
+                      />
+                    </Field>
+                    <Field label="Hero card subtitle">
+                      <input
+                        value={contentValue('hero_subtitle')}
+                        onChange={(event) => onChange(block.id, { content: { hero_subtitle: event.target.value } })}
+                        className={inputClass}
+                        placeholder={profile?.headline || 'Your trusted real estate partner'}
+                      />
+                    </Field>
+                  </>
+                ) : null}
                 <Field label="Company badge text">
                   <input
                     value={contentValue('hero_company_badge')}
@@ -1490,11 +1521,10 @@ export default function Inspector({
             {isHero ? (
               <>
                 <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
-                  Behind the profile card uses <span className="font-semibold text-slate-700">Design → Page background</span>.
-                  Set a color here only to override that for the hero.
+                  Design colors are used by default. Set colors here only when this Hero needs its own background, text, or button overrides.
                 </p>
                 <ColorField
-                  label="Hero band override"
+                  label="Hero background"
                   value={style.background || ''}
                   onChange={(background) => onChange(block.id, { style: { background } })}
                 />
@@ -1504,42 +1534,46 @@ export default function Inspector({
                     onClick={() => onChange(block.id, { style: { background: '' } })}
                     className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
                   >
-                    Use page background
+                    Reset hero background
                   </button>
                 ) : (
                   <p className="text-[10px] leading-4 text-slate-400">
-                    Currently using page background{brandKit?.page_background ? ` (${brandKit.page_background})` : ''}.
+                    Currently using the template hero background.
                   </p>
                 )}
+                {!isThemeDrivenAgentHero ? (
+                  <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Legacy strip</p>
+                    <p className="text-[10px] leading-4 text-slate-500">
+                      Used by older hero layouts.
+                    </p>
+                    <ColorField
+                      label="Strip background"
+                      value={content.hero_strip_background || ''}
+                      onChange={(hero_strip_background) => onChange(block.id, { content: { hero_strip_background } })}
+                    />
+                    {content.hero_strip_background ? (
+                      <button
+                        type="button"
+                        onClick={() => onChange(block.id, { content: { hero_strip_background: '' } })}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
+                      >
+                        Reset strip color
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Under layer strip</p>
-                  <p className="text-[10px] leading-4 text-slate-500">
-                    Controls the lower strip behind profile photo + hero card.
-                  </p>
-                  <ColorField
-                    label="Strip background"
-                    value={content.hero_strip_background || ''}
-                    onChange={(hero_strip_background) => onChange(block.id, { content: { hero_strip_background } })}
-                  />
-                  {content.hero_strip_background ? (
-                    <button
-                      type="button"
-                      onClick={() => onChange(block.id, { content: { hero_strip_background: '' } })}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
-                    >
-                      Reset strip color
-                    </button>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Hero text + buttons</p>
+                  {!isThemeDrivenAgentHero ? (
+                    <ColorField
+                      label="Hero surface"
+                      value={content.hero_card_background || ''}
+                      onChange={(hero_card_background) => onChange(block.id, { content: { hero_card_background } })}
+                    />
                   ) : null}
-                </div>
-                <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Hero card + buttons</p>
                   <ColorField
-                    label="Card background"
-                    value={content.hero_card_background || ''}
-                    onChange={(hero_card_background) => onChange(block.id, { content: { hero_card_background } })}
-                  />
-                  <ColorField
-                    label="Card text color"
+                    label="Hero text color"
                     value={content.hero_card_text_color || ''}
                     onChange={(hero_card_text_color) => onChange(block.id, { content: { hero_card_text_color } })}
                   />
@@ -1563,7 +1597,7 @@ export default function Inspector({
                     value={content.secondary_button_text_color || ''}
                     onChange={(secondary_button_text_color) => onChange(block.id, { content: { secondary_button_text_color } })}
                   />
-                  {(content.hero_card_background
+                  {((!isThemeDrivenAgentHero && content.hero_card_background)
                     || content.hero_card_text_color
                     || content.primary_button_background
                     || content.primary_button_text_color
@@ -1583,7 +1617,7 @@ export default function Inspector({
                         })}
                         className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
                       >
-                        Reset card/button colors
+                        Reset text/button colors
                       </button>
                     ) : null}
                 </div>

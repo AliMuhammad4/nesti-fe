@@ -35,6 +35,7 @@ export function buildStorefrontDraft(editorData) {
     },
     brandKit: {
       logo_url: editorData.brand_kit.logo_url || null,
+      logo_dark_url: editorData.brand_kit.logo_dark_url || null,
       cover_url: editorData.brand_kit.cover_url || null,
       profile_photo_url: editorData.brand_kit.profile_photo_url || null,
       logo_size: Number(editorData.brand_kit.logo_size) || 40,
@@ -51,6 +52,8 @@ export function buildStorefrontDraft(editorData) {
       font_family: editorData.brand_kit.font || null,
       button_shape: editorData.brand_kit.button_shape || null,
       business_name: editorData.brand_kit.business_name || null,
+      image_style: editorData.brand_kit.image_style || null,
+      essentials: editorData.brand_kit.essentials || {},
       show_chatbot: editorData.brand_kit.show_chatbot !== false,
     },
     blocks: normalizeBlocks(editorData.blocks).map((block) => ({

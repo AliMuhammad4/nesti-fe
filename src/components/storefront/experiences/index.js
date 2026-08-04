@@ -2,6 +2,7 @@ import { classicBalancedExperience } from './classicBalanced';
 import { conversionFunnelExperience } from './conversionFunnel';
 import { industrialMinimalExperience } from './industrialMinimal';
 import { luxuryEditorialExperience } from './luxuryEditorial';
+import { neighborhoodLocalExperience } from './neighborhoodLocal';
 import { storyWarmExperience } from './storyWarm';
 import { getTemplateExperienceId } from '../templates/registry';
 
@@ -11,6 +12,7 @@ const EXPERIENCES = {
   'story-warm': storyWarmExperience,
   'conversion-funnel': conversionFunnelExperience,
   'classic-balanced': classicBalancedExperience,
+  'neighborhood-local': neighborhoodLocalExperience,
 };
 
 export function experienceIdFromTemplateKey(templateKey = '') {
@@ -21,7 +23,8 @@ export function experienceIdFromTemplateKey(templateKey = '') {
   const key = String(templateKey || '').toLowerCase();
   if (key.includes('luxury') || key.includes('wealth')) return 'luxury-editorial';
   if (key.includes('commercial') || key.includes('investor')) return 'industrial-minimal';
-  if (key.includes('first-home') || key.includes('newcomer') || key.includes('community')) return 'story-warm';
+  if (key.includes('community')) return 'neighborhood-local';
+  if (key.includes('first-home') || key.includes('newcomer')) return 'story-warm';
   if (key.includes('seller') || key.includes('renewal')) return 'conversion-funnel';
   return 'classic-balanced';
 }

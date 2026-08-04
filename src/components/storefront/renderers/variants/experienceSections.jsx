@@ -1,4 +1,4 @@
-import { Building2, CheckCircle2, ChevronRight, Handshake, Home, Percent, Quote, ShieldCheck, Star, Target } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronRight, Handshake, Home, MapPin, Percent, Quote, ShieldCheck, Star, Target } from 'lucide-react';
 import IndustrialClientFeedbackSection from './IndustrialClientFeedbackSection';
 import IndustrialServiceCard from './IndustrialServiceCard';
 import { getServiceIconComponent, resolveServiceIconKey } from '@/components/storefront/builder/storefrontServiceIcons';
@@ -72,14 +72,21 @@ function sectionCopy(profile, defaults = {}) {
   };
 }
 
-function SectionHeader({ eyebrow, heading, body, tone = 'primary', align = 'center' }) {
+function SectionHeader({ eyebrow, heading, body, tone = 'primary', align = 'center', editable = false, content = {} }) {
   const eyebrowClass = tone === 'gold' ? 'text-amber-600' : tone === 'dark' ? 'text-slate-500' : 'text-primary';
   const alignment = align === 'left' ? 'text-left' : 'text-center';
+  const fieldProps = (field, label) => editable
+    ? {
+        'data-storefront-field': `content.${field}`,
+        'data-storefront-source': content[field] ? 'persisted' : 'fallback',
+        'data-storefront-label': label,
+      }
+    : {};
   return (
     <div className={`${alignment} ${align === 'left' ? '' : 'mx-auto max-w-3xl'}`}>
-      {eyebrow ? <p className={`text-[10px] font-bold uppercase tracking-[0.24em] ${eyebrowClass}`}>{eyebrow}</p> : null}
-      {heading ? <h2 className="mt-2 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">{heading}</h2> : null}
-      {body ? <p className="mt-2 text-sm leading-6 text-text-muted">{body}</p> : null}
+      {eyebrow ? <p {...fieldProps('eyebrow', 'Section eyebrow')} className={`text-[10px] font-bold uppercase tracking-[0.24em] ${eyebrowClass}`}>{eyebrow}</p> : null}
+      {heading ? <h2 {...fieldProps('heading', 'Section heading')} className="mt-2 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">{heading}</h2> : null}
+      {body ? <p {...fieldProps('body', 'Section description')} className="mt-2 text-sm leading-6 text-text-muted">{body}</p> : null}
     </div>
   );
 }
@@ -97,7 +104,7 @@ export function LuxuryServicesSection({ profile }) {
     <section id="services" className="px-4 py-10 sm:px-8 sm:py-14">
       <div className="mx-auto max-w-7xl">
         <SectionHeader {...copy} tone="gold" />
-        <div className="mt-8 grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 divide-y divide-amber-200/70 border-y border-amber-200/70">
           {items.map((service, index) => {
             const itemId = service.id || `fallback-service-${index}`;
             return (
@@ -111,14 +118,55 @@ export function LuxuryServicesSection({ profile }) {
                 data-storefront-item-index={index}
                 data-storefront-item-field="title"
                 data-storefront-label={`Service ${index + 1}`}
-                className="h-full rounded-2xl border border-amber-200/60 bg-white/95 p-5 text-left shadow-[0_14px_36px_rgba(60,45,10,0.07)] transition duration-300 hover:-translate-y-1 hover:border-amber-300 hover:shadow-[0_20px_45px_rgba(60,45,10,0.12)]"
+                className="group grid gap-4 bg-white/70 px-2 py-5 text-left transition sm:grid-cols-[4rem_minmax(0,1fr)] sm:px-5"
               >
-                <div className="mb-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700">Private Advisory</div>
-                <h3 className="text-base font-semibold text-text-heading">{service.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-text-muted">{service.description}</p>
+                <p className="font-serif text-3xl text-amber-600/80">0{index + 1}</p>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">Private advisory</p>
+                  <h3 className="mt-1 text-xl font-semibold text-text-heading">{service.title}</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">{service.description}</p>
+                </div>
               </div>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ClassicServicesSection({ profile }) {
+  const content = profile.storefront_section_content || {};
+  const customItems = content.items;
+  const resolvedItems = serviceItems(profile.services, profile.professional_type, customItems);
+  const items = resolvedItems.length === 5
+    ? [
+        ...resolvedItems,
+        {
+          id: 'classic-service-6',
+          title: 'Portfolio Growth Strategy',
+          description: 'Build a practical plan around long-term property goals, timing, and next-step opportunities.',
+        },
+      ]
+    : resolvedItems;
+  const copy = sectionCopy(profile, { eyebrow: 'Full-service representation', heading: 'The pillars of your move' });
+  return (
+    <section id="services" className="px-4 py-8 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-7xl">
+        <SectionHeader {...copy} tone="dark" align="left" editable content={content} />
+        <div className="mt-6 grid overflow-hidden border border-slate-200 md:grid-cols-3">
+          {items.map((service, index) => (
+            <article
+              key={service.id || index}
+              data-storefront-anim-item="true"
+              className={`border-b border-slate-200 p-6 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0 ${service.text_color ? '[&_h3]:!text-current [&_p]:!text-current' : ''}`}
+              style={{ background: service.background || undefined, color: service.text_color || undefined }}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">0{index + 1}</p>
+              <h3 data-storefront-field="content.items" data-storefront-source={Array.isArray(customItems) ? 'persisted' : 'fallback'} data-storefront-collection="items" data-storefront-item-id={service.id || `fallback-service-${index}`} data-storefront-item-index={index} data-storefront-item-field="title" data-storefront-label={`Service ${index + 1}`} className="mt-6 text-lg font-bold text-text-heading">{service.title}</h3>
+              <p data-storefront-field="content.items" data-storefront-source={Array.isArray(customItems) ? 'persisted' : 'fallback'} data-storefront-collection="items" data-storefront-item-id={service.id || `fallback-service-${index}`} data-storefront-item-index={index} data-storefront-item-field="description" data-storefront-label={`Service ${index + 1} description`} className="mt-3 text-sm leading-6 text-text-muted">{service.description}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -360,12 +408,36 @@ export function FunnelServicesSection({ profile }) {
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-text-heading">{service.title}</p>
-                  <ChevronRight size={15} className="text-primary transition group-hover:translate-x-0.5" />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
                 </div>
                 <p className="mt-1.5 text-sm text-text-muted">{service.description}</p>
+                <p className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">Advance this step <ChevronRight size={13} className="transition group-hover:translate-x-0.5" /></p>
               </div>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function NeighborhoodServicesSection({ profile }) {
+  const customItems = profile.storefront_section_content?.items;
+  const items = serviceItems(profile.services, profile.professional_type, customItems);
+  const copy = sectionCopy(profile, { eyebrow: 'Local atlas', heading: 'Context that makes an area feel like home' });
+  return (
+    <section id="services" className="px-4 py-12 sm:px-8 sm:py-16">
+      <div className="mx-auto max-w-7xl">
+        <SectionHeader {...copy} tone="dark" align="left" />
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {items.map((service, index) => (
+            <article key={service.id || index} data-storefront-anim-item="true" className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-white p-6 shadow-[0_14px_36px_rgba(22,101,52,0.07)]">
+              <span className="absolute right-5 top-5 grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-700"><MapPin size={17} /></span>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Local note {index + 1}</p>
+              <h3 className="mt-7 text-lg font-bold text-text-heading">{service.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-text-muted">{service.description}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -379,18 +451,23 @@ export function LuxuryTestimonialsSection({ profile, testimonials }) {
     <section id="reviews" className="px-4 py-10 sm:px-8 sm:py-14">
       <div className="mx-auto max-w-7xl">
         <SectionHeader {...copy} tone="gold" />
-        <div className="mt-8 grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto mt-8 max-w-4xl space-y-4">
           {items.map((item, index) => (
-            <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="rounded-2xl border border-amber-200/70 bg-white/95 p-5 shadow-sm">
-              <Quote size={16} className="text-amber-600" />
-              <p className="mt-3 text-sm leading-6 text-text-body">&ldquo;{item.text}&rdquo;</p>
-              <p className="mt-4 text-sm font-semibold text-text-heading">{item.name}</p>
+            <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="grid gap-4 border-l-2 border-amber-400 bg-white/80 px-6 py-5 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-end">
+              <Quote size={17} className="text-amber-600" />
+              <p className="font-serif text-lg leading-8 text-text-heading">&ldquo;{item.text}&rdquo;</p>
+              <p className="text-sm font-semibold text-amber-800">{item.name}</p>
             </article>
           ))}
         </div>
       </div>
     </section>
   );
+}
+
+export function ClassicTestimonialsSection({ profile, testimonials }) {
+  const copy = sectionCopy(profile, { eyebrow: 'Client outcomes', heading: 'Relationships built around results' });
+  return <IndustrialClientFeedbackSection profile={profile} testimonials={testimonials} copy={copy} />;
 }
 
 export function IndustrialTestimonialsSection({ profile }) {
@@ -407,7 +484,7 @@ export function WarmTestimonialsSection({ profile, testimonials }) {
         <SectionHeader {...copy} />
         <div className="mt-7 grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (
-            <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="rounded-2xl bg-slate-50 p-4">
+            <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="relative rounded-[1.5rem] bg-sky-50 p-5 before:absolute before:-bottom-2 before:left-8 before:h-4 before:w-4 before:rotate-45 before:bg-sky-50">
               <div className="mb-2 flex items-center gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} size={11} className={i < item.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'} />
@@ -433,10 +510,32 @@ export function FunnelTestimonialsSection({ profile, testimonials }) {
         <div className="mt-7 grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (
           <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Verified seller result</p>
             <p className="text-sm leading-6 text-text-body">&ldquo;{item.text}&rdquo;</p>
             <p className="mt-2 text-sm font-semibold text-text-heading">{item.name}</p>
           </article>
         ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function NeighborhoodTestimonialsSection({ profile, testimonials }) {
+  const items = testimonialItems(testimonials, profile);
+  const copy = sectionCopy(profile, { eyebrow: 'Neighbor stories', heading: 'Moves made with local confidence' });
+  return (
+    <section id="reviews" className="px-4 py-12 sm:px-8 sm:py-16">
+      <div className="mx-auto max-w-7xl rounded-[2rem] bg-emerald-50 p-6 sm:p-9">
+        <SectionHeader {...copy} tone="dark" align="left" />
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {items.map((item, index) => (
+            <article key={`${item.name}-${index}`} data-storefront-anim-item="true" className="rounded-2xl bg-white p-5 shadow-[0_12px_28px_rgba(22,101,52,0.08)]">
+              <div className="flex items-center gap-2 text-emerald-700"><MapPin size={15} /><span className="text-[10px] font-bold uppercase tracking-[0.18em]">Local move</span></div>
+              <p className="mt-4 text-sm leading-6 text-text-body">&ldquo;{item.text}&rdquo;</p>
+              <p className="mt-4 text-sm font-bold text-text-heading">{item.name}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
