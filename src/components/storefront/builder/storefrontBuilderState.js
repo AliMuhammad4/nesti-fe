@@ -14,6 +14,30 @@ export const BLOCK_LIBRARY = {
   agent: [
     STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
   ],
+  'agent-seller-expert': [
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+  ],
+  'agent-luxury-advisor': [
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+  ],
+  'agent-first-home': [
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+  ],
+  'agent-community-expert': [
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+  ],
   mortgage_broker: [
     STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR,
     STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS,
@@ -29,6 +53,11 @@ export function labelForBlock(type) {
   const overrides = {
     cta: 'CTA',
     faq: 'FAQ',
+    'seller-performance': 'Performance',
+    'seller-sold-results': 'Sold homes',
+    'seller-case-study': 'Success story',
+    'seller-credentials': 'Credentials',
+    'featured-listings': 'Listings',
   };
   const key = String(type || 'block').toLowerCase();
   if (overrides[key]) return overrides[key];
@@ -114,17 +143,18 @@ export function coerceCollectionItems(collection, items = []) {
       .map((item, index) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
         return {
+          ...item,
           id: uniqueId(item.id, 'fallback-service', index),
-          title: item.title || item.name || '',
-          description: item.description || item.text || '',
+          title: item.title ?? item.name ?? '',
+          description: item.description ?? item.text ?? '',
           icon: item.icon || iconDefaults[index % iconDefaults.length],
-          background: item.background || item.card_background || '',
-          text_color: item.text_color || item.card_text_color || '',
-          icon_background: item.icon_background || '',
-          icon_color: item.icon_color || '',
+          background: item.background ?? item.card_background ?? '',
+          text_color: item.text_color ?? item.card_text_color ?? '',
+          icon_background: item.icon_background ?? '',
+          icon_color: item.icon_color ?? '',
         };
       })
-      .filter((item) => item && item.title)
+      .filter((item) => item && (item.title || item.label))
       .slice(0, 6);
   }
 
@@ -139,6 +169,7 @@ export function coerceCollectionItems(collection, items = []) {
             id: uniqueId(`fallback-highlight-${index}`, 'fallback-highlight', index),
             title,
             text,
+            icon: '',
             background: '',
             text_color: '',
           };
@@ -147,12 +178,13 @@ export function coerceCollectionItems(collection, items = []) {
         const title = item.title || '';
         if (!title) return null;
         return {
-          id: uniqueId(item.id, 'fallback-highlight', index),
-          title,
-          text: item.text || '',
-          background: item.background || '',
-          text_color: item.text_color || '',
-        };
+            id: uniqueId(item.id, 'fallback-highlight', index),
+            title,
+            text: item.text || '',
+            icon: item.icon || '',
+            background: item.background || '',
+            text_color: item.text_color || '',
+          };
       })
       .filter(Boolean)
       .slice(0, 6);
@@ -266,31 +298,35 @@ export function updateContentItem(content = {}, selection, patch) {
       const next = { ...item, ...patch };
       if (isServiceCollection) {
         return {
+          ...next,
           id: next.id || createContentItemId(),
-          title: next.title || '',
-          description: next.description || '',
+          title: next.title ?? '',
+          description: next.description ?? '',
           icon: next.icon || 'target',
-          background: next.background || '',
-          text_color: next.text_color || '',
-          icon_background: next.icon_background || '',
-          icon_color: next.icon_color || '',
+          background: next.background ?? '',
+          text_color: next.text_color ?? '',
+          icon_background: next.icon_background ?? '',
+          icon_color: next.icon_color ?? '',
         };
       }
       if (isHighlightCollection) {
         return {
+          ...next,
           id: next.id || createContentItemId(),
-          title: next.title || '',
-          text: next.text || '',
-          background: next.background || '',
-          text_color: next.text_color || '',
+          title: next.title ?? '',
+          text: next.text ?? '',
+          icon: next.icon || '',
+          background: next.background ?? '',
+          text_color: next.text_color ?? '',
         };
       }
       if (isProofCollection) {
         return {
+          ...next,
           id: next.id || createContentItemId(),
-          text: next.text || next.title || '',
-          background: next.background || '',
-          text_color: next.text_color || '',
+          text: next.text ?? next.title ?? '',
+          background: next.background ?? '',
+          text_color: next.text_color ?? '',
         };
       }
       return next;
@@ -311,7 +347,12 @@ export function removeContentItem(content = {}, selection) {
 
 const DEFAULT_CONTENT = {
   [STOREFRONT_BLOCK_TYPES.HERO]: { heading: '', cta_label: 'Book a Free Consultation' },
-  [STOREFRONT_BLOCK_TYPES.ABOUT]: { heading: 'About', eyebrow: 'About', body: '' },
+  [STOREFRONT_BLOCK_TYPES.ABOUT]: {
+    heading: 'About',
+    eyebrow: 'About',
+    body: '',
+    seller_about_layout_version: 2,
+  },
   [STOREFRONT_BLOCK_TYPES.SERVICES]: { heading: 'Services', eyebrow: 'Capabilities', body: 'Personalized support designed around your next decision.' },
   [STOREFRONT_BLOCK_TYPES.TESTIMONIALS]: { heading: 'Client stories', body: 'Outcomes from people who worked with this professional.' },
   [STOREFRONT_BLOCK_TYPES.CTA]: {
@@ -326,6 +367,35 @@ const DEFAULT_CONTENT = {
   [STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS]: { heading: 'Featured listings', eyebrow: 'Available properties', body: 'Hand-picked opportunities ready for private showings.' },
   [STOREFRONT_BLOCK_TYPES.TOP_LISTINGS]: { heading: 'Top listings', eyebrow: 'Top picks', body: 'Properties drawing the strongest interest right now.' },
   [STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS]: { heading: 'Recently sold', eyebrow: 'Recently sold', body: 'Proof of pricing strategy and market timing.' },
+  [STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE]: { heading: 'Seller performance', eyebrow: 'Performance snapshot', body: 'Verified seller results at a glance.', items: [] },
+  [STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS]: {
+    heading: 'Recently sold properties',
+    eyebrow: 'Recent sales',
+    body: 'A look at homes recently sold with a successful client outcome.',
+    sold_card_layout_version: 2,
+  },
+  [STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY]: {
+    heading: 'Seller success story',
+    eyebrow: 'Case study',
+    body: 'Show how strategy translated into a stronger seller outcome.',
+    items: [
+      { title: 'The challenge', description: 'Bring the property to market with a clear point of difference while protecting the seller’s timeline and net goal.', icon: 'target' },
+      { title: 'The strategy', description: 'Prioritize presentation, pricing discipline, and buyer targeting around the strongest local demand signals.', icon: 'sparkles' },
+      { title: 'The outcome', description: 'Create a cleaner launch, stronger offer conversations, and a more confident path from listing to close.', icon: 'shield' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS]: {
+    heading: 'Expertise sellers can verify',
+    eyebrow: 'Credentials and recognition',
+    body: 'Professional qualifications and practical strengths that support every recommendation.',
+    metrics_layout_version: 2,
+    items: [
+      { title: 'Clients', issuer: '', source: 'total_clients' },
+      { title: 'Active pipeline value', issuer: '', source: 'active_pipeline_value' },
+      { title: 'Sold property value', issuer: '', source: 'total_sold_home_value' },
+      { title: 'Brokerage', issuer: '', source: 'company' },
+    ],
+  },
   [STOREFRONT_BLOCK_TYPES.PROPERTIES]: { heading: 'Properties for sale', eyebrow: 'Available now', body: '' },
   [STOREFRONT_BLOCK_TYPES.GUIDANCE]: { heading: 'What happens next', body: 'A simple guide to the process ahead.' },
   [STOREFRONT_BLOCK_TYPES.ROLE_DETAILS]: { heading: '', eyebrow: '', body: '' },
@@ -449,6 +519,9 @@ function defaultAnimationLayoutForType(type) {
     type === STOREFRONT_BLOCK_TYPES.ABOUT
     || type === STOREFRONT_BLOCK_TYPES.CTA
     || type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS
   ) {
     return {
       animationType: 'fade',
@@ -476,6 +549,7 @@ function defaultAnimationLayoutForType(type) {
     || type === STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS
     || type === STOREFRONT_BLOCK_TYPES.TOP_LISTINGS
     || type === STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS
   ) {
     return {
       animationType: 'zoom',
@@ -501,7 +575,11 @@ export function createBlock(type) {
     STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
     STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
     STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
   ].includes(type);
+  const usesFourColumns = isListing
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE
+    || type === STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS;
   const animationDefaults = defaultAnimationLayoutForType(type);
   return {
     id: `${type}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`}`,
@@ -515,7 +593,7 @@ export function createBlock(type) {
         // Hero cover only renders when mediaPosition !== 'none'
         mediaPosition: isHero ? 'background' : DEFAULT_LAYOUT.mediaPosition,
         cardStyle: isHero ? 'elevated' : DEFAULT_LAYOUT.cardStyle,
-        columns: isListing ? '4' : DEFAULT_LAYOUT.columns,
+        columns: usesFourColumns ? '4' : DEFAULT_LAYOUT.columns,
       },
       style: { background: '', textColor: '', radius: 'default', shadow: 'none' },
     },
@@ -539,8 +617,16 @@ export function normalizeBlock(block, index = 0) {
     STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
     STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
     STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
   ].includes(block?.type);
-  const defaultColumns = isListing ? '4' : DEFAULT_LAYOUT.columns;
+  const defaultColumns = isListing
+    || block?.type === STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE
+    || block?.type === STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS
+    ? '4'
+    : DEFAULT_LAYOUT.columns;
+  const defaultMediaPosition = block?.type === STOREFRONT_BLOCK_TYPES.HERO
+    ? 'background'
+    : DEFAULT_LAYOUT.mediaPosition;
   return {
     id: block?.id || `${block?.type || 'block'}-${index}`,
     type: block?.type || STOREFRONT_BLOCK_TYPES.ABOUT,
@@ -552,7 +638,7 @@ export function normalizeBlock(block, index = 0) {
         padding: rawLayout.padding || DEFAULT_LAYOUT.padding,
         width: rawLayout.width || DEFAULT_LAYOUT.width,
         variant: rawLayout.variant || DEFAULT_LAYOUT.variant,
-        mediaPosition: rawLayout.mediaPosition || DEFAULT_LAYOUT.mediaPosition,
+        mediaPosition: rawLayout.mediaPosition || defaultMediaPosition,
         columns: String(rawLayout.columns || defaultColumns),
         cardStyle: rawLayout.cardStyle || DEFAULT_LAYOUT.cardStyle,
         animationType: rawLayout.animationType || animationDefaults.animationType,
@@ -604,9 +690,15 @@ export function normalizeBlocks(blocks = []) {
   ];
 }
 
-export function availableBlocksForRole(role) {
+export function availableBlocksForRole(role, templateKey = '') {
   const normalized = normalizeStorefrontRole(role);
-  return [...BLOCK_LIBRARY.shared, ...(BLOCK_LIBRARY[normalized] || [])];
+  const types = [
+    ...BLOCK_LIBRARY.shared,
+    ...(BLOCK_LIBRARY[normalized] || []),
+    ...(BLOCK_LIBRARY[templateKey] || []),
+  ];
+  if (String(templateKey || '').trim().toLowerCase() !== 'agent-investor') return types;
+  return types.filter((type) => type !== STOREFRONT_BLOCK_TYPES.TESTIMONIALS);
 }
 
 export function toRendererBlocks(blocks) {

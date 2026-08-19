@@ -261,13 +261,13 @@ export function useChangePassword() {
 // GET /auth/profile
 // Header: Authorization: Bearer <session token>
 // Response: { success, user, professionalProfile }
-export function useProfileQuery() {
+export function useProfileQuery({ enabled = true } = {}) {
   const token = useAppSelector((state) => state.auth.token);
   const dispatch = useAppDispatch();
 
   const query = useQuery({
     queryKey: ["profile"],
-    enabled: Boolean(token),
+    enabled: Boolean(token && enabled),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,

@@ -6,12 +6,12 @@ import agentSellerExpert from './seller-expert';
 import agentCommunityExpert from './community-expert';
 
 const agentTemplates = [
-  agentClassic,
-  agentLuxuryAdvisor,
-  agentFirstHome,
   agentInvestor,
-  agentSellerExpert,
+  agentClassic,
+  agentFirstHome,
   agentCommunityExpert,
+  agentLuxuryAdvisor,
+  agentSellerExpert,
 ];
 
 export default agentTemplates;

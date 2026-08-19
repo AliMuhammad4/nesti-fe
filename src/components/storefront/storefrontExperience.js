@@ -11,7 +11,8 @@ const EXPLICIT_SHADOW = {
   large: '0 30px 80px rgba(15, 23, 42, 0.16)',
 };
 
-export const STOREFRONT_EXPERIENCE_CSS = `
+export function getStorefrontExperienceCss() {
+  return `
   ${allExperienceCss()}
 
   .storefront-canvas {
@@ -84,6 +85,16 @@ export const STOREFRONT_EXPERIENCE_CSS = `
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
+  .storefront-canvas .storefront-listings-grid.storefront-single-sold-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-template-key='agent-seller-expert'] [data-storefront-block='about'] .storefront-anim-body {
+    width: 100%;
+    max-width: none !important;
+    margin-inline: 0;
+  }
+
   .storefront-section--lead-magnet form,
   .storefront-section--lead-magnet [class*='rounded'] {
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
@@ -98,6 +109,10 @@ export const STOREFRONT_EXPERIENCE_CSS = `
     position: relative;
   }
 `;
+}
+
+/** Snapshot for callers that still import the constant; prefer getStorefrontExperienceCss(). */
+export const STOREFRONT_EXPERIENCE_CSS = getStorefrontExperienceCss();
 
 export function resolveTemplateExperience(templateKey = '') {
   return experienceIdFromTemplateKey(templateKey);

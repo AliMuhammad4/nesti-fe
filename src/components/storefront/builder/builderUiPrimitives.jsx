@@ -180,11 +180,11 @@ export function ColorField({ label, value, onChange, onReset = null, showReset =
             onBlur={(event) => {
               const next = event.target.value.trim();
               if (!next) {
-                onChange('');
+                if (value) onChange('');
                 return;
               }
               const normalizedValue = normalizeHexColor(next);
-              if (normalizedValue) onChange(normalizedValue);
+              if (normalizedValue && normalizedValue !== normalized) onChange(normalizedValue);
             }}
             className="min-w-0 flex-1 bg-transparent px-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 outline-none"
             maxLength={9}

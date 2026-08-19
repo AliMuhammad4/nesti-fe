@@ -15,6 +15,7 @@ const agentClassic = {
       body: ctx.tagline || 'Guided buying, selling, pricing, and consultation support in one polished experience.',
       cta_label: 'Book a free consultation',
       eyebrow: 'Local market partner',
+      classic_cover_layout_version: 2,
     }),
     block(T.EXPERTISE, {
       heading: 'Advice for every side of the move',

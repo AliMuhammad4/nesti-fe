@@ -7,7 +7,7 @@ import { coerceCollectionItems, createContentItemId, labelForBlock, SECTION_SETT
 import { CONTENT_COLLECTIONS } from './builderContentCollections';
 import { getGuidanceCollectionFallback, getGuidanceTextDefaults } from '@/components/public-profile/PublicGuidanceSection';
 import { getRoleDetailsCollectionFallback, getRoleDetailsDefaults } from '@/components/public-profile/PublicRoleDetailSection';
-import { listingCardThemeFromTemplate } from '../templates';
+import { listingCardThemeFromTemplate, materializeTemplate } from '../templates';
 import {
   getServiceIconEntry,
   resolveServiceIconKey,
@@ -74,6 +74,8 @@ export default function Inspector({
   }
 
   const { content, layout, style } = block.data;
+  const isSellerExpertTemplate = templateKey === 'agent-seller-expert';
+  const isCommunityTemplate = templateKey === 'agent-community-expert';
   const selectedItemField = selection?.itemField || '';
   const availableTabs = (isElementSelection && !allowHeroContentTabForSelection)
     ? ['layout', 'style']
@@ -90,8 +92,21 @@ export default function Inspector({
     STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
     STOREFRONT_BLOCK_TYPES.CREDENTIALS,
     STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
-  ].includes(block.type);
-  const collection = isHero ? null : CONTENT_COLLECTIONS[block.type];
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+    ...(isCommunityTemplate
+      ? [STOREFRONT_BLOCK_TYPES.GUIDANCE, STOREFRONT_BLOCK_TYPES.EXPERTISE]
+      : [STOREFRONT_BLOCK_TYPES.EXPERTISE]),
+  ].includes(block.type) && !(
+    isSellerExpertTemplate
+    && block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
+  );
+  const collection = isHero
+    || (isSellerExpertTemplate && block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS)
+    ? null
+    : CONTENT_COLLECTIONS[block.type];
   const listToText = (value) => (Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean).join('\n') : '');
   const textToList = (raw) => raw.split('\n').map((line) => line.trim()).filter(Boolean);
   const tupleArrayToText = (items = [], keys = []) => (items || [])
@@ -108,14 +123,64 @@ export default function Inspector({
     .filter((item) => Object.values(item).some(Boolean));
   const name = profile?.professional_name || 'your name';
   const isServices = block.type === STOREFRONT_BLOCK_TYPES.SERVICES;
+  const isSellerCaseStudy = block.type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY;
+  const isSellerCredentials = block.type === STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS;
+  const hasEditableCards = isServices || isSellerCaseStudy;
   const isGuidance = block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE;
   const isRoleDetails = block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS;
+  const sellerCustomBlock = isSellerExpertTemplate && [
+    STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+    STOREFRONT_BLOCK_TYPES.ABOUT,
+    STOREFRONT_BLOCK_TYPES.SERVICES,
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.CTA,
+    STOREFRONT_BLOCK_TYPES.FOOTER,
+  ].includes(block.type);
+  const sellerSupportsCardStyle = !isSellerExpertTemplate || [
+    STOREFRONT_BLOCK_TYPES.ABOUT,
+    STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+  ].includes(block.type);
+  const sellerSupportsRadiusShadow = !isSellerExpertTemplate || [
+    STOREFRONT_BLOCK_TYPES.ABOUT,
+    STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+    STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+  ].includes(block.type);
   const isListings = [
     STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
     STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
     STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
     STOREFRONT_BLOCK_TYPES.PROPERTIES,
   ].includes(block.type);
+  const sellerSupportsPadding = !isSellerExpertTemplate || isListings
+    || block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS;
+  const sellerSupportsWidth = !isSellerExpertTemplate;
+  const sellerSupportsAlignment = !isSellerExpertTemplate || [
+    STOREFRONT_BLOCK_TYPES.ABOUT,
+    STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+    STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
+    STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
+    STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE,
+    STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
+    STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+  ].includes(block.type);
+  const listingThemeCards = listingCardThemeFromTemplate(templateKey || '');
+  const templateDefaultBlock = materializeTemplate(templateKey || '', profile, brandKit)
+    ?.blocks?.find((item) => item.type === block.type);
+  const templateSectionBackground = templateDefaultBlock?.data?.style?.background || '';
+  const templateSectionTextColor = templateDefaultBlock?.data?.style?.textColor || '';
   const PROCESS_CARD_FIELDS = new Set([
     'content.process_card_background',
     'content.process_card_text_color',
@@ -137,10 +202,12 @@ export default function Inspector({
     'content.icon_color',
   ]);
   const isProcessCardContext = Boolean(
-    isGuidance && (selection?.collection === 'steps' || PROCESS_CARD_FIELDS.has(selectedField)),
+    isGuidance && !isSellerExpertTemplate
+      && (selection?.collection === 'steps' || PROCESS_CARD_FIELDS.has(selectedField)),
   );
   const isFaqCardContext = Boolean(
-    isGuidance && (selection?.collection === 'faqs' || FAQ_CARD_FIELDS.has(selectedField)),
+    isGuidance && !isSellerExpertTemplate
+      && (selection?.collection === 'faqs' || FAQ_CARD_FIELDS.has(selectedField)),
   );
   const clearGuidanceCardStyles = (scope) => {
     if (scope === 'process') {
@@ -269,7 +336,7 @@ export default function Inspector({
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Icon appearance</p>
         <p className="mt-1 text-[10px] leading-4 text-slate-500">
-          Shared default icon colors for service cards. Card-level icon colors can override these.
+          Shared default icon colors for {isSellerCaseStudy ? 'success story cards' : 'service cards'}. Card-level icon colors can override these.
         </p>
       </div>
       <ColorField
@@ -321,17 +388,61 @@ export default function Inspector({
     .filter((item) => item.title)
     .slice(0, 6);
   if (isServices && profileServiceCards.length === 5) {
-    profileServiceCards.push({
-      ...(supplementalService[profile?.professional_type] || supplementalService.agent),
-      id: 'fallback-service-5',
-      icon: 'shield',
-      background: '',
-      text_color: '',
-    });
+    profileServiceCards.push(
+      isCommunityTemplate
+        ? {
+            id: 'community-service-6',
+            title: 'Neighborhood timing & offer strategy',
+            description: 'Know when to move, what to offer, and how local demand shapes your next step.',
+            icon: 'shield',
+            background: '',
+            text_color: '',
+            icon_background: '',
+            icon_color: '',
+          }
+        : {
+            ...(supplementalService[profile?.professional_type] || supplementalService.agent),
+            id: 'fallback-service-5',
+            icon: 'shield',
+            background: '',
+            text_color: '',
+          },
+    );
   }
-  const serviceCards = Array.isArray(content.items) && content.items.length
+  const rawCardSource = Array.isArray(content.items) && content.items.length
     ? content.items
-    : profileServiceCards;
+    : isSellerCaseStudy
+      ? []
+      : profileServiceCards;
+  const cardSource = isCommunityTemplate
+    && isServices
+    && Array.isArray(rawCardSource)
+    && rawCardSource.length === 5
+    && !rawCardSource.some((item) => item?.id === 'community-service-6')
+    ? [
+        ...rawCardSource,
+        {
+          id: 'community-service-6',
+          title: 'Neighborhood timing & offer strategy',
+          description: 'Know when to move, what to offer, and how local demand shapes your next step.',
+          icon: 'shield',
+          background: '',
+          text_color: '',
+          icon_background: '',
+          icon_color: '',
+        },
+      ]
+    : rawCardSource;
+  const serviceCards = cardSource.slice(0, 6).map((item, index) => ({
+    id: item?.id || `fallback-card-${index}`,
+    title: item?.title || '',
+    description: item?.description || item?.text || '',
+    icon: item?.icon || SERVICE_ICON_DEFAULTS[index % SERVICE_ICON_DEFAULTS.length],
+    background: item?.background || '',
+    text_color: item?.text_color || '',
+    icon_background: item?.icon_background || '',
+    icon_color: item?.icon_color || '',
+  }));
   const commitServiceCards = (next) => {
     const normalized = next.slice(0, 6).map((item) => ({
       id: item?.id || createContentItemId(),
@@ -397,6 +508,7 @@ export default function Inspector({
           id: item?.id || createContentItemId(),
           title: item?.title || '',
           text: item?.text || '',
+          icon: item?.icon || '',
           background: item?.background || '',
           text_color: item?.text_color || '',
         })),
@@ -419,6 +531,12 @@ export default function Inspector({
     ? getGuidanceTextDefaults(profile?.professional_type)
     : null;
   const contentValue = (key) => {
+    if (
+      selection?.inlineValue !== undefined
+      && selectedField === `content.${key}`
+    ) {
+      return String(selection.inlineValue);
+    }
     if (Object.prototype.hasOwnProperty.call(content, key) && content[key] != null) {
       return String(content[key]);
     }
@@ -519,7 +637,7 @@ export default function Inspector({
                       className={`${inputClass} min-h-20 resize-y`}
                     />
                   </Field>
-                  {processCardControls}
+                  {isCommunityTemplate ? null : processCardControls}
                   <button
                     type="button"
                     disabled={guidanceSteps.length >= 8}
@@ -550,7 +668,7 @@ export default function Inspector({
                       className={`${inputClass} min-h-24 resize-y`}
                     />
                   </Field>
-                  {faqCardControls}
+                  {isCommunityTemplate ? null : faqCardControls}
                   <button
                     type="button"
                     disabled={guidanceFaqs.length >= 8}
@@ -564,9 +682,11 @@ export default function Inspector({
                     {guidanceFaqs.length >= 8 ? 'Max 8 FAQs reached' : 'Add FAQ'}
                   </button>
                 </>
-              ) : isServices ? (
+              ) : hasEditableCards ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Service card</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    {isSellerCaseStudy ? 'Success story card' : 'Service card'}
+                  </p>
                   <Field label="Title">
                     <input
                       value={selection.item?.title || ''}
@@ -576,7 +696,7 @@ export default function Inspector({
                   </Field>
                   <Field label="Description">
                     <textarea
-                      value={selection.item?.description || ''}
+                      value={selection.item?.description || selection.item?.text || ''}
                       onChange={(event) => onItemChange?.({ description: event.target.value })}
                       className={`${inputClass} min-h-24 resize-y`}
                     />
@@ -625,8 +745,10 @@ export default function Inspector({
                     type="button"
                     disabled={serviceCards.length >= 6}
                     onClick={() => onItemAdd?.({
-                      title: 'New service',
-                      description: 'Add a clear one-line summary of this service for better client understanding.',
+                      title: isSellerCaseStudy ? 'New story stage' : 'New service',
+                      description: isSellerCaseStudy
+                        ? 'Add the challenge, strategy, or result for this success story.'
+                        : 'Add a clear one-line summary of this service for better client understanding.',
                       icon: SERVICE_ICON_DEFAULTS[serviceCards.length % SERVICE_ICON_DEFAULTS.length],
                       background: '',
                       text_color: '',
@@ -636,7 +758,11 @@ export default function Inspector({
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <Plus size={13} />
-                    {serviceCards.length >= 6 ? 'Max 6 cards reached' : 'Add service card'}
+                    {serviceCards.length >= 6
+                      ? 'Max 6 cards reached'
+                      : isSellerCaseStudy
+                        ? 'Add story card'
+                        : 'Add service card'}
                   </button>
                 </>
               ) : isRoleDetails && selection?.collection === 'highlights' ? (
@@ -656,6 +782,14 @@ export default function Inspector({
                       className={`${inputClass} min-h-24 resize-y`}
                     />
                   </Field>
+                  {isCommunityTemplate ? (
+                    <Field label="Card icon">
+                      <ServiceIconDropdown
+                        value={selection.item?.icon || 'target'}
+                        onChange={(icon) => onItemChange?.({ icon })}
+                      />
+                    </Field>
+                  ) : null}
                   <ColorField
                     label="Card background"
                     value={selection.item?.background || ''}
@@ -681,6 +815,7 @@ export default function Inspector({
                     onClick={() => onItemAdd?.({
                       title: 'New highlight',
                       text: 'Describe this highlight for visitors.',
+                      icon: isCommunityTemplate ? 'target' : '',
                       background: '',
                       text_color: '',
                     })}
@@ -690,7 +825,7 @@ export default function Inspector({
                     {roleHighlights.length >= 6 ? 'Max 6 highlights reached' : 'Add highlight'}
                   </button>
                 </>
-              ) : isRoleDetails && selection?.collection === 'proof' ? (
+              ) : isRoleDetails && selection?.collection === 'proof' && !isCommunityTemplate ? (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Proof chip</p>
                   <Field label="Label">
@@ -747,8 +882,8 @@ export default function Inspector({
                 onClick={onItemDelete}
                 className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
               >
-                {isServices
-                  ? 'Delete this service card'
+                {hasEditableCards
+                  ? (isSellerCaseStudy ? 'Delete this story card' : 'Delete this service card')
                   : isRoleDetails && selection?.collection === 'highlights'
                     ? 'Delete this highlight'
                     : isRoleDetails && selection?.collection === 'proof'
@@ -799,9 +934,9 @@ export default function Inspector({
                     )}
                   </Field>
                 )}
-              {isProcessCardContext ? processCardControls : null}
-              {isFaqCardContext ? faqCardControls : null}
-              {isServices && SERVICES_CARD_STYLE_FIELDS.has(selectedField) ? servicesIconControls : null}
+              {isProcessCardContext && !isCommunityTemplate ? processCardControls : null}
+              {isFaqCardContext && !isCommunityTemplate ? faqCardControls : null}
+              {hasEditableCards && SERVICES_CARD_STYLE_FIELDS.has(selectedField) ? servicesIconControls : null}
             </div>
           )}
         </div>
@@ -849,8 +984,10 @@ export default function Inspector({
                 {heroUsesProfilePhoto ? (
                   <>
                     <MediaPicker
-                      label="Page profile"
-                      hint="Displayed inside the hero card"
+                      label={isSellerExpertTemplate ? 'Professional photo' : 'Page profile'}
+                      hint={isSellerExpertTemplate
+                        ? 'Used by Seller About, footer, and profile surfaces'
+                        : 'Displayed inside the hero card'}
                       image={media?.profile || brandKit?.profile_photo_url}
                       onUpload={(file) => onMediaUpload?.('profile', file)}
                       circle
@@ -893,15 +1030,25 @@ export default function Inspector({
                 />
               </Field>
             ) : null}
-            {(block.type === STOREFRONT_BLOCK_TYPES.ABOUT || block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS || isListings || isServices || isRoleDetails || block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE) && !isElementSelection ? (
+            {(block.type === STOREFRONT_BLOCK_TYPES.ABOUT
+              || block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+              || block.type === STOREFRONT_BLOCK_TYPES.SELLER_PERFORMANCE
+              || block.type === STOREFRONT_BLOCK_TYPES.CTA
+              || isListings
+              || hasEditableCards
+              || isRoleDetails
+              || isSellerCredentials
+              || block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE) && !isElementSelection ? (
               <Field label="Eyebrow">
                 <input
                   value={contentValue('eyebrow')}
                   onChange={(event) => onChange(block.id, { content: { eyebrow: event.target.value } })}
                   className={inputClass}
                   placeholder={
-                    isServices
-                      ? 'Capabilities'
+                    hasEditableCards
+                      ? (isSellerCaseStudy ? 'Success story' : 'Capabilities')
+                      : isSellerCredentials
+                        ? 'Credentials and recognition'
                       : isRoleDetails
                         ? (roleDefaults?.eyebrow || 'Role-Based Support')
                         : block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE
@@ -923,42 +1070,70 @@ export default function Inspector({
                 />
               </Field>
             ) : null}
-            {block.type === STOREFRONT_BLOCK_TYPES.ABOUT && !isElementSelection ? (
-              <Field label="Practice badge">
-                <input
-                  value={contentValue('about_badge')}
-                  onChange={(event) => onChange(block.id, { content: { about_badge: event.target.value } })}
-                  className={inputClass}
-                  placeholder="A relationship-first real estate practice"
-                />
-              </Field>
+            {block.type === STOREFRONT_BLOCK_TYPES.ABOUT && !isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
+              <>
+                <Field label={templateKey === 'agent-luxury-advisor' ? 'Advisor credential' : 'Practice badge'}>
+                  <input
+                    value={contentValue('about_badge')}
+                    onChange={(event) => onChange(block.id, { content: { about_badge: event.target.value } })}
+                    className={inputClass}
+                    placeholder={templateKey === 'agent-luxury-advisor' ? 'Real Estate Market Advisor' : 'A relationship-first real estate practice'}
+                  />
+                </Field>
+                {templateKey === 'agent-luxury-advisor' ? (
+                  <>
+                    <Field label="Editorial label">
+                      <input
+                        value={contentValue('about_label')}
+                        onChange={(event) => onChange(block.id, { content: { about_label: event.target.value } })}
+                        className={inputClass}
+                        placeholder="The advisory standard"
+                      />
+                    </Field>
+                    <Field label="Profile note">
+                      <input
+                        value={contentValue('about_note')}
+                        onChange={(event) => onChange(block.id, { content: { about_note: event.target.value } })}
+                        className={inputClass}
+                        placeholder="Confidential · Considered · Personal"
+                      />
+                    </Field>
+                  </>
+                ) : null}
+              </>
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.CTA && !isElementSelection ? (
               <>
-                <Field label="Appointment button">
+                <Field label={isCommunityTemplate ? 'Primary inquiry button' : 'Appointment button'}>
                   <input
                     value={contentValue('cta_label')}
                     onChange={(event) => onChange(block.id, { content: { cta_label: event.target.value } })}
                     className={inputClass}
-                    placeholder="Ask about availability"
+                    placeholder={isCommunityTemplate ? 'Send detailed inquiry' : 'Ask about availability'}
                   />
                 </Field>
-                <Field label="Inquiry button">
-                  <input
-                    value={contentValue('secondary_cta_label')}
-                    onChange={(event) => onChange(block.id, { content: { secondary_cta_label: event.target.value } })}
-                    className={inputClass}
-                    placeholder="Send detailed inquiry"
-                  />
-                </Field>
-                <Field label="Helper text under buttons">
-                  <textarea
-                    value={contentValue('helper_text')}
-                    onChange={(event) => onChange(block.id, { content: { helper_text: event.target.value } })}
-                    className={`${inputClass} min-h-20 resize-y`}
-                    placeholder="Submit an inquiry and the professional will confirm an available time with you."
-                  />
-                </Field>
+                {!isSellerExpertTemplate ? (
+                  <>
+                    {!isCommunityTemplate ? (
+                      <Field label="Inquiry button">
+                        <input
+                          value={contentValue('secondary_cta_label')}
+                          onChange={(event) => onChange(block.id, { content: { secondary_cta_label: event.target.value } })}
+                          className={inputClass}
+                          placeholder="Send detailed inquiry"
+                        />
+                      </Field>
+                    ) : null}
+                    <Field label={isCommunityTemplate ? 'Helper text under button' : 'Helper text under buttons'}>
+                      <textarea
+                        value={contentValue('helper_text')}
+                        onChange={(event) => onChange(block.id, { content: { helper_text: event.target.value } })}
+                        className={`${inputClass} min-h-20 resize-y`}
+                        placeholder="Submit an inquiry and the professional will confirm an available time with you."
+                      />
+                    </Field>
+                  </>
+                ) : null}
               </>
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.HERO && !isElementSelection ? (
@@ -1052,8 +1227,8 @@ export default function Inspector({
                 Preview is using fallback copy until you save a heading here.
               </p>
             ) : null}
-            {isServices ? (
-              <Field label={`Service cards (${serviceCards.length}/6)`}>
+            {hasEditableCards ? (
+              <Field label={`${isSellerCaseStudy ? 'Success story cards' : 'Service cards'} (${serviceCards.length}/6)`}>
                 <div className="space-y-2">
                   {serviceCards.map((item, index) => {
                     const iconKey = resolveServiceIconKey(item?.icon, index);
@@ -1074,7 +1249,7 @@ export default function Inspector({
                             type="button"
                             onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
                             className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                            aria-label={`Delete service card ${index + 1}`}
+                            aria-label={`Delete ${isSellerCaseStudy ? 'story' : 'service'} card ${index + 1}`}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -1116,14 +1291,20 @@ export default function Inspector({
                     disabled={serviceCards.length >= 6}
                     onClick={() => commitServiceCards([...serviceCards, {
                       id: createContentItemId(),
-                      title: 'New service',
-                      description: 'Add a clear one-line summary of this service for better client understanding.',
+                      title: isSellerCaseStudy ? 'New story stage' : 'New service',
+                      description: isSellerCaseStudy
+                        ? 'Add the challenge, strategy, or result for this success story.'
+                        : 'Add a clear one-line summary of this service for better client understanding.',
                       icon: SERVICE_ICON_DEFAULTS[serviceCards.length % SERVICE_ICON_DEFAULTS.length],
                     }])}
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <Plus size={13} />
-                    {serviceCards.length >= 6 ? 'Max 6 cards reached' : 'Add service card'}
+                    {serviceCards.length >= 6
+                      ? 'Max 6 cards reached'
+                      : isSellerCaseStudy
+                        ? 'Add story card'
+                        : 'Add service card'}
                   </button>
                 </div>
                 <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
@@ -1136,7 +1317,7 @@ export default function Inspector({
                 Listing cards pull from your connected property inventory. Edit heading and supporting copy here; style the cards in the Style tab.
               </p>
             ) : null}
-            {collection && !isServices ? (
+            {collection && !hasEditableCards ? (
               <Field label={collection.label}>
                 <textarea
                   value={collectionDraft || collection.format(content.items)}
@@ -1154,7 +1335,7 @@ export default function Inspector({
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE && !isElementSelection ? (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
-                Service, expertise, and area chips come from your professional profile and can’t be edited here.
+                Service, expertise, and area items come from your professional profile and can’t be edited here.
               </p>
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS ? (
@@ -1189,6 +1370,7 @@ export default function Inspector({
                         id: createContentItemId(),
                         title: 'New highlight',
                         text: 'Describe this highlight for visitors.',
+                        icon: isCommunityTemplate ? 'target' : '',
                         background: '',
                         text_color: '',
                       }])}
@@ -1202,6 +1384,7 @@ export default function Inspector({
                     Click any highlight card in the preview to edit title, description, and card colors.
                   </p>
                 </Field>
+                {!isCommunityTemplate ? (
                 <Field label={`Proof chips (${roleProof.length}/8)`}>
                   <div className="space-y-1.5">
                     {roleProof.map((item, index) => (
@@ -1244,11 +1427,22 @@ export default function Inspector({
                     Click any proof chip in the preview to edit its label and colors.
                   </p>
                 </Field>
+                ) : null}
               </>
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE ? (
               <>
-                {!isElementSelection ? (
+                {!isElementSelection && isCommunityTemplate ? (
+                  <Field label="FAQ section label">
+                    <input
+                      value={contentValue('faq_label')}
+                      onChange={(event) => onChange(block.id, { content: { faq_label: event.target.value } })}
+                      className={inputClass}
+                      placeholder="Ask a local"
+                    />
+                  </Field>
+                ) : null}
+                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
                   <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Process card</p>
                     <Field label="Process label">
@@ -1285,7 +1479,7 @@ export default function Inspector({
                     </Field>
                   </div>
                 ) : null}
-                {!isElementSelection ? (
+                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
                   <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">FAQ card</p>
                     <Field label="FAQ label">
@@ -1413,18 +1607,26 @@ export default function Inspector({
           <>
             {!isHero ? (
               <>
-                <Field label="Section variant">
-                  <BuilderSelect value={layout.variant || 'standard'} options={SECTION_SETTINGS.variants} onChange={(variant) => onChange(block.id, { layout: { variant } })} ariaLabel="Section variant" />
-                </Field>
-                <Field label="Alignment">
-                  <BuilderSelect value={layout.alignment} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} onChange={(alignment) => onChange(block.id, { layout: { alignment } })} ariaLabel="Alignment" />
-                </Field>
-                <Field label="Section padding">
-                  <BuilderSelect value={layout.padding} options={[{ value: 'small', label: 'Compact' }, { value: 'medium', label: 'Comfortable' }, { value: 'large', label: 'Spacious' }]} onChange={(padding) => onChange(block.id, { layout: { padding } })} ariaLabel="Section padding" />
-                </Field>
-                <Field label="Container width">
-                  <BuilderSelect value={layout.width || 'full'} options={SECTION_SETTINGS.widths} onChange={(width) => onChange(block.id, { layout: { width } })} ariaLabel="Container width" />
-                </Field>
+                {!sellerCustomBlock ? (
+                  <Field label="Section variant">
+                    <BuilderSelect value={layout.variant || 'standard'} options={SECTION_SETTINGS.variants} onChange={(variant) => onChange(block.id, { layout: { variant } })} ariaLabel="Section variant" />
+                  </Field>
+                ) : null}
+                {sellerSupportsAlignment ? (
+                  <Field label="Alignment">
+                    <BuilderSelect value={layout.alignment} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} onChange={(alignment) => onChange(block.id, { layout: { alignment } })} ariaLabel="Alignment" />
+                  </Field>
+                ) : null}
+                {sellerSupportsPadding ? (
+                  <Field label="Section padding">
+                    <BuilderSelect value={layout.padding} options={[{ value: 'small', label: 'Compact' }, { value: 'medium', label: 'Comfortable' }, { value: 'large', label: 'Spacious' }]} onChange={(padding) => onChange(block.id, { layout: { padding } })} ariaLabel="Section padding" />
+                  </Field>
+                ) : null}
+                {sellerSupportsWidth ? (
+                  <Field label="Container width">
+                    <BuilderSelect value={layout.width || 'full'} options={SECTION_SETTINGS.widths} onChange={(width) => onChange(block.id, { layout: { width } })} ariaLabel="Container width" />
+                  </Field>
+                ) : null}
               </>
             ) : null}
             {isHero ? (
@@ -1443,9 +1645,11 @@ export default function Inspector({
                     />
                   </Field>
                 ) : null}
-                <Field label="Card style">
-                  <BuilderSelect value={layout.cardStyle || 'bordered'} options={SECTION_SETTINGS.cardStyles} onChange={(cardStyle) => onChange(block.id, { layout: { cardStyle } })} ariaLabel="Card style" />
-                </Field>
+                {sellerSupportsCardStyle && !isListings ? (
+                  <Field label="Card style">
+                    <BuilderSelect value={layout.cardStyle || 'bordered'} options={SECTION_SETTINGS.cardStyles} onChange={(cardStyle) => onChange(block.id, { layout: { cardStyle } })} ariaLabel="Card style" />
+                  </Field>
+                ) : null}
               </>
             )}
             {isHero ? (
@@ -1632,22 +1836,30 @@ export default function Inspector({
                   label="Section background"
                   value={style.background || ''}
                   onChange={(background) => onChange(block.id, { style: { background } })}
+                  onReset={() => onChange(block.id, {
+                    style: { background: templateSectionBackground },
+                  })}
+                  showReset={(style.background || '') !== templateSectionBackground}
                 />
                 <ColorField
                   label="Section text color"
                   value={style.textColor || ''}
                   onChange={(textColor) => onChange(block.id, { style: { textColor } })}
+                  onReset={() => onChange(block.id, {
+                    style: { textColor: templateSectionTextColor },
+                  })}
+                  showReset={(style.textColor || '') !== templateSectionTextColor}
                 />
-                {isGuidance ? (
+                {isGuidance && !isSellerExpertTemplate && !isCommunityTemplate ? (
                   <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
                     Click the Process or FAQ card for optional card-level colors. Steps and FAQs inherit those styles—no per-item colors.
                   </p>
                 ) : null}
-                {isServices ? (
+                {hasEditableCards ? (
                   <div className="space-y-3">
                     {servicesIconControls}
                     <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
-                      One section background (Style above). Click each service card to set its own background, text, title, description, and icon.
+                      One section background (Style above). Click each {isSellerCaseStudy ? 'story' : 'service'} card to set its own background, text, title, description, and icon.
                     </p>
                   </div>
                 ) : null}
@@ -1655,7 +1867,9 @@ export default function Inspector({
                   <div className="space-y-3">
                     {rolePanelControls}
                     <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
-                      Brand colors come from Design. Click highlight cards or proof chips to set per-item colors. Layout controls columns and card style.
+                      {isCommunityTemplate
+                        ? 'Brand colors come from Design. Click highlight cards to set per-item colors.'
+                        : 'Brand colors come from Design. Click highlight cards or proof chips to set per-item colors.'}
                     </p>
                   </div>
                 ) : null}
@@ -1677,11 +1891,19 @@ export default function Inspector({
                       label="Card background"
                       value={content.card_background || ''}
                       onChange={(card_background) => onChange(block.id, { content: { card_background } })}
+                      onReset={() => onChange(block.id, {
+                        content: { card_background: listingThemeCards.card_background || '' },
+                      })}
+                      showReset={(content.card_background || '') !== (listingThemeCards.card_background || '')}
                     />
                     <ColorField
                       label="Card text"
                       value={content.card_text_color || ''}
                       onChange={(card_text_color) => onChange(block.id, { content: { card_text_color } })}
+                      onReset={() => onChange(block.id, {
+                        content: { card_text_color: listingThemeCards.card_text_color || '' },
+                      })}
+                      showReset={(content.card_text_color || '') !== (listingThemeCards.card_text_color || '')}
                     />
                     <Field label="Card style">
                       <BuilderSelect
@@ -1694,18 +1916,17 @@ export default function Inspector({
                     <button
                       type="button"
                       onClick={() => {
-                        const themeCards = listingCardThemeFromTemplate(templateKey || '');
                         onChange(block.id, {
                           content: {
-                            card_background: themeCards.card_background || '',
-                            card_text_color: themeCards.card_text_color || '',
+                            card_background: listingThemeCards.card_background || '',
+                            card_text_color: listingThemeCards.card_text_color || '',
                           },
-                          layout: { cardStyle: themeCards.cardStyle || 'bordered' },
+                          layout: { cardStyle: listingThemeCards.cardStyle || 'bordered' },
                         });
                       }}
                       className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
                     >
-                      Apply current theme card style
+                      Reset property cards to theme defaults
                     </button>
                     {(content.card_background || content.card_text_color) ? (
                       <button
@@ -1720,12 +1941,16 @@ export default function Inspector({
                     ) : null}
                   </div>
                 ) : null}
-                <Field label="Corner radius">
-                  <BuilderSelect value={style.radius || 'default'} options={[{ value: 'none', label: 'Sharp' }, { value: 'default', label: 'Soft' }, { value: 'large', label: 'Rounded' }]} onChange={(radius) => onChange(block.id, { style: { radius } })} ariaLabel="Corner radius" />
-                </Field>
-                <Field label="Shadow depth">
-                  <BuilderSelect value={style.shadow || 'none'} options={SECTION_SETTINGS.shadows} onChange={(shadow) => onChange(block.id, { style: { shadow } })} ariaLabel="Shadow depth" />
-                </Field>
+                {sellerSupportsRadiusShadow ? (
+                  <>
+                    <Field label="Corner radius">
+                      <BuilderSelect value={style.radius || 'default'} options={[{ value: 'none', label: 'Sharp' }, { value: 'default', label: 'Soft' }, { value: 'large', label: 'Rounded' }]} onChange={(radius) => onChange(block.id, { style: { radius } })} ariaLabel="Corner radius" />
+                    </Field>
+                    <Field label="Shadow depth">
+                      <BuilderSelect value={style.shadow || 'none'} options={SECTION_SETTINGS.shadows} onChange={(shadow) => onChange(block.id, { style: { shadow } })} ariaLabel="Shadow depth" />
+                    </Field>
+                  </>
+                ) : null}
               </>
             )}
           </>

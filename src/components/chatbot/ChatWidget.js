@@ -113,6 +113,8 @@ export default function ChatWidget({
   initialGreeting,
   /** Public HTTPS URL for embed owner avatar (from /api/embed/resolve or session). */
   hostAvatarUrl = "",
+  /** Optional saved crop/zoom treatment for the host avatar. */
+  hostAvatarStyle,
   /** Fallback header name when `title` is not set (e.g. professional full name). */
   hostDisplayName = "",
   /** Pre-populate the agent lead draft (for property inquiry from public pages). */
@@ -214,6 +216,18 @@ export default function ChatWidget({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || inlineMode || !isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [inlineMode, isOpen, mounted]);
 
   useEffect(() => {
     setHostAvatarBroken(false);
@@ -856,6 +870,7 @@ export default function ChatWidget({
       resolvedRole={resolvedRole}
       showHostAvatar={showHostAvatar}
       trimmedAvatarUrl={trimmedAvatarUrl}
+      hostAvatarStyle={hostAvatarStyle}
       setHostAvatarBroken={setHostAvatarBroken}
       displayTitle={displayTitle}
       headerSubtitle={headerSubtitle}
@@ -871,6 +886,7 @@ export default function ChatWidget({
       resolvedRole={resolvedRole}
       showHostAvatar={showHostAvatar}
       trimmedAvatarUrl={trimmedAvatarUrl}
+      hostAvatarStyle={hostAvatarStyle}
       setHostAvatarBroken={setHostAvatarBroken}
       quickReplies={quickReplies}
       handleSend={handleSend}
@@ -992,7 +1008,8 @@ export default function ChatWidget({
                   alt={displayTitle || "Professional"}
                   fill
                   sizes="64px"
-                  className="object-cover object-center"
+                  className="object-cover"
+                  style={hostAvatarStyle}
                   onError={() => setHostAvatarBroken(true)}
                 />
               ) : (
@@ -1015,8 +1032,8 @@ export default function ChatWidget({
           className={`${
             inlineMode
               ? "relative w-full h-full"
-              : "fixed bottom-6 right-6 z-[10050] w-[420px] max-w-[96vw] h-[640px] max-h-[85vh]"
-          } bg-white rounded-[2rem] shadow-2xl flex flex-col overflow-hidden`}
+              : "fixed inset-x-3 bottom-3 top-3 z-[10050] h-auto max-h-[calc(100dvh-1.5rem)] w-auto max-w-none sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[640px] sm:max-h-[85vh] sm:w-[420px] sm:max-w-[96vw]"
+          } flex flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-2xl sm:rounded-[2rem]`}
         >
           <div className="flex flex-col h-full min-h-0">
             {header}

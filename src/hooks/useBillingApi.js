@@ -79,6 +79,72 @@ export function useCreateCheckoutSession() {
   });
 }
 
+export function useStorefrontTemplateEntitlements() {
+  const { token } = useAppSelector((state) => state.auth);
+
+  return useQuery({
+    queryKey: ["storefrontTemplateEntitlements"],
+    queryFn: () => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplates,
+        method: "GET",
+        token,
+      });
+    },
+    enabled: !!token,
+    staleTime: 10_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useCreateStorefrontTemplateCheckoutSession() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (templateId) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCheckoutSession,
+        method: "POST",
+        data: { template_id: templateId },
+        token,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["storefrontTemplateEntitlements"] });
+      invalidateBillingQueries(queryClient);
+    },
+    onError: toastError,
+  });
+}
+
+export function useConfirmStorefrontTemplateCheckoutSession() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, templateId }) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCheckoutConfirm,
+        method: "POST",
+        data: {
+          session_id: sessionId,
+          template_id: templateId,
+        },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+    },
+  });
+}
+
 export function openCheckoutPlaceholderWindow() {
   const payWindow = window.open("about:blank", "_blank");
   if (!payWindow) return null;
@@ -107,17 +173,26 @@ export function openStripeCheckoutInNewTab(data, targetWindow = null) {
   }
 
   if (targetWindow && !targetWindow.closed) {
-    targetWindow.location.href = url;
     try {
+      targetWindow.location.href = url;
       targetWindow.opener = null;
+      targetWindow.focus?.();
+      return true;
     } catch {
-      // ignore
+      try {
+        targetWindow.close();
+      } catch {
+        // ignore
+      }
     }
-    targetWindow.focus?.();
-    return true;
   }
 
-  const opened = window.open(url, "_blank");
+  let opened = null;
+  try {
+    opened = window.open(url, "_blank");
+  } catch {
+    opened = null;
+  }
   if (!opened) {
     window.location.href = url;
     return true;

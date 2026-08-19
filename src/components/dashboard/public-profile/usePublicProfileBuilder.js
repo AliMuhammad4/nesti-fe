@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { FEATURES } from '@/constants/features';
@@ -15,6 +15,7 @@ import {
   updatePublicProfile,
 } from '@/lib/publicProfileClient';
 import { seedBlockContentFromProfile } from '@/components/storefront/templates';
+import { defaultStorefrontTemplateKey } from '@/components/storefront/storefrontPresets';
 import { normalizeRole } from './editorConstants';
 import { buildStorefrontDraft, sanitizeAiGenerationBrandKit } from './storefrontBuilderUtils';
 import useStorefrontEditorState from './useStorefrontEditorState';
@@ -52,6 +53,7 @@ export default function usePublicProfileBuilder() {
   const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({});
+  const publishInFlightRef = useRef(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -85,6 +87,8 @@ export default function usePublicProfileBuilder() {
         draft: data?.draft || current?.draft || null,
         drafts: data?.drafts || current?.drafts || [],
         active_template_id: data?.active_template_id || current?.active_template_id || null,
+        // Keep published_at so "draft ahead of live" stays detectable after autosave.
+        published_at: current?.published_at || null,
       }));
     },
     onError: (error) => toast.error(error.message || 'Failed to save storefront draft'),
@@ -92,7 +96,10 @@ export default function usePublicProfileBuilder() {
 
   const publishStorefrontMutation = useMutation({
     mutationFn: (draft) => publishStorefront(token, draft),
-    onSuccess: () => queryClient.invalidateQueries(['own-storefront-draft']),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['own-storefront-draft']);
+      queryClient.invalidateQueries(['own-public-profile']);
+    },
     onError: (error) => toast.error(error.message || 'Failed to publish storefront'),
   });
 
@@ -108,7 +115,13 @@ export default function usePublicProfileBuilder() {
   const derived = useMemo(() => {
     const profile = profileData?.profile;
     const slug = profile?.slug || profileData?.suggested_slug;
-    const hasDraftContent = Boolean(storefrontDraftData?.draft?.blocks?.length);
+    const hasEditorBlocks = Boolean(editor.editorData?.blocks?.length);
+    const hasDraftContent = Boolean(
+      storefrontDraftData?.draft?.blocks?.length
+      || (Array.isArray(storefrontDraftData?.drafts)
+        && storefrontDraftData.drafts.some((draft) => draft?.blocks?.length))
+      || hasEditorBlocks
+    );
     const hasPublishedStorefront = Boolean(storefrontDraftData?.published_at);
     const hasPageRecord = Boolean(profile?.enabled) || hasDraftContent || hasPublishedStorefront;
     const hasSavedDraft = hasDraftContent || hasPublishedStorefront;
@@ -122,12 +135,29 @@ export default function usePublicProfileBuilder() {
     const publicUrl = slug ? `${origin || ''}/professional/${slug}` : '';
     const hasUnsavedChanges = Object.keys(formData).length > 0 || editor.editorDirty;
     const isLive = formData.enabled ?? Boolean(profile?.enabled);
+    const draftUpdatedAt = storefrontDraftData?.draft?.updated_at
+      ? new Date(storefrontDraftData.draft.updated_at).getTime()
+      : 0;
+    const publishedAt = storefrontDraftData?.published_at
+      ? new Date(storefrontDraftData.published_at).getTime()
+      : 0;
+    const draftAheadOfLive = Boolean(
+      publishedAt
+      && draftUpdatedAt
+      && draftUpdatedAt > publishedAt
+    );
     // Allow:
     // - first publish when page is not live yet
-    // - update live when there are unsaved edits OR saved-but-unpublished draft changes
+    // - update live when there are unsaved edits, unpublished local edits,
+    //   or a saved draft that is newer than the live revision (e.g. layer reorder)
     // Disallow:
     // - update live when already live and there is no draft delta
-    const canPublish = hasDraftContent && (!isLive || hasUnsavedChanges || editor.hasUnpublishedChanges);
+    const canPublish = hasDraftContent && (
+      !isLive
+      || hasUnsavedChanges
+      || editor.hasUnpublishedChanges
+      || draftAheadOfLive
+    );
     return {
       profile,
       slug,
@@ -144,7 +174,15 @@ export default function usePublicProfileBuilder() {
       isLive,
       canPublish,
     };
-  }, [profileData, storefrontDraftData, origin, formData, editor.editorDirty, editor.hasUnpublishedChanges]);
+  }, [
+    profileData,
+    storefrontDraftData,
+    origin,
+    formData,
+    editor.editorData,
+    editor.editorDirty,
+    editor.hasUnpublishedChanges,
+  ]);
 
   const generateCopyMutation = useMutation({
     mutationFn: () => {
@@ -152,7 +190,7 @@ export default function usePublicProfileBuilder() {
         profileData?.professional_profile?.professional_type || profileData?.professional_type,
       );
       return generateStorefrontDraft(token, {
-        template_key: editor.editorData?.template_key || `${role}-classic`,
+        template_key: editor.editorData?.template_key || defaultStorefrontTemplateKey(role),
         brand_kit: sanitizeAiGenerationBrandKit(editor.editorData?.brand_kit || {
           business_name: profileData?.professional_profile?.company_name || '',
         }),
@@ -161,11 +199,14 @@ export default function usePublicProfileBuilder() {
     },
     onSuccess: (data) => {
       const generated = data?.generated || {};
+      const role = normalizeRole(
+        profileData?.professional_profile?.professional_type || profileData?.professional_type,
+      );
       setFormData((prev) => ({ ...prev, ...generated }));
       if (data?.draft) {
         editor.setEditorData((current) => ({
           ...(current || {}),
-          template_key: data.draft.template?.id || current?.template_key || 'agent-classic',
+          template_key: data.draft.template?.id || current?.template_key || defaultStorefrontTemplateKey(role),
           brand_kit: {
             ...(current?.brand_kit || {}),
             business_name: profileData?.professional_profile?.company_name || current?.brand_kit?.business_name || '',
@@ -181,7 +222,7 @@ export default function usePublicProfileBuilder() {
           blocks: seedBlockContentFromProfile(
             data.draft.blocks || [],
             profileSeedFromData(profileData),
-            data.draft.template?.id || current?.template_key || 'agent-classic',
+            data.draft.template?.id || current?.template_key || defaultStorefrontTemplateKey(role),
           ),
         }));
         editor.setEditorDirty(true);
@@ -201,7 +242,16 @@ export default function usePublicProfileBuilder() {
         current ? { ...current, profile: null } : current
       ));
       queryClient.setQueryData(['own-storefront-draft'], (current) => (
-        current ? { ...current, profile: null, draft: null, published_at: null } : current
+        current
+          ? {
+              ...current,
+              profile: null,
+              draft: null,
+              drafts: [],
+              active_template_id: null,
+              published_at: null,
+            }
+          : current
       ));
       queryClient.invalidateQueries(['own-public-profile']);
       queryClient.invalidateQueries(['own-storefront-draft']);
@@ -230,26 +280,41 @@ export default function usePublicProfileBuilder() {
     }
   };
 
-  const handlePublish = () => {
-    const enablePublicPage = () => updateMutation.mutate({ enabled: true }, {
-      onSuccess: () => {
-        editor.markLiveSynced();
-        toast.success('Public page published');
-      },
-    });
-    const currentDraft = editor.editorData ? buildStorefrontDraft(editor.editorData) : null;
-    const publish = () => publishStorefrontMutation.mutate(currentDraft, { onSuccess: enablePublicPage });
-    if (editor.editorDirty && editor.editorData) {
-      const draft = currentDraft;
-      saveStorefrontMutation.mutate(draft, {
-        onSuccess: () => {
-          editor.markDraftSaved(draft);
-          publish();
-        },
-      });
-      return;
+  const saveCurrentStorefrontDraft = async () => {
+    if (!editor.editorData) return false;
+    const currentDraft = buildStorefrontDraft(editor.editorData);
+    try {
+      await saveStorefrontMutation.mutateAsync(currentDraft);
+      editor.markDraftSaved(currentDraft);
+      return true;
+    } catch {
+      return false;
     }
-    publish();
+  };
+
+  const handlePublish = () => {
+    if (publishInFlightRef.current) return publishInFlightRef.current;
+    const currentDraft = editor.editorData ? buildStorefrontDraft(editor.editorData) : null;
+    const finishPublish = () => {
+      editor.markLiveSynced(currentDraft);
+      toast.success(derived.isLive ? 'Live page updated' : 'Public page published');
+    };
+    const publishTask = (async () => {
+      try {
+        await publishStorefrontMutation.mutateAsync(currentDraft);
+        if (currentDraft) editor.markDraftSaved(currentDraft);
+        finishPublish();
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+    publishInFlightRef.current = publishTask;
+    return publishTask.finally(() => {
+      if (publishInFlightRef.current === publishTask) {
+        publishInFlightRef.current = null;
+      }
+    });
   };
 
   const handleDeleteWebPage = () => {
@@ -304,6 +369,7 @@ export default function usePublicProfileBuilder() {
     addBlock: editor.addBlock,
     removeBlock: editor.removeBlock,
     handleSave,
+    saveCurrentStorefrontDraft,
     handlePublish,
     handleDeleteWebPage,
     confirmDeleteWebPage,

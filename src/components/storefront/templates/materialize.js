@@ -11,7 +11,13 @@ export function materializeTemplate(templateKey, profile = {}, existingBrandKit 
   if (!template) return null;
   const ctx = buildTemplateContext(profile);
   const listingCardTheme = listingCardThemeFromTemplate(template.id);
-  const listingTypes = new Set([T.PROPERTIES, T.FEATURED_LISTINGS, T.TOP_LISTINGS, T.SOLD_LISTINGS]);
+  const listingTypes = new Set([
+    T.PROPERTIES,
+    T.FEATURED_LISTINGS,
+    T.TOP_LISTINGS,
+    T.SOLD_LISTINGS,
+    T.SELLER_SOLD_RESULTS,
+  ]);
   const rawBlocks = template.blocks(ctx).map((entry, index) => {
     const created = createBlock(entry.type);
     const visual = visualTreatmentForTemplate(template.id, entry.type, index);
@@ -32,7 +38,6 @@ export function materializeTemplate(templateKey, profile = {}, existingBrandKit 
         },
         layout: {
           ...created.data.layout,
-          ...(entry.data?.layout || {}),
           alignment: visual.align,
           padding: visual.padding,
           width: visual.width,
@@ -40,6 +45,7 @@ export function materializeTemplate(templateKey, profile = {}, existingBrandKit 
           mediaPosition: visual.mediaPosition,
           columns: visual.columns,
           cardStyle: isListing ? (listingCardTheme.cardStyle || visual.cardStyle) : visual.cardStyle,
+          ...(entry.data?.layout || {}),
         },
         style: {
           ...created.data.style,
@@ -70,14 +76,23 @@ export function materializeTemplate(templateKey, profile = {}, existingBrandKit 
 export function seedBlockContentFromProfile(blocks = [], profile = {}, templateKey = '') {
   const ctx = buildTemplateContext(profile);
   return normalizeBlocks(blocks).map((block, index) => {
-    const originalLayout = blocks[index]?.data?.layout || {};
-    const originalStyle = blocks[index]?.data?.style || {};
+    const originalBlock = blocks.find((candidate) => candidate?.id && candidate.id === block.id)
+      || blocks.find((candidate) => candidate?.type === block.type)
+      || {};
+    const originalLayout = originalBlock.data?.layout || originalBlock.layout || {};
+    const originalStyle = originalBlock.data?.style || originalBlock.style || {};
     const content = { ...block.data.content };
     const visual = visualTreatmentForTemplate(templateKey, block.type, index);
     if (block.type === T.HERO) {
       if (!content.heading) content.heading = ctx.headline || `Work with ${ctx.name}`;
       if (!content.body) content.body = ctx.tagline || '';
       if (!content.cta_label) content.cta_label = 'Book a consultation';
+      if (
+        templateKey === 'agent-classic'
+        && Number(content.classic_cover_layout_version || 0) < 2
+      ) {
+        content.classic_cover_layout_version = 2;
+      }
     }
     if (block.type === T.ABOUT) {
       if (!content.heading) content.heading = `About ${ctx.name}`;
@@ -98,7 +113,13 @@ export function seedBlockContentFromProfile(blocks = [], profile = {}, templateK
           padding: originalLayout.padding || visual.padding,
           width: originalLayout.width || visual.width,
           variant: originalLayout.variant || visual.variant,
-          mediaPosition: originalLayout.mediaPosition || visual.mediaPosition,
+          mediaPosition: (
+            templateKey === 'agent-classic'
+            && block.type === T.HERO
+            && Number(block.data?.content?.classic_cover_layout_version || 0) < 2
+          )
+            ? 'background'
+            : (originalLayout.mediaPosition || visual.mediaPosition),
           columns: String(originalLayout.columns || visual.columns),
           cardStyle: originalLayout.cardStyle || visual.cardStyle,
           animationType: originalLayout.animationType || block.data.layout.animationType,

@@ -72,6 +72,42 @@ const CONTENT_COLLECTIONS = {
       .join('\n'),
     hint: 'One per line: Title | Issuer | Year',
   },
+  [STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS]: {
+    label: 'Credentials and recognition',
+    parse: (raw) => raw.split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [title = '', issuer = ''] = line.split('|').map((part) => part.trim());
+        const inferredSources = {
+          'professional credentials': 'credentials',
+          credentials: 'credentials',
+          'market specialty': 'specialty',
+          specialty: 'specialty',
+          'local specialty': 'specialty',
+          languages: 'languages',
+          brokerage: 'company',
+          recognition: 'awards',
+          experience: 'years_experience',
+          clients: 'total_clients',
+          'total seller clients': 'total_clients',
+          'active pipeline value': 'active_pipeline_value',
+          'sold property value': 'total_sold_home_value',
+        };
+        return {
+          title,
+          issuer,
+          ...(!issuer && inferredSources[title.toLowerCase()]
+            ? { source: inferredSources[title.toLowerCase()] }
+            : {}),
+        };
+      })
+      .filter((item) => item.title),
+    format: (items) => (items || [])
+      .map((item) => [item.title, item.issuer].filter(Boolean).join(' | '))
+      .join('\n'),
+    hint: 'One per line: Credential title | Issuer or detail',
+  },
   [STOREFRONT_BLOCK_TYPES.FOOTER]: {
     label: 'Footer navigation',
     parse: (raw) => raw.split('\n')

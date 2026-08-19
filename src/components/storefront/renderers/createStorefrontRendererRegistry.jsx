@@ -66,6 +66,7 @@ import {
   ClassicGuidanceSection,
   CommunityGuidanceSection,
   FirstHomeGuidanceSection,
+  InvestorGuidanceSection,
   LuxuryGuidanceSection,
   SellerGuidanceSection,
 } from './variants/AgentExperienceGuidanceSections';
@@ -73,9 +74,20 @@ import {
   ClassicRoleDetailsSection,
   CommunityRoleDetailsSection,
   FirstHomeRoleDetailsSection,
+  InvestorRoleDetailsSection,
   LuxuryRoleDetailsSection,
   SellerRoleDetailsSection,
 } from './variants/AgentExperienceRoleDetailSections';
+import {
+  SellerCaseStudySection,
+  SellerCredentialsSection,
+  SellerPerformanceSection,
+} from './variants/SellerExpertProofSections';
+import {
+  AgentCaseStudySection,
+  AgentCredentialsSection,
+  AgentPerformanceSection,
+} from './variants/AgentProofSections';
 
 function listingBlockProps(block, profile = {}) {
   return {
@@ -83,6 +95,45 @@ function listingBlockProps(block, profile = {}) {
     layout: block?.data?.layout || {},
     sectionStyle: block?.data?.style || profile?.storefront_section_style || {},
   };
+}
+
+function sellerSoldListingBlockProps(block, profile = {}) {
+  const sold = listingBlockProps(block, profile);
+  const featuredBlock = profile.storefront_featured_listing_design;
+  if (!featuredBlock) return sold;
+  const featured = listingBlockProps(featuredBlock, profile);
+  const useFeaturedColumns = Number(sold.content.sold_card_layout_version || 0) < 2;
+  const hasCustomSoldCardDesign = Boolean(
+    sold.content.card_background
+    || sold.content.card_text_color
+    || (sold.layout.cardStyle && sold.layout.cardStyle !== 'bordered')
+    || (sold.sectionStyle.radius && sold.sectionStyle.radius !== 'default')
+    || (sold.sectionStyle.shadow && sold.sectionStyle.shadow !== 'none'),
+  );
+  if (hasCustomSoldCardDesign) return sold;
+  return {
+    content: {
+      ...sold.content,
+      card_background: featured.content.card_background || '',
+      card_text_color: featured.content.card_text_color || '',
+    },
+    layout: {
+      ...sold.layout,
+      ...(useFeaturedColumns ? { columns: featured.layout.columns || '4' } : {}),
+      cardStyle: featured.layout.cardStyle || sold.layout.cardStyle,
+    },
+    sectionStyle: {
+      ...sold.sectionStyle,
+      radius: featured.sectionStyle.radius || sold.sectionStyle.radius,
+      shadow: featured.sectionStyle.shadow || sold.sectionStyle.shadow,
+    },
+  };
+}
+
+function proofPresentationFromProfile(profile = {}) {
+  if (profile.storefront_template_key === 'agent-luxury-advisor') return 'luxury';
+  if (profile.storefront_template_key === 'agent-community-expert') return 'community';
+  return 'firstHome';
 }
 
 const sharedRegistry = {
@@ -102,6 +153,7 @@ const sharedRegistry = {
       onCTAClick={actions.onCtaClick}
       content={block?.data?.content || {}}
       sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+      layout={block?.data?.layout || profile?.storefront_section_layout || {}}
     />
   ),
   [T.ROLE_DETAILS]: ({ profile, block }) => (
@@ -151,17 +203,43 @@ const sharedRegistry = {
       content={block?.data?.content || {}}
     />
   ),
-  [T.FOOTER]: ({ profile, block }) => (
+  [T.FOOTER]: ({ profile, block, actions }) => (
     <PublicStorefrontFooter
       profile={profile}
       content={block?.data?.content || {}}
       sectionStyle={block?.data?.style || profile?.storefront_section_style || {}}
+      onAppointmentClick={actions.onAppointmentClick}
+      onCtaClick={actions.onCtaClick}
+      onDirectLeadClick={actions.onDirectLeadClick}
     />
   ),
 };
 
 const roleRegistry = {
   agent: {
+    [T.SELLER_PERFORMANCE]: ({ profile, block }) => (
+      <AgentPerformanceSection profile={profile} block={block} presentation={proofPresentationFromProfile(profile)} />
+    ),
+    [T.SELLER_CASE_STUDY]: ({ profile, block }) => (
+      <AgentCaseStudySection profile={profile} block={block} presentation={proofPresentationFromProfile(profile)} />
+    ),
+    [T.SELLER_CREDENTIALS]: ({ profile, block }) => (
+      <AgentCredentialsSection profile={profile} block={block} presentation={proofPresentationFromProfile(profile)} />
+    ),
+    [T.SELLER_SOLD_RESULTS]: ({ profile, block }) => (
+      <AgentListingsSection
+        profile={profile}
+        title={block?.data?.content?.heading || 'Recently sold homes'}
+        description={block?.data?.content?.body || ''}
+        listings={profile.recent_closed_seller_leads}
+        type="sold"
+        profileSlug={profile.slug}
+        preview={profile.storefront_builder_preview}
+        builderAccessToken={profile.storefront_builder_access_token}
+        presentation={proofPresentationFromProfile(profile)}
+        {...listingBlockProps(block, profile)}
+      />
+    ),
     [T.PROPERTIES]: ({ profile, actions, block }) => (
       <AgentPropertiesSection
         profile={profile}
@@ -255,9 +333,12 @@ const experienceOverrides = {
       [T.ROLE_DETAILS]: ({ profile, block }) => <LuxuryRoleDetailsSection profile={profile} block={block} />,
       [T.ABOUT]: ({ profile }) => <LuxuryAboutSection profile={profile} />,
       [T.SERVICES]: ({ profile }) => <LuxuryServicesSection profile={profile} />,
-      [T.TESTIMONIALS]: ({ profile }) => <LuxuryTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
+      [T.TESTIMONIALS]: ({ profile, block }) => <LuxuryTestimonialsSection profile={profile} testimonials={block?.data?.content?.items || profile.testimonials} />,
       [T.GUIDANCE]: ({ profile, block }) => <LuxuryGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <LuxuryCtaSection profile={profile} actions={actions} />,
+      [T.SELLER_PERFORMANCE]: ({ profile, block }) => <AgentPerformanceSection profile={profile} block={block} presentation="luxury" />,
+      [T.SELLER_CASE_STUDY]: ({ profile, block }) => <AgentCaseStudySection profile={profile} block={block} presentation="luxury" />,
+      [T.SELLER_CREDENTIALS]: ({ profile, block }) => <AgentCredentialsSection profile={profile} block={block} presentation="luxury" />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
         <AgentListingsSection
           profile={profile}
@@ -269,6 +350,7 @@ const experienceOverrides = {
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
           onPropertyInquiry={actions.onPropertyInquiry}
+          presentation="luxury"
           {...listingBlockProps(block, profile)}
         />
       ),
@@ -281,6 +363,20 @@ const experienceOverrides = {
           profileSlug={profile.slug}
           preview={profile.storefront_builder_preview}
           builderAccessToken={profile.storefront_builder_access_token}
+          {...listingBlockProps(block, profile)}
+        />
+      ),
+      [T.SELLER_SOLD_RESULTS]: ({ profile, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'Notable recent sales'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.recent_closed_seller_leads}
+          type="sold"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          presentation="luxury"
           {...listingBlockProps(block, profile)}
         />
       ),
@@ -304,14 +400,16 @@ const experienceOverrides = {
   'industrial-minimal': {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <IndustrialHeroSection profile={profile} actions={actions} block={block} />,
+      [T.ROLE_DETAILS]: ({ profile, block }) => <InvestorRoleDetailsSection profile={profile} block={block} />,
       [T.ABOUT]: ({ profile, block }) => <IndustrialAboutSection profile={profile} content={block?.data?.content || {}} block={block} />,
       [T.SERVICES]: ({ profile }) => <IndustrialServicesSection profile={profile} />,
       [T.TESTIMONIALS]: ({ profile }) => <IndustrialTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
+      [T.GUIDANCE]: ({ profile, block }) => <InvestorGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <IndustrialCtaSection profile={profile} actions={actions} />,
       [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
         <AgentListingsSection
           profile={profile}
-          title={block?.data?.content?.heading || 'Signature Properties'}
+          title={block?.data?.content?.heading || 'Active Opportunities'}
           description={block?.data?.content?.body || ''}
           listings={profile.featured_listings}
           type="featured"
@@ -324,7 +422,7 @@ const experienceOverrides = {
       ),
       [T.SOLD_LISTINGS]: ({ profile, block }) => (
         <AgentListingsSection
-          title={block?.data?.content?.heading || 'Recent Placements'}
+          title={block?.data?.content?.heading || 'Closed Transactions'}
           description={block?.data?.content?.body || ''}
           listings={profile.sold_listings}
           type="sold"
@@ -357,9 +455,41 @@ const experienceOverrides = {
       [T.ROLE_DETAILS]: ({ profile, block }) => <FirstHomeRoleDetailsSection profile={profile} block={block} />,
       [T.ABOUT]: ({ profile }) => <WarmAboutSection profile={profile} />,
       [T.SERVICES]: ({ profile }) => <WarmServicesSection profile={profile} />,
-      [T.TESTIMONIALS]: ({ profile }) => <WarmTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
+      [T.TESTIMONIALS]: ({ profile, block }) => <WarmTestimonialsSection profile={profile} testimonials={block?.data?.content?.items || profile.testimonials} />,
       [T.GUIDANCE]: ({ profile, block }) => <FirstHomeGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <WarmCtaSection profile={profile} actions={actions} />,
+      [T.SELLER_PERFORMANCE]: ({ profile, block }) => <AgentPerformanceSection profile={profile} block={block} presentation="firstHome" />,
+      [T.SELLER_CASE_STUDY]: ({ profile, block }) => <AgentCaseStudySection profile={profile} block={block} presentation="firstHome" />,
+      [T.SELLER_CREDENTIALS]: ({ profile, block }) => <AgentCredentialsSection profile={profile} block={block} presentation="firstHome" />,
+      [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'A simple place to start'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.featured_listings}
+          type="featured"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          onPropertyInquiry={actions.onPropertyInquiry}
+          presentation="firstHome"
+          {...listingBlockProps(block, profile)}
+        />
+      ),
+      [T.SELLER_SOLD_RESULTS]: ({ profile, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'Recently sold homes'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.recent_closed_seller_leads}
+          type="sold"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          presentation="firstHome"
+          {...listingBlockProps(block, profile)}
+        />
+      ),
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <WarmHeroSection profile={profile} actions={actions} block={block} />,
@@ -381,11 +511,56 @@ const experienceOverrides = {
     agent: {
       [T.HERO]: ({ profile, actions, block }) => <SellerExperienceHero profile={profile} actions={actions} block={block} />,
       [T.ROLE_DETAILS]: ({ profile, block }) => <SellerRoleDetailsSection profile={profile} block={block} />,
-      [T.ABOUT]: ({ profile }) => <FunnelAboutSection profile={profile} />,
+      [T.SELLER_PERFORMANCE]: ({ profile, block }) => <SellerPerformanceSection profile={profile} block={block} />,
+      [T.ABOUT]: ({ profile, block }) => <FunnelAboutSection profile={profile} block={block} />,
       [T.SERVICES]: ({ profile }) => <FunnelServicesSection profile={profile} />,
-      [T.TESTIMONIALS]: ({ profile }) => <FunnelTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
+      [T.SELLER_CASE_STUDY]: ({ profile, block }) => <SellerCaseStudySection profile={profile} block={block} />,
+      [T.TESTIMONIALS]: ({ profile, block }) => <FunnelTestimonialsSection profile={profile} testimonials={block?.data?.content?.items || profile.testimonials} />,
+      [T.SELLER_CREDENTIALS]: ({ profile, block }) => <SellerCredentialsSection profile={profile} block={block} />,
       [T.GUIDANCE]: ({ profile, block }) => <SellerGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <FunnelCtaSection profile={profile} actions={actions} />,
+      [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'Market-ready homes'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.featured_listings}
+          type="featured"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          onPropertyInquiry={actions.onPropertyInquiry}
+          presentation="seller"
+          {...listingBlockProps(block, profile)}
+        />
+      ),
+      [T.SELLER_SOLD_RESULTS]: ({ profile, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={['Recently sold results', 'Recently closed seller leads'].includes(block?.data?.content?.heading)
+            ? 'Recently sold properties'
+            : (block?.data?.content?.heading || 'Recently sold properties')}
+          description={[
+            'A live view of completed sales from the connected property inventory.',
+            'Recent seller opportunities successfully moved to closed-won.',
+          ].includes(block?.data?.content?.body)
+            ? 'A look at homes recently sold with a successful client outcome.'
+            : (block?.data?.content?.body || '')}
+          listings={profile.recent_closed_seller_leads}
+          type="sold"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          presentation="seller"
+          {...sellerSoldListingBlockProps(block, profile)}
+          content={{
+            ...sellerSoldListingBlockProps(block, profile).content,
+            ...(['Track record', 'Successful seller outcomes'].includes(block?.data?.content?.eyebrow)
+              ? { eyebrow: 'Recent sales' }
+              : {}),
+          }}
+        />
+      ),
     },
     mortgage_broker: {
       [T.HERO]: ({ profile, actions, block }) => <FunnelHeroSection profile={profile} actions={actions} block={block} />,
@@ -409,9 +584,41 @@ const experienceOverrides = {
       [T.ROLE_DETAILS]: ({ profile, block }) => <CommunityRoleDetailsSection profile={profile} block={block} />,
       [T.ABOUT]: ({ profile }) => <NeighborhoodAboutSection profile={profile} />,
       [T.SERVICES]: ({ profile }) => <NeighborhoodServicesSection profile={profile} />,
-      [T.TESTIMONIALS]: ({ profile }) => <NeighborhoodTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
+      [T.TESTIMONIALS]: ({ profile, block }) => <NeighborhoodTestimonialsSection profile={profile} testimonials={block?.data?.content?.items || profile.testimonials} />,
       [T.GUIDANCE]: ({ profile, block }) => <CommunityGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <NeighborhoodCtaSection profile={profile} actions={actions} />,
+      [T.SELLER_PERFORMANCE]: ({ profile, block }) => <AgentPerformanceSection profile={profile} block={block} presentation="community" />,
+      [T.SELLER_CASE_STUDY]: ({ profile, block }) => <AgentCaseStudySection profile={profile} block={block} presentation="community" />,
+      [T.SELLER_CREDENTIALS]: ({ profile, block }) => <AgentCredentialsSection profile={profile} block={block} presentation="community" />,
+      [T.FEATURED_LISTINGS]: ({ profile, actions, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'Homes in your area'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.featured_listings}
+          type="featured"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          onPropertyInquiry={actions.onPropertyInquiry}
+          presentation="community"
+          {...listingBlockProps(block, profile)}
+        />
+      ),
+      [T.SELLER_SOLD_RESULTS]: ({ profile, block }) => (
+        <AgentListingsSection
+          profile={profile}
+          title={block?.data?.content?.heading || 'Recently sold homes'}
+          description={block?.data?.content?.body || ''}
+          listings={profile.recent_closed_seller_leads}
+          type="sold"
+          profileSlug={profile.slug}
+          preview={profile.storefront_builder_preview}
+          builderAccessToken={profile.storefront_builder_access_token}
+          presentation="community"
+          {...listingBlockProps(block, profile)}
+        />
+      ),
     },
   },
 };

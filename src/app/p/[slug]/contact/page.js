@@ -1,55 +1,36 @@
-import { notFound } from 'next/navigation';
-import {
-  getPublicProfileShell,
-  getPublishedStorefront,
-  getSellerProperties,
-} from '@/lib/publicProfileClient';
-import PublicPropertiesPageClient from '@/components/storefront/PublicPropertiesPageClient';
+import { notFound, redirect } from 'next/navigation';
+import PublicContactPage from '@/components/storefront/PublicContactPage';
+import { getPublicProfile, getPublishedStorefront } from '@/lib/publicProfileClient';
 
 export async function generateMetadata({ params }) {
   try {
-    const data = await getPublicProfileShell(params.slug);
+    const data = await getPublicProfile(params.slug);
     const name = data.profile?.professional_name || 'Professional';
     return {
-      title: `Properties | ${name}`,
-      description: `Browse all available properties from ${name}.`,
+      title: `Contact | ${name}`,
+      description: `Send a private inquiry to ${name}.`,
     };
   } catch {
     return {
-      title: 'Properties',
-      description: 'Browse available properties.',
+      title: 'Contact',
+      description: 'Send a private inquiry.',
     };
   }
 }
 
-export default async function PropertiesPage({ params }) {
+export default async function ContactPage({ params }) {
   let data;
-  let storefrontResponse;
-  let propertiesResponse;
   try {
-    [data, storefrontResponse, propertiesResponse] = await Promise.all([
-      getPublicProfileShell(params.slug),
-      getPublishedStorefront(params.slug),
-      getSellerProperties(params.slug),
-    ]);
+    data = await getPublicProfile(params.slug);
   } catch {
     notFound();
   }
 
   const profile = data?.profile;
-  if (!profile?.enabled || profile.professional_type !== 'agent') {
-    notFound();
-  }
+  if (!profile?.enabled) notFound();
 
+  const storefrontResponse = await getPublishedStorefront(params.slug);
   const published = storefrontResponse?.storefront?.published || null;
-  const properties = (propertiesResponse?.properties || []).map((property) => ({
-    ...property,
-    _id: property._id || property.id,
-    price: property.price || property.expected_price,
-    photos: property.photos?.length ? property.photos : property.images || [],
-    square_feet: property.square_feet || property.square_footage,
-    status: property.status || 'available',
-  }));
   const publishedBlocks = (published?.blocks || []).map((block) => ({
     ...block,
     type: block?.type || block?.data?.type,
@@ -61,8 +42,6 @@ export default async function PropertiesPage({ params }) {
       style: block?.data?.style || block?.style || {},
     },
   }));
-  const heroBlock = (published?.blocks || []).find((block) => (block?.type || block?.data?.type) === 'hero');
-  const heroContent = heroBlock?.data?.content || heroBlock?.content || {};
   const resolvedCoverPhoto = published?.brandKit?.cover_url || profile.cover_photo_url || '';
   const resolvedProfilePhoto = published?.brandKit?.profile_photo_url || profile.profile_photo_url || '';
   const storefrontProfile = published
@@ -100,9 +79,13 @@ export default async function PropertiesPage({ params }) {
         },
         storefront_profile_zoom: Number(published.brandKit?.profile_zoom ?? 1),
         storefront_show_chatbot: published.brandKit?.show_chatbot !== false,
-        storefront_section_content: heroContent,
       }
     : profile;
 
-  return <PublicPropertiesPageClient profile={storefrontProfile} listings={properties} />;
+  const templateKey = storefrontProfile?.storefront_template_key || profile.storefront_template_key || '';
+  if (String(templateKey).trim().toLowerCase() === 'agent-investor') {
+    redirect(`/professional/${params.slug}`);
+  }
+
+  return <PublicContactPage profile={storefrontProfile} />;
 }

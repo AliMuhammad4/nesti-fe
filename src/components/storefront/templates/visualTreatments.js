@@ -3,7 +3,13 @@ import { getStorefrontTemplate } from './registry';
 
 export function visualTreatmentForTemplate(templateId, type, index) {
   const isHero = type === T.HERO;
-  const isListing = [T.PROPERTIES, T.FEATURED_LISTINGS, T.TOP_LISTINGS, T.SOLD_LISTINGS].includes(type);
+  const isListing = [
+    T.PROPERTIES,
+    T.FEATURED_LISTINGS,
+    T.TOP_LISTINGS,
+    T.SOLD_LISTINGS,
+    T.SELLER_SOLD_RESULTS,
+  ].includes(type);
   const isTool = [T.MORTGAGE_CALCULATOR, T.CLOSING_COST_ESTIMATOR].includes(type);
   const palette = {
     'agent-classic': {
@@ -19,28 +25,28 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'small',
     },
     'agent-luxury-advisor': {
-      bg: index % 2 === 0 ? '#f8f2e4' : '#fffaf1',
-      align: isHero ? 'left' : 'center',
-      padding: isHero ? 'large' : 'large',
-      radius: index % 2 === 0 ? 'large' : 'none',
+      bg: index % 2 === 0 ? '#0d0c0b' : '#11100f',
+      align: 'left',
+      padding: isHero ? 'large' : 'medium',
+      radius: isListing ? 'large' : 'none',
       variant: isHero ? 'premium' : isListing ? 'editorial' : 'split',
-      cardStyle: 'elevated',
-      columns: isListing ? '4' : '2',
+      cardStyle: 'bordered',
+      columns: isListing ? '2' : '2',
       mediaPosition: isHero ? 'background' : 'right',
       width: 'full',
-      shadow: 'large',
+      shadow: isListing ? 'medium' : 'none',
     },
     'agent-first-home': {
-      bg: index % 2 === 0 ? '#edf5ff' : '#fff4ea',
-      align: isHero || index < 3 ? 'center' : 'left',
-      padding: 'medium',
-      radius: 'large',
-      variant: isHero ? 'feature-grid' : isTool ? 'lead-magnet' : 'editorial',
-      cardStyle: 'glass',
-      columns: '2',
+      bg: index % 2 === 0 ? '#ffffff' : '#f4faf5',
+      align: isHero || index < 2 ? 'center' : 'left',
+      padding: isHero ? 'large' : 'medium',
+      radius: 'none',
+      variant: isHero ? 'premium' : isTool ? 'lead-magnet' : isListing ? 'feature-grid' : 'editorial',
+      cardStyle: 'bordered',
+      columns: isListing ? '3' : '2',
       mediaPosition: isHero ? 'background' : 'none',
-      width: 'contained',
-      shadow: 'medium',
+      width: 'full',
+      shadow: 'none',
     },
     'agent-investor': {
       bg: index % 2 === 0 ? '#ffffff' : '#f8fafc',
@@ -55,19 +61,19 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'none',
     },
     'agent-seller-expert': {
-      bg: index % 2 === 0 ? '#fff0f3' : '#fff7e7',
-      align: isHero ? 'center' : 'left',
-      padding: 'medium',
-      radius: 'large',
-      variant: isTool ? 'lead-magnet' : isHero ? 'split' : isListing ? 'feature-grid' : 'lead-magnet',
-      cardStyle: 'elevated',
-      columns: '2',
+      bg: index % 2 === 0 ? '#f8fafc' : '#ffffff',
+      align: isHero ? 'left' : 'left',
+      padding: isHero ? 'large' : 'medium',
+      radius: 'default',
+      variant: isTool ? 'lead-magnet' : isHero ? 'split' : isListing ? 'feature-grid' : 'editorial',
+      cardStyle: 'bordered',
+      columns: isListing ? '3' : '3',
       mediaPosition: isHero ? 'right' : 'none',
-      width: isTool ? 'narrow' : 'contained',
-      shadow: 'medium',
+      width: 'full',
+      shadow: 'small',
     },
     'agent-community-expert': {
-      bg: index % 2 === 0 ? '#eaf8ef' : '#f5fbf7',
+      bg: '',
       align: isHero ? 'left' : 'left',
       padding: isHero ? 'large' : 'medium',
       radius: 'large',
@@ -75,7 +81,7 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       cardStyle: isListing ? 'elevated' : 'glass',
       columns: isListing ? '3' : '2',
       mediaPosition: isHero ? 'background' : 'none',
-      width: 'contained',
+      width: isListing ? 'full' : 'contained',
       shadow: 'medium',
     },
     'mortgage_broker-classic': {
@@ -221,8 +227,8 @@ export function listingCardThemeFromTemplate(templateKey = '') {
   const template = getStorefrontTemplate(templateKey);
   const brand = template?.brand || {};
   const byTemplate = {
-    'agent-luxury-advisor': { card_background: '#fffdf8', card_text_color: '', cardStyle: 'elevated' },
-    'agent-first-home': { card_background: '#ffffff', card_text_color: '', cardStyle: 'glass' },
+    'agent-luxury-advisor': { card_background: '#171513', card_text_color: '#f5f1e8', cardStyle: 'bordered' },
+    'agent-first-home': { card_background: '#ffffff', card_text_color: '#111111', cardStyle: 'bordered' },
     'agent-investor': { card_background: '#ffffff', card_text_color: '', cardStyle: 'bordered' },
     'agent-seller-expert': { card_background: '#ffffff', card_text_color: '', cardStyle: 'elevated' },
     'agent-community-expert': { card_background: '#ffffff', card_text_color: '', cardStyle: 'glass' },

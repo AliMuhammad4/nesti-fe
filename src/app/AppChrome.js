@@ -56,6 +56,7 @@ import { getOwnPublicProfile } from "@/lib/publicProfileClient";
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || "";
+  const isProfessionalPublicPage = pathname.startsWith("/p/") || pathname.startsWith("/professional/");
   const router = useRouter();
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
@@ -71,7 +72,7 @@ export default function AppChrome({ children }) {
   const userMenuRef = useRef(null);
   const calendlyOAuthBroadcastAt = useRef(0);
   const inviteFinalizeAttemptedRef = useRef(false);
-  const profileQuery = useProfileQuery();
+  const profileQuery = useProfileQuery({ enabled: !isProfessionalPublicPage });
   const { hasFeature } = useFeatureAccess();
   const showPublicProfile = hasFeature(FEATURES.PUBLIC_PROFILE);
   const showCalendar = hasFeature(FEATURES.CALENDAR_INTEGRATION);
@@ -82,6 +83,7 @@ export default function AppChrome({ children }) {
       isMounted && 
       token && 
       showPublicProfile && 
+      !isProfessionalPublicPage &&
       user?.role !== 'client' // Skip for clients
     ),
     staleTime: 60_000,
@@ -248,7 +250,6 @@ export default function AppChrome({ children }) {
 
   const isChatbotEmbed = pathname.startsWith("/chatbot");
   const isCalendlyCallback = pathname.startsWith("/calendly-callback");
-  const isProfessionalPublicPage = pathname.startsWith("/p/") || pathname.startsWith("/professional/");
   const isStandaloneAuthPage = useMemo(
     () =>
       pathname === "/log-in" ||

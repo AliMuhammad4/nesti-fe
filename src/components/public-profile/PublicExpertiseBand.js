@@ -1,6 +1,6 @@
 'use client';
 
-import { Briefcase, MapPin, Sparkles } from 'lucide-react';
+import { Briefcase, Check, MapPin, Sparkles } from 'lucide-react';
 import { resolvePublicProfileAreas } from '@/lib/publicProfileAreas';
 
 function normalizeList(value) {
@@ -50,12 +50,131 @@ function hexLuminance(hex) {
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
+function gridClassForColumns(columns, { mobile, tablet }) {
+  if (mobile) return 'grid grid-cols-1 divide-y';
+  if (tablet) {
+    return columns === '1' ? 'grid grid-cols-1' : 'grid sm:grid-cols-2';
+  }
+  return {
+    1: 'grid grid-cols-1',
+    2: 'grid sm:grid-cols-2',
+    3: 'grid lg:grid-cols-3',
+    4: 'grid sm:grid-cols-2 lg:grid-cols-4',
+  }[columns] || 'grid lg:grid-cols-3';
+}
+
+function sectionWidthClass(width) {
+  return { narrow: 'max-w-5xl', contained: 'max-w-6xl', full: 'max-w-none' }[width || 'full'] || 'max-w-none';
+}
+
+function sectionPaddingClass(padding) {
+  return { none: 'py-0', small: 'py-6', medium: 'py-10 sm:py-12', large: 'py-12 sm:py-16' }[padding || 'large'] || 'py-12 sm:py-16';
+}
+
+function radiusForStyle(radius) {
+  return { none: 0, small: 12, default: 16, medium: 20, large: 28, full: 36 }[radius || 'default'] ?? 16;
+}
+
 function isDarkTone(color) {
   const lum = hexLuminance(color);
   return lum != null ? lum < 0.45 : false;
 }
 
-export default function PublicExpertiseBand({ profile, content = {}, sectionStyle = {} }) {
+function ExpertiseGroup({
+  title,
+  subtitle,
+  Icon,
+  items,
+  collection,
+  tone = 'light',
+  headingClass,
+  mutedClass,
+  hasCustomTextColor,
+  showSideRule = false,
+  ruleColor,
+}) {
+  const marker = tone === 'luxury'
+    ? 'var(--storefront-accent)'
+    : tone === 'dark'
+      ? 'color-mix(in srgb, var(--storefront-accent, #1f6fbf) 78%, #ffffff)'
+      : 'var(--storefront-primary, #0f766e)';
+  const textClass = tone === 'luxury'
+    ? 'text-[#f3ecdf]'
+    : tone === 'dark'
+      ? 'text-white/90'
+      : 'text-[var(--storefront-heading,#0f172a)]';
+  const rowHover = tone === 'luxury'
+    ? 'hover:bg-white/[0.05]'
+    : tone === 'dark'
+      ? 'hover:bg-white/[0.06]'
+      : 'hover:bg-[color-mix(in_srgb,var(--storefront-primary,#0f766e)_6%,transparent)]';
+  const iconWrapStyle = tone === 'luxury'
+    ? {
+        background: 'color-mix(in srgb, var(--storefront-accent) 14%, transparent)',
+        color: 'var(--storefront-accent)',
+      }
+    : tone === 'dark'
+      ? {
+          background: 'color-mix(in srgb, #ffffff 12%, transparent)',
+          color: '#ffffff',
+        }
+      : {
+          background: 'color-mix(in srgb, var(--storefront-primary, #0f766e) 12%, transparent)',
+          color: 'var(--storefront-primary, #0f766e)',
+        };
+
+  return (
+    <article
+      data-storefront-anim-item="true"
+      className={`min-w-0 px-5 py-6 sm:px-6 sm:py-7 ${showSideRule ? 'lg:border-l' : ''}`}
+      style={showSideRule ? { borderColor: ruleColor } : undefined}
+    >
+      <header className="mb-4 flex items-center gap-3.5">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+          style={iconWrapStyle}
+        >
+          <Icon size={17} strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0">
+          <h3 className={`text-[15px] font-semibold tracking-tight ${headingClass}`}>
+            {title}
+          </h3>
+          <p
+            className={`mt-0.5 text-[12px] leading-4 ${mutedClass}`}
+            style={hasCustomTextColor ? { opacity: 0.7 } : undefined}
+          >
+            {subtitle}
+          </p>
+        </div>
+      </header>
+      <ul
+        data-storefront-field={`content.${collection}`}
+        data-storefront-source="profile"
+        data-storefront-label={`${title} items`}
+        className="space-y-0.5"
+      >
+        {items.map((item) => (
+          <li key={item}>
+            <div className={`flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors duration-200 ${rowHover}`}>
+              <Check size={15} strokeWidth={2.4} className="shrink-0" style={{ color: marker }} />
+              <span className={`min-w-0 text-[13.5px] font-medium leading-5 ${textClass}`}>
+                {item}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+export default function PublicExpertiseBand({
+  profile,
+  content = {},
+  sectionStyle = {},
+  layout = {},
+}) {
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const previewMode = profile?.storefront_preview_mode || 'desktop';
   const forceMobilePreview = isPreview && previewMode === 'mobile';
@@ -63,7 +182,7 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
   const forceCompactPreview = forceMobilePreview || forceTabletPreview;
   const professionalProfile = profile.professional_profile || {};
   const role = profile.professional_type;
-  // Chips are profile-owned — builder only edits eyebrow / heading / body.
+  // Lists are profile-owned — builder only edits eyebrow / heading / body.
   const services = uniqueItems([
     ...(profile.services || []).map((service) => service?.title),
     ...(profile.practice_areas || []),
@@ -79,17 +198,29 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
 
   const sectionText = sectionStyle.textColor || '';
   const sectionBg = sectionStyle.background || '';
+  const templateKey = String(profile?.storefront_template_key || '').toLowerCase();
+  const isLuxuryTemplate = templateKey.includes('luxury');
+  const isCommunityTemplate = templateKey === 'agent-community-expert';
   // Light section text (or dark section bg) means chips sit on a dark band.
   const onDarkBand = isDarkTone(sectionBg) || (Boolean(sectionText) && !isDarkTone(sectionText));
   const hasCustomTextColor = Boolean(sectionText);
 
-  const headingClass = hasCustomTextColor ? 'text-current' : 'text-[var(--storefront-heading,#0f172a)]';
-  const mutedClass = hasCustomTextColor ? 'text-current' : 'text-[var(--storefront-muted,#64748b)]';
+  const headingClass = hasCustomTextColor
+    ? 'text-current'
+    : isLuxuryTemplate
+      ? 'text-[#f5f1e8]'
+      : 'text-[var(--storefront-heading,#0f172a)]';
+  const mutedClass = hasCustomTextColor
+    ? 'text-current'
+    : isLuxuryTemplate
+      ? 'text-[color:color-mix(in_srgb,var(--storefront-accent)_62%,#f5f1e8)]'
+      : 'text-[var(--storefront-muted,#64748b)]';
   const ruleColor = onDarkBand
     ? 'color-mix(in srgb, currentColor 18%, transparent)'
     : 'var(--storefront-border, #e2e8f0)';
+  const resolvedRuleColor = isLuxuryTemplate ? 'color-mix(in srgb, var(--storefront-accent) 46%, transparent)' : ruleColor;
 
-  const columns = [
+  const groups = [
     {
       title: 'Services',
       subtitle: 'What clients can request',
@@ -113,17 +244,53 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
     },
   ];
 
+  const configuredColumns = String(layout.columns || '3');
+  const cardStyle = layout.cardStyle || (isCommunityTemplate ? 'elevated' : 'elevated');
+  const widthClass = sectionWidthClass(layout.width);
+  const paddingClass = sectionPaddingClass(layout.padding || (isCommunityTemplate ? 'large' : 'medium'));
+  const alignmentClass = { left: 'text-left', center: 'text-center', right: 'text-right' }[layout.alignment || 'left'] || 'text-left';
+  const radius = radiusForStyle(sectionStyle.radius || (isCommunityTemplate ? 'default' : 'large'));
+  const cardClass = {
+    flat: 'border-transparent',
+    bordered: 'border',
+    elevated: 'border-transparent',
+    glass: 'border bg-white/[.08] backdrop-blur-sm',
+  }[cardStyle] || 'border-transparent';
+  const tone = isLuxuryTemplate
+    ? 'luxury'
+    : onDarkBand
+      ? 'dark'
+      : 'light';
+  const groupHeadingClass = headingClass;
+  const groupMutedClass = mutedClass;
+  const panelBackground = 'transparent';
+  const panelBorder = isCommunityTemplate || onDarkBand
+    ? 'color-mix(in srgb, #ffffff 12%, transparent)'
+    : resolvedRuleColor;
+  const panelShadow = 'none';
+  const showSideRule = !forceCompactPreview && configuredColumns !== '1';
+
   return (
     <section
-      className="relative overflow-hidden border-y bg-transparent"
+      className={`relative overflow-hidden px-4 sm:px-8 ${paddingClass} ${isLuxuryTemplate || isCommunityTemplate ? '' : 'border-y'}`}
       style={{
+        background: isCommunityTemplate ? (sectionStyle.background || undefined) : undefined,
         color: sectionText || undefined,
-        borderColor: ruleColor,
+        borderColor: isLuxuryTemplate ? 'transparent' : resolvedRuleColor,
       }}
     >
-      <div className={`relative w-full px-5 py-8 ${forceCompactPreview ? '' : 'sm:px-8 sm:py-10 lg:px-12 xl:px-14'}`}>
-        <div className="mb-6 sm:mb-7">
-          <div className="max-w-5xl">
+      <div className={`relative mx-auto ${widthClass}`}>
+        <div className={`relative pb-7 sm:pb-8 ${alignmentClass} ${layout.alignment === 'center' ? 'mx-auto max-w-3xl' : layout.alignment === 'right' ? 'ml-auto max-w-3xl' : 'max-w-3xl'}`}>
+          {isCommunityTemplate ? (
+            <p
+              data-storefront-field="content.eyebrow"
+              data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+              data-storefront-label="Expertise eyebrow"
+              className="inline-flex rounded-md bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.24em] text-primary-contrast"
+            >
+              {content.eyebrow || 'Community knowledge'}
+            </p>
+          ) : (
             <div
               data-storefront-field="content.eyebrow"
               data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
@@ -134,93 +301,54 @@ export default function PublicExpertiseBand({ profile, content = {}, sectionStyl
               <Sparkles size={12} />
               {content.eyebrow || 'Professional Snapshot'}
             </div>
-            <h2
-              data-storefront-field="content.heading"
-              data-storefront-source={content.heading ? 'persisted' : 'fallback'}
-              data-storefront-label="Expertise heading"
-              className={`mt-3 text-2xl font-bold tracking-tight sm:text-3xl ${headingClass}`}
-            >
-              {content.heading || 'Services, Expertise & Areas'}
-            </h2>
-            <p
-              data-storefront-field="content.body"
-              data-storefront-source={content.body ? 'persisted' : 'fallback'}
-              data-storefront-label="Expertise description"
-              className={`mt-3 max-w-none text-sm leading-6 lg:whitespace-nowrap ${mutedClass}`}
-              style={hasCustomTextColor ? { opacity: 0.86 } : undefined}
-            >
-              {content.body || 'A quick view of what this professional handles, where they work, and the strengths clients can expect.'}
-            </p>
-          </div>
+          )}
+          <h2
+            data-storefront-field="content.heading"
+            data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+            data-storefront-label="Expertise heading"
+            className={`mt-2 text-2xl font-bold tracking-tight sm:text-3xl ${isCommunityTemplate && !hasCustomTextColor ? 'text-text-heading' : headingClass}`}
+          >
+            {content.heading || (isCommunityTemplate ? 'The local picture' : 'Services, Expertise & Areas')}
+          </h2>
+          <p
+            data-storefront-field="content.body"
+            data-storefront-source={content.body ? 'persisted' : 'fallback'}
+            data-storefront-label="Expertise description"
+            className={`mt-3 text-sm leading-6 ${isCommunityTemplate && !hasCustomTextColor ? 'text-text-muted' : mutedClass}`}
+            style={hasCustomTextColor ? { opacity: 0.86 } : undefined}
+          >
+            {content.body || (isCommunityTemplate
+              ? 'A practical read on lifestyle, pricing, schools, transit, and the micro-markets shaping each move.'
+              : 'A quick view of what this professional handles, where they work, and the strengths clients can expect.')}
+          </p>
         </div>
 
         <div
-          className={`grid gap-6 border-y py-6 ${forceMobilePreview ? 'grid-cols-1' : forceTabletPreview ? 'sm:grid-cols-2' : 'lg:grid-cols-3 lg:gap-0'}`}
-          style={{ borderColor: ruleColor }}
+          className={`relative overflow-hidden ${cardClass} ${gridClassForColumns(configuredColumns, {
+            mobile: forceMobilePreview,
+            tablet: forceTabletPreview,
+          })}`}
+          style={{
+            background: cardStyle === 'flat' ? 'transparent' : panelBackground,
+            borderColor: panelBorder,
+            borderRadius: cardStyle === 'flat' ? 0 : radius,
+            boxShadow: panelShadow,
+          }}
         >
-          {columns.map(({ title, subtitle, Icon, items, collection }, index) => (
-            <div
-              key={title}
-              data-storefront-anim-item="true"
-              className={`min-w-0 ${forceCompactPreview ? '' : `lg:px-8 ${index === 0 ? 'lg:pl-0' : 'lg:border-l'} ${index === columns.length - 1 ? 'lg:pr-0' : ''}`}`}
-              style={!forceCompactPreview && index > 0 ? { borderColor: ruleColor } : undefined}
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
-                  style={{
-                    background: onDarkBand
-                      ? 'color-mix(in srgb, #ffffff 12%, transparent)'
-                      : 'color-mix(in srgb, var(--storefront-primary, #0f766e) 10%, transparent)',
-                    color: onDarkBand
-                      ? 'currentColor'
-                      : 'var(--storefront-primary, #0f766e)',
-                    boxShadow: onDarkBand
-                      ? 'inset 0 0 0 1px color-mix(in srgb, #ffffff 16%, transparent)'
-                      : 'inset 0 0 0 1px color-mix(in srgb, var(--storefront-primary, #0f766e) 16%, transparent)',
-                  }}
-                >
-                  <Icon size={18} strokeWidth={1.75} />
-                </span>
-                <div className="min-w-0 pt-0.5">
-                  <h3 className={`text-[15px] font-bold leading-5 tracking-tight ${headingClass}`}>
-                    {title}
-                  </h3>
-                  <p
-                    className={`mt-1 text-[11px] leading-4 ${mutedClass}`}
-                    style={hasCustomTextColor ? { opacity: 0.72 } : undefined}
-                  >
-                    {subtitle}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                data-storefront-field={`content.${collection}`}
-                data-storefront-source="profile"
-                data-storefront-label={`${title} chips`}
-                className="mt-5 flex flex-wrap gap-2"
-              >
-                {items.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-[11px] font-semibold leading-none tracking-tight"
-                    style={{
-                      // Chips keep their own contrast — never inherit section text color.
-                      background: onDarkBand
-                        ? 'color-mix(in srgb, #ffffff 94%, var(--storefront-primary, #0f766e))'
-                        : 'color-mix(in srgb, var(--storefront-primary, #0f766e) 7%, #ffffff)',
-                      color: '#0f172a',
-                      boxShadow: onDarkBand
-                        ? '0 1px 2px rgba(15,23,42,0.12)'
-                        : 'inset 0 0 0 1px color-mix(in srgb, var(--storefront-primary, #0f766e) 12%, #e2e8f0)',
-                    }}
-                  >
-                    <span className="truncate">{item}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
+          {isCommunityTemplate ? (
+            <span className="pointer-events-none absolute right-0 top-0 h-16 w-16 border-r border-t border-accent/30" />
+          ) : null}
+          {groups.map((group, index) => (
+            <ExpertiseGroup
+              key={group.title}
+              {...group}
+              tone={tone}
+              headingClass={groupHeadingClass}
+              mutedClass={groupMutedClass}
+              hasCustomTextColor={hasCustomTextColor}
+              showSideRule={showSideRule && index > 0}
+              ruleColor={panelBorder}
+            />
           ))}
         </div>
       </div>

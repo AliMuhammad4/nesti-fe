@@ -8,6 +8,7 @@ export function blockLayoutStyleSignature(blocks = []) {
       enabled: block?.data?.enabled ?? true,
       layout: block?.data?.layout || {},
       style: block?.data?.style || {},
+      content: block?.data?.content || {},
     })),
   );
 }

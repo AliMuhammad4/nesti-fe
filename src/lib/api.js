@@ -151,6 +151,9 @@ export const API_ENDPOINTS = {
   billing: {
     plans: withBaseUrl("/api/billing/plans"),
     checkoutSession: withBaseUrl("/api/billing/checkout-session"),
+    storefrontTemplates: withBaseUrl("/api/billing/storefront-templates"),
+    storefrontTemplateCheckoutSession: withBaseUrl("/api/billing/storefront-templates/checkout-session"),
+    storefrontTemplateCheckoutConfirm: withBaseUrl("/api/billing/storefront-templates/checkout-session/confirm"),
     setupIntent: withBaseUrl("/api/billing/setup-intent"),
     subscriptionMe: withBaseUrl("/api/billing/subscription/me"),
     subscriptionCancel: withBaseUrl("/api/billing/subscription/cancel"),

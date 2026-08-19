@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { STOREFRONT_TEMPLATE_PRESETS } from '@/components/storefront/storefrontPresets';
+import { defaultStorefrontTemplateKey, STOREFRONT_TEMPLATE_PRESETS } from '@/components/storefront/storefrontPresets';
 import { normalizeBlocks } from '@/components/storefront/builder/storefrontBuilderState';
 import {
   getStorefrontTemplate,
   getTemplateBrandDefaults,
   materializeTemplate,
   seedBlockContentFromProfile,
+  visualTreatmentForTemplate,
 } from '@/components/storefront/templates';
 import { normalizeRole } from './editorConstants';
 import {
@@ -34,9 +35,666 @@ function cloneEditorData(data) {
   return JSON.parse(JSON.stringify(data));
 }
 
-function editorDataFromDraft(draft, profileSeed, professional, fallbackTemplateKey) {
+function mergeStorefrontMedia(primary = {}, fallback = {}) {
+  const next = { ...primary };
+  const primaryLogo = primary.logo_url || primary.logo_dark_url;
+  const primaryCover = primary.cover_url;
+  const primaryProfile = primary.profile_photo_url;
+
+  if (!primary.logo_url && fallback.logo_url) next.logo_url = fallback.logo_url;
+  if (!primary.logo_dark_url && fallback.logo_dark_url) next.logo_dark_url = fallback.logo_dark_url;
+  if (!primaryLogo && (fallback.logo_url || fallback.logo_dark_url)) {
+    next.logo_size = fallback.logo_size;
+  }
+  if (!primaryCover && fallback.cover_url) {
+    next.cover_url = fallback.cover_url;
+    next.cover_position_x = fallback.cover_position_x;
+    next.cover_position_y = fallback.cover_position_y;
+    next.cover_zoom = fallback.cover_zoom;
+  }
+  if (!primaryProfile && fallback.profile_photo_url) {
+    next.profile_photo_url = fallback.profile_photo_url;
+    next.profile_position_x = fallback.profile_position_x;
+    next.profile_position_y = fallback.profile_position_y;
+    next.profile_zoom = fallback.profile_zoom;
+  }
+  return next;
+}
+
+function applyStorefrontMedia(target = {}, source = {}) {
+  const next = { ...target };
+  if (source.logo_url) next.logo_url = source.logo_url;
+  if (source.logo_dark_url) next.logo_dark_url = source.logo_dark_url;
+  if (source.logo_url || source.logo_dark_url) next.logo_size = source.logo_size;
+  if (source.cover_url) {
+    next.cover_url = source.cover_url;
+    next.cover_position_x = source.cover_position_x;
+    next.cover_position_y = source.cover_position_y;
+    next.cover_zoom = source.cover_zoom;
+  }
+  if (source.profile_photo_url) {
+    next.profile_photo_url = source.profile_photo_url;
+    next.profile_position_x = source.profile_position_x;
+    next.profile_position_y = source.profile_position_y;
+    next.profile_zoom = source.profile_zoom;
+  }
+  return next;
+}
+
+function migrateClassicBlocks(templateKey, blocks = []) {
+  if (templateKey !== 'agent-classic') return blocks;
+  return blocks.map((block) => {
+    const type = block?.type || block?.data?.type;
+    if (type !== 'hero') return block;
+    const data = block?.data || {};
+    const content = data.content || block?.content || {};
+    if (Number(content.classic_cover_layout_version || 0) >= 2) return block;
+    return {
+      ...block,
+      data: {
+        ...data,
+        content: {
+          ...content,
+          classic_cover_layout_version: 2,
+        },
+        layout: {
+          ...(data.layout || block?.layout || {}),
+          mediaPosition: 'background',
+        },
+      },
+    };
+  });
+}
+
+function migrateFirstHomeBrandKit(templateKey, input = {}) {
+  if (templateKey !== 'agent-first-home') return input;
+  const next = { ...input };
+  const primary = String(next.primary_color || '').trim().toLowerCase();
+  const accent = String(next.accent_color || '').trim().toLowerCase();
+  const canvas = String(next.page_background || '').trim().toLowerCase();
+  if (['#1d4ed8', '#2b221c', '#173740', '#2f7d78'].includes(primary)) next.primary_color = '#0b3d20';
+  if (['#f59e0b', '#fb7185', '#c78960', '#e58b5b', '#ed8b62'].includes(accent)) next.accent_color = '#5bd36d';
+  if (['#eff6ff', '#f8f6f2', '#f4efe7', '#f7f3ec'].includes(canvas)) next.page_background = '#ffffff';
+  if (next.button_shape === 'pill') next.button_shape = 'square';
+  if (next.image_style === 'warm') next.image_style = 'editorial';
+  return next;
+}
+
+function migrateSellerExpertBrandKit(templateKey, input = {}) {
+  if (templateKey !== 'agent-seller-expert') return input;
+  const next = { ...input };
+  const primary = String(next.primary_color || '').trim().toLowerCase();
+  const accent = String(next.accent_color || '').trim().toLowerCase();
+  const canvas = String(next.page_background || '').trim().toLowerCase();
+  if (['#9f1239', '#be123c', '#881337', '#0f766e'].includes(primary)) next.primary_color = '#0f172a';
+  if (['#f59e0b', '#fb7185', '#c9a227', '#22c55e'].includes(accent)) next.accent_color = '#06b6d4';
+  if (['#fff1f2', '#fff0f3', '#fff7e7', '#f5fbf8'].includes(canvas)) next.page_background = '#f8fafc';
+  return next;
+}
+
+function migrateCommunityHubBrandKit(templateKey, input = {}) {
+  if (templateKey !== 'agent-community-expert') return input;
+  const next = { ...input };
+  const primary = String(next.primary_color || '').trim().toLowerCase();
+  const accent = String(next.accent_color || '').trim().toLowerCase();
+  const canvas = String(next.page_background || '').trim().toLowerCase();
+  const usesLegacyPalette = [
+    '#166534|#f97316',
+    '#172b42|#42b7f5',
+    '#0f172a|#06b6d4',
+    '#1e3a8a|#f59e0b',
+  ].includes(`${primary}|${accent}`);
+  const usesIndigoAccent = ['#8b5cf6', '#7c3aed', '#6366f1', '#a78bfa'].includes(accent);
+  if (usesLegacyPalette) {
+    next.primary_color = '#17152b';
+  }
+  if (usesLegacyPalette || usesIndigoAccent) {
+    next.accent_color = '#1f6fbf';
+  }
+  if ((usesLegacyPalette || usesIndigoAccent) && [
+    '#ffffff', '#eaf8ef', '#f7fbf6', '#f6f7f9', '#f8fafc', '#f5f7ff', '#f8f7fc',
+  ].includes(canvas)) {
+    next.page_background = '#f5f7fa';
+  }
+  if ((usesLegacyPalette || usesIndigoAccent) && next.image_style === 'warm') next.image_style = 'editorial';
+  return next;
+}
+
+function migrateFirstHomeBlocks(templateKey, blocks = []) {
+  if (templateKey !== 'agent-first-home') return blocks;
+  const legacyBackgrounds = new Set([
+    '#2b221c', '#f8f6f2', '#173740', '#f4efe7',
+    '#dcecea', '#e6f2f0', '#f7f3ec', '#edf2f7', '#e8f3f1', '#fcefe8',
+    '#edf5ff', '#fff4ea', '#eff6ff',
+  ]);
+  return blocks.map((block, index) => {
+    const type = block?.type || block?.data?.type;
+    const isListing = [
+      'properties',
+      'featured-listings',
+      'top-listings',
+      'sold-listings',
+      'seller-sold-results',
+    ].includes(type);
+    const data = block?.data || {};
+    const background = String(data?.style?.background || block?.style?.background || '').trim().toLowerCase();
+    const primaryButtonBackground = String(
+      data?.content?.primary_button_background || block?.content?.primary_button_background || '',
+    ).trim().toLowerCase();
+    return {
+      ...block,
+      data: {
+        ...data,
+        content: {
+          ...(data.content || block?.content || {}),
+          ...(['#f59e0b', '#fb7185', '#c78960', '#e58b5b', '#ed8b62'].includes(primaryButtonBackground)
+            ? { primary_button_background: '' }
+            : {}),
+        },
+        style: {
+          ...(data.style || block?.style || {}),
+          ...(legacyBackgrounds.has(background)
+            ? { background: visualTreatmentForTemplate(templateKey, type, index).bg }
+            : {}),
+        },
+        layout: {
+          ...(data.layout || block?.layout || {}),
+          ...(isListing && (data?.layout?.cardStyle || block?.layout?.cardStyle) === 'glass' ? { cardStyle: 'bordered' } : {}),
+        },
+      },
+    };
+  });
+}
+
+function migrateSellerExpertBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'agent-seller-expert') return blocks;
+  const legacyBackgrounds = new Set(['#fff1f2', '#fff0f3', '#fff7e7']);
+  const sellerRoleSupplemental = [
+    {
+      id: 'seller-highlight-supp-1',
+      title: 'Launch timeline control',
+      text: 'Coordinate listing date, showing windows, and offer review milestones around your schedule.',
+    },
+    {
+      id: 'seller-highlight-supp-2',
+      title: 'Offer clarity framework',
+      text: 'Compare price, conditions, financing strength, and closing certainty before selecting a path.',
+    },
+  ];
+  const sellerServiceSupplemental = [
+    {
+      id: 'seller-service-fallback-1',
+      title: 'Pre-listing prep plan',
+      description: 'Repairs, staging, media, and launch sequencing to maximize first-week momentum.',
+      icon: 'shield-check',
+    },
+    {
+      id: 'seller-service-fallback-2',
+      title: 'Offer decision room',
+      description: 'Compare pricing strength, terms, and closing confidence before choosing an offer.',
+      icon: 'target',
+    },
+    {
+      id: 'seller-service-fallback-3',
+      title: 'Closing confidence',
+      description: 'Coordinate conditions, documents, and handoffs so the accepted offer reaches a clean close.',
+      icon: 'handshake',
+    },
+  ];
+  const featuredListingBlock = blocks.find((block) => (
+    (block?.type || block?.data?.type) === 'featured-listings'
+  ));
+  const featuredListingColumns = String(
+    featuredListingBlock?.data?.layout?.columns
+      || featuredListingBlock?.layout?.columns
+      || '4',
+  );
+  const migratedBlocks = blocks.map((block, index) => {
+    const type = block?.type || block?.data?.type;
+    const data = block?.data || {};
+    const background = String(data?.style?.background || block?.style?.background || '').trim().toLowerCase();
+    const shouldNormalizeSellerHeroBackground = type === 'hero'
+      && (!background || ['#0b1220', '#0f172a', '#020617', '#111827'].includes(background));
+    const primaryButtonBackground = String(
+      data?.content?.primary_button_background || block?.content?.primary_button_background || '',
+    ).trim().toLowerCase();
+    const content = data.content || block?.content || {};
+    const migratedRoleHighlights = type === 'role-details' && Array.isArray(content.highlights)
+      ? (content.highlights.length >= 5
+          ? content.highlights
+          : [
+              ...content.highlights,
+              ...sellerRoleSupplemental.filter((supplemental) => (
+                !content.highlights.some((item) => (
+                  item?.id === supplemental.id
+                  || String(item?.title || '').trim().toLowerCase() === supplemental.title.toLowerCase()
+                ))
+              )),
+            ].slice(0, 5))
+      : null;
+    const migratedServiceItems = type === 'services' && Array.isArray(content.items)
+      ? (content.items.length >= 6
+          ? content.items
+          : [
+              ...content.items,
+              ...sellerServiceSupplemental.filter((supplemental) => (
+                !content.items.some((item) => (
+                  item?.id === supplemental.id
+                  || String(item?.title || '').trim().toLowerCase() === supplemental.title.toLowerCase()
+                ))
+              )),
+            ].slice(0, 6))
+      : null;
+    const migratedPerformanceItems = type === 'seller-performance' && Array.isArray(content.items)
+      ? content.items.map((item) => (['service_areas', 'available_seller_leads'].includes(item?.source)
+        ? {
+            ...item,
+            label: 'Available options',
+            source: 'available_seller_leads',
+          }
+        : item))
+      : null;
+    const migratedSellerResultsContent = type === 'seller-sold-results'
+      ? {
+          sold_card_layout_version: 2,
+          ...(['Recently sold results', 'Recently closed seller leads'].includes(content.heading)
+            ? { heading: 'Recently sold properties' }
+            : {}),
+          ...([
+            'A live view of completed sales from the connected property inventory.',
+            'Recent seller opportunities successfully moved to closed-won.',
+          ].includes(content.body)
+            ? { body: 'A look at homes recently sold with a successful client outcome.' }
+            : {}),
+          ...(['Track record', 'Successful seller outcomes'].includes(content.eyebrow)
+            ? { eyebrow: 'Recent sales' }
+            : {}),
+        }
+      : null;
+    const shouldMigrateSoldLayout = type === 'seller-sold-results'
+      && Number(content.sold_card_layout_version || 0) < 2;
+    const migratedCaseStudyItems = type === 'seller-case-study' && Array.isArray(content.items)
+      ? content.items.map((item, itemIndex) => ({
+          ...item,
+          description: item?.description || item?.text || '',
+          icon: item?.icon || ['target', 'sparkles', 'shield'][itemIndex % 3],
+          background: item?.background || '',
+          text_color: item?.text_color || '',
+          icon_background: item?.icon_background || '',
+          icon_color: item?.icon_color || '',
+        }))
+      : null;
+    const migratedCredentialItems = type === 'seller-credentials' && Array.isArray(content.items)
+      ? content.items.map((item) => {
+          if (
+            item?.source === 'total_clients'
+            && String(item?.title || '').trim().toLowerCase() === 'total seller clients'
+          ) {
+            return { ...item, title: 'Clients' };
+          }
+          if (String(item?.issuer || item?.value || '').trim()) return item;
+          const legacyMetricMap = {
+            'professional credentials:credentials': {
+              title: 'Clients',
+              source: 'total_clients',
+            },
+            'market specialty:specialty': {
+              title: 'Active pipeline value',
+              source: 'active_pipeline_value',
+            },
+            'languages:languages': {
+              title: 'Sold property value',
+              source: 'total_sold_home_value',
+            },
+          };
+          const key = `${String(item?.title || '').trim().toLowerCase()}:${String(item?.source || '').trim().toLowerCase()}`;
+          return legacyMetricMap[key] ? { ...item, ...legacyMetricMap[key] } : item;
+        })
+      : null;
+    const shouldMigrateCredentialLayout = type === 'seller-credentials'
+      && Number(content.metrics_layout_version || 0) < 2;
+    return {
+      ...block,
+      data: {
+        ...data,
+        content: {
+          ...content,
+          ...(migratedRoleHighlights ? { highlights: migratedRoleHighlights } : {}),
+          ...(migratedServiceItems ? { items: migratedServiceItems } : {}),
+          ...(migratedPerformanceItems ? { items: migratedPerformanceItems } : {}),
+          ...(migratedSellerResultsContent || {}),
+          ...(migratedCaseStudyItems ? { items: migratedCaseStudyItems } : {}),
+          ...(migratedCredentialItems ? { items: migratedCredentialItems } : {}),
+          ...(type === 'seller-credentials' ? { metrics_layout_version: 2 } : {}),
+          ...(type === 'about' ? { seller_about_layout_version: 2 } : {}),
+          ...(['#f59e0b', '#fb7185', '#c9a227'].includes(primaryButtonBackground)
+            ? { primary_button_background: '' }
+            : {}),
+        },
+        style: {
+          ...(data.style || block?.style || {}),
+          ...(legacyBackgrounds.has(background)
+            ? { background: visualTreatmentForTemplate(templateKey, type, index).bg }
+            : {}),
+          ...(shouldNormalizeSellerHeroBackground ? { background: '#f8fafc' } : {}),
+        },
+        layout: {
+          ...(data.layout || block?.layout || {}),
+          width: 'full',
+          ...(shouldMigrateSoldLayout ? { columns: featuredListingColumns } : {}),
+          ...(shouldMigrateCredentialLayout ? { columns: '4' } : {}),
+        },
+      },
+    };
+  });
+  const supplementalTypes = new Set([
+    'seller-performance',
+    'seller-sold-results',
+    'seller-case-study',
+    'seller-credentials',
+  ]);
+  const supplementalDefaults = (materializeTemplate(templateKey, profileSeed)?.blocks || [])
+    .filter((block) => supplementalTypes.has(block.type));
+  const anchors = {
+    'seller-performance': 'role-details',
+    'seller-sold-results': 'featured-listings',
+    'seller-case-study': 'services',
+    'seller-credentials': 'about',
+  };
+  const nextBlocks = [...migratedBlocks];
+  supplementalDefaults.forEach((defaultBlock) => {
+    if (nextBlocks.some((block) => block?.type === defaultBlock.type)) return;
+    const anchorIndex = nextBlocks.findIndex((block) => block?.type === anchors[defaultBlock.type]);
+    nextBlocks.splice(anchorIndex >= 0 ? anchorIndex + 1 : nextBlocks.length, 0, defaultBlock);
+  });
+  return nextBlocks;
+}
+
+const SHARED_PROOF_TEMPLATE_KEYS = new Set([
+  'agent-luxury-advisor',
+  'agent-first-home',
+  'agent-community-expert',
+]);
+const SHARED_PROOF_BLOCK_TYPES = new Set([
+  'seller-performance',
+  'seller-sold-results',
+  'seller-case-study',
+  'seller-credentials',
+]);
+
+const COMMUNITY_LEGACY_SURFACES = new Set([
+  '#eaf8ef',
+  '#f5fbf7',
+  '#f5fbf8',
+  '#f7fbf6',
+  '#e6f2f0',
+  '#d9f4df',
+]);
+
+function migrateCommunitySurfaceValue(value) {
+  return COMMUNITY_LEGACY_SURFACES.has(String(value || '').trim().toLowerCase()) ? '' : value;
+}
+
+function migrateCommunityHubBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'agent-community-expert') return blocks;
+  const hero = blocks.find((block) => (block?.type || block?.data?.type) === 'hero');
+  const needsLayoutMigration = Number(
+    hero?.data?.content?.community_hub_layout_version || 0,
+  ) < 2;
+  const needsSurfaceMigration = Number(
+    hero?.data?.content?.community_theme_surface_version || 0,
+  ) < 2;
+  if (!needsLayoutMigration && !needsSurfaceMigration) return blocks;
+
+  const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+  const next = blocks.map((block) => {
+    const type = block?.type || block?.data?.type;
+    const content = block?.data?.content || {};
+    const style = block?.data?.style || {};
+    return {
+      ...block,
+      data: {
+        ...(block.data || {}),
+        style: needsSurfaceMigration
+          ? {
+              ...style,
+              background: migrateCommunitySurfaceValue(style.background),
+            }
+          : style,
+        content: {
+          ...content,
+          ...(needsSurfaceMigration
+            ? {
+                panel_background: migrateCommunitySurfaceValue(content.panel_background),
+                section_background: migrateCommunitySurfaceValue(content.section_background),
+              }
+            : {}),
+          ...(type === 'hero'
+            ? {
+                community_hub_layout_version: 2,
+                community_theme_surface_version: 2,
+              }
+            : {}),
+        },
+      },
+    };
+  });
+  if (!needsLayoutMigration) return next;
+
+  const existingTypes = new Set(next.map((block) => block?.type || block?.data?.type));
+
+  defaults.forEach((defaultBlock, defaultIndex) => {
+    if (existingTypes.has(defaultBlock.type)) return;
+    const followingTypes = new Set(
+      defaults.slice(defaultIndex + 1).map((candidate) => candidate.type),
+    );
+    const insertAt = next.findIndex((candidate) => (
+      followingTypes.has(candidate?.type || candidate?.data?.type)
+    ));
+    next.splice(insertAt >= 0 ? insertAt : next.length, 0, defaultBlock);
+    existingTypes.add(defaultBlock.type);
+  });
+
+  return next;
+}
+
+function migrateSharedProofBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (!SHARED_PROOF_TEMPLATE_KEYS.has(templateKey)) return blocks;
+  const migratedBlocks = blocks.map((block) => {
+    const type = block?.type || block?.data?.type;
+    const content = block?.data?.content || {};
+    const existingItems = Array.isArray(content.items) ? content.items : [];
+    if (
+      type === 'seller-performance'
+      && Number(content.shared_proof_performance_version || 0) < 2
+    ) {
+      const canonicalItems = [
+        { label: 'Homes sold', value: '', source: 'closed_seller_leads' },
+        { label: 'Experience', value: '', source: 'years_experience' },
+        { label: 'Client rating', value: '', source: 'rating' },
+        { label: 'Available options', value: '', source: 'available_seller_leads' },
+      ];
+      return {
+        ...block,
+        data: {
+          ...(block.data || {}),
+          content: {
+            ...content,
+            shared_proof_performance_version: 2,
+            items: canonicalItems.map((item, index) => ({
+              ...(existingItems[index] || {}),
+              ...item,
+            })),
+          },
+        },
+      };
+    }
+    if (
+      type === 'seller-credentials'
+      && Number(content.shared_proof_metrics_version || 0) < 2
+    ) {
+      const canonicalItems = [
+            { title: 'Clients', issuer: '', source: 'total_clients' },
+            { title: 'Active pipeline value', issuer: '', source: 'active_pipeline_value' },
+            { title: 'Sold property value', issuer: '', source: 'total_sold_home_value' },
+            {
+              title: 'Brokerage',
+              issuer: profileSeed?.professional_profile?.company_name || profileSeed?.company_name || '',
+              source: 'company',
+            },
+      ];
+      return {
+        ...block,
+        data: {
+          ...(block.data || {}),
+          content: {
+            ...content,
+            shared_proof_metrics_version: 2,
+            items: canonicalItems.map((item, index) => ({
+              ...(existingItems[index] || {}),
+              ...item,
+            })),
+          },
+        },
+      };
+    }
+    if (type === 'seller-case-study' && Number(content.shared_proof_case_study_version || 0) < 2) {
+      const titleKey = existingItems.map((item) => item?.title).join('|');
+      const templateDefaultTitles = new Set([
+        'The private brief|The tailored strategy|The considered result',
+        'Build readiness|Search with context|Offer with confidence',
+        'Find the right fit|Read the micro-market|Move with confidence',
+      ]);
+      if (templateDefaultTitles.has(titleKey)) {
+        const canonicalItems = [
+          { title: 'The challenge', description: 'Bring the property to market with a clear point of difference while protecting the seller’s timeline and net goal.', icon: 'target' },
+          { title: 'The strategy', description: 'Prioritize presentation, pricing discipline, and buyer targeting around the strongest local demand signals.', icon: 'sparkles' },
+          { title: 'The outcome', description: 'Create a cleaner launch, stronger offer conversations, and a more confident path from listing to close.', icon: 'shield' },
+        ];
+        return {
+          ...block,
+          data: {
+            ...(block.data || {}),
+            content: {
+              ...content,
+              shared_proof_case_study_version: 2,
+              items: canonicalItems.map((item, index) => ({
+                ...(existingItems[index] || {}),
+                ...item,
+              })),
+            },
+          },
+        };
+      }
+    }
+    return block;
+  });
+  const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+  const proofDefaults = defaults.filter((block) => SHARED_PROOF_BLOCK_TYPES.has(block.type));
+  const withLayoutVersion = (block) => ({
+    ...block,
+    data: {
+      ...(block.data || {}),
+      content: {
+        ...(block.data?.content || block.content || {}),
+        shared_proof_layout_version: 1,
+      },
+    },
+  });
+  const needsOrderMigration = migratedBlocks.some((block) => (
+    SHARED_PROOF_BLOCK_TYPES.has(block?.type || block?.data?.type)
+    && Number(block?.data?.content?.shared_proof_layout_version || 0) < 1
+  ));
+  if (needsOrderMigration) {
+    const existingByType = new Map(migratedBlocks
+      .filter((block) => SHARED_PROOF_BLOCK_TYPES.has(block?.type || block?.data?.type))
+      .map((block) => [block?.type || block?.data?.type, block]));
+    const withoutProof = migratedBlocks.filter(
+      (block) => !SHARED_PROOF_BLOCK_TYPES.has(block?.type || block?.data?.type),
+    );
+    const footerIndex = withoutProof.findIndex(
+      (block) => (block?.type || block?.data?.type) === 'footer',
+    );
+    const insertionIndex = footerIndex >= 0 ? footerIndex : withoutProof.length;
+    withoutProof.splice(
+      insertionIndex,
+      0,
+      ...proofDefaults.map((defaultBlock) => withLayoutVersion(
+        existingByType.get(defaultBlock.type) || defaultBlock,
+      )),
+    );
+    return withoutProof;
+  }
+  const nextBlocks = [...migratedBlocks];
+  const defaultOrder = defaults.map((block) => block.type);
+
+  proofDefaults.forEach((defaultBlock) => {
+      if (nextBlocks.some((block) => (block?.type || block?.data?.type) === defaultBlock.type)) return;
+      const defaultIndex = defaultOrder.indexOf(defaultBlock.type);
+      const previousTypes = defaultOrder.slice(0, defaultIndex).reverse();
+      const nextTypes = defaultOrder.slice(defaultIndex + 1);
+      const previousIndex = previousTypes
+        .map((type) => nextBlocks.findIndex((block) => (block?.type || block?.data?.type) === type))
+        .find((index) => index >= 0);
+      if (previousIndex >= 0) {
+        nextBlocks.splice(previousIndex + 1, 0, withLayoutVersion(defaultBlock));
+        return;
+      }
+      const nextIndex = nextTypes
+        .map((type) => nextBlocks.findIndex((block) => (block?.type || block?.data?.type) === type))
+        .find((index) => index >= 0);
+      nextBlocks.splice(nextIndex >= 0 ? nextIndex : nextBlocks.length, 0, withLayoutVersion(defaultBlock));
+    });
+
+  return nextBlocks;
+}
+
+function migrateInvestorBlocks(templateKey, blocks = []) {
+  if (templateKey !== 'agent-investor') return blocks;
+  return (Array.isArray(blocks) ? blocks : []).filter((block) => {
+    const type = block?.type || block?.data?.type;
+    return type !== 'testimonials';
+  });
+}
+
+function applyTemplateBrandKitMigrations(templateKey, input = {}) {
+  return migrateCommunityHubBrandKit(
+    templateKey,
+    migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+  );
+}
+
+function applyTemplateBlocksMigrations(templateKey, blocks = [], profileSeed = {}) {
+  return migrateSharedProofBlocks(
+    templateKey,
+    migrateCommunityHubBlocks(
+      templateKey,
+      migrateSellerExpertBlocks(
+        templateKey,
+        migrateFirstHomeBlocks(
+          templateKey,
+          migrateClassicBlocks(templateKey, migrateInvestorBlocks(templateKey, blocks)),
+        ),
+        profileSeed,
+      ),
+      profileSeed,
+    ),
+    profileSeed,
+  );
+}
+
+function editorDataFromDraft(
+  draft,
+  profileSeed,
+  professional,
+  fallbackTemplateKey,
+  sharedMediaBrandKit = {},
+) {
   const templateKey = draft?.template?.id || fallbackTemplateKey;
-  const savedBrandKit = draft?.brandKit || {};
+  const savedBrandKit = mergeStorefrontMedia(
+    applyTemplateBrandKitMigrations(templateKey, draft?.brandKit || {}),
+    sharedMediaBrandKit,
+  );
   if (Array.isArray(draft?.blocks) && draft.blocks.length) {
     return {
       template_key: templateKey,
@@ -62,12 +720,17 @@ function editorDataFromDraft(draft, profileSeed, professional, fallbackTemplateK
         show_chatbot: savedBrandKit.show_chatbot !== false,
         essentials: savedBrandKit.essentials || {},
       },
-      blocks: seedBlockContentFromProfile(draft.blocks, profileSeed, templateKey),
+      blocks: seedBlockContentFromProfile(
+        applyTemplateBlocksMigrations(templateKey, draft.blocks, profileSeed),
+        profileSeed,
+        templateKey,
+      ),
     };
   }
 
   const materialized = materializeTemplate(templateKey, profileSeed, {
     business_name: professional.company_name || '',
+    ...sharedMediaBrandKit,
   });
   return {
     template_key: templateKey,
@@ -111,9 +774,11 @@ export default function useStorefrontEditorState({
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [previewMode, setPreviewMode] = useState('desktop');
   const [draggedBlockId, setDraggedBlockId] = useState(null);
+  const [autosaveRetryNonce, setAutosaveRetryNonce] = useState(0);
   const editorHydrated = useRef(false);
   const lastSavedDraftSignatureRef = useRef('');
   const lastFailedDraftSignatureRef = useRef('');
+  const lastPublishedDraftSignatureRef = useRef('');
   const templateDraftsRef = useRef({});
   const latestEditorDataRef = useRef(null);
   const queuedDraftRef = useRef(null);
@@ -144,13 +809,23 @@ export default function useStorefrontEditorState({
         tagline: savedProfile.tagline,
         about: savedProfile.about,
       };
+      const profileMediaBrandKit = {
+        logo_url: savedProfile.storefront_logo_url || '',
+        cover_url: savedProfile.cover_photo_url || profileData?.user?.cover_image || '',
+        profile_photo_url: savedProfile.profile_photo_url || profileData?.user?.profile_image || '',
+      };
+      const sharedMediaBrandKit = savedDrafts.reduce(
+        (current, draft) => mergeStorefrontMedia(draft?.brandKit || {}, current),
+        profileMediaBrandKit,
+      );
 
-      const fallbackTemplateKey = `${role}-classic`;
+      const fallbackTemplateKey = defaultStorefrontTemplateKey(role);
       const hydratedDrafts = savedDrafts.map((draft) => editorDataFromDraft(
         draft,
         profileSeed,
         professional,
         fallbackTemplateKey,
+        sharedMediaBrandKit,
       ));
       hydratedDrafts.forEach((draft) => {
         templateDraftsRef.current[draft.template_key] = cloneEditorData(draft);
@@ -160,25 +835,64 @@ export default function useStorefrontEditorState({
         || hydratedDrafts[0]?.template_key
         || fallbackTemplateKey;
       const activeDraft = templateDraftsRef.current[activeTemplateKey]
-        || editorDataFromDraft(null, profileSeed, professional, activeTemplateKey);
-      templateDraftsRef.current[activeTemplateKey] = cloneEditorData(activeDraft);
-      setEditorData(activeDraft);
-      setHasUnpublishedChanges(false);
+        || editorDataFromDraft(
+          null,
+          profileSeed,
+          professional,
+          activeTemplateKey,
+          sharedMediaBrandKit,
+        );
+      const backupKey = `nesti-storefront-backup:${savedProfile?.slug || profileData?.suggested_slug || 'new'}`;
+      let recoveredDraft = null;
+      try {
+        const backup = JSON.parse(window.localStorage.getItem(backupKey) || 'null');
+        if (
+          backup?.editorData?.template_key
+          && Array.isArray(backup.editorData.blocks)
+        ) {
+          recoveredDraft = cloneEditorData(backup.editorData);
+        }
+      } catch {
+        window.localStorage.removeItem(backupKey);
+      }
+      const initialDraft = recoveredDraft || activeDraft;
+      templateDraftsRef.current[initialDraft.template_key] = cloneEditorData(initialDraft);
+      setEditorData(initialDraft);
+      const initialSignature = draftSignature(buildStorefrontDraft(initialDraft));
+      lastSavedDraftSignatureRef.current = recoveredDraft ? '' : initialSignature;
+      const activeRawDraft = savedDrafts.find(
+        (draft) => (draft?.template?.id || '') === initialDraft.template_key,
+      ) || legacyDraft;
+      const draftUpdatedAt = activeRawDraft?.updated_at || storefrontDraftData?.draft?.updated_at;
+      const publishedAt = storefrontDraftData?.published_at;
+      const draftAheadOfLive = Boolean(
+        publishedAt
+        && draftUpdatedAt
+        && new Date(draftUpdatedAt).getTime() > new Date(publishedAt).getTime()
+      );
+      setEditorDirty(Boolean(recoveredDraft));
+      setHasUnpublishedChanges(Boolean(recoveredDraft) || draftAheadOfLive);
+      if (!draftAheadOfLive && !recoveredDraft) {
+        lastPublishedDraftSignatureRef.current = initialSignature;
+      }
+      if (recoveredDraft) toast.info('Recovered unsaved storefront changes');
       editorHydrated.current = true;
     } catch (error) {
       console.error('Failed to hydrate storefront editor', error);
       const role = normalizeRole(profileData.professional_profile?.professional_type || profileData.professional_type);
+      const fallbackTemplateKey = defaultStorefrontTemplateKey(role);
+      const defaults = getTemplateBrandDefaults(fallbackTemplateKey) || {};
       setEditorData({
-        template_key: `${role}-classic`,
+        template_key: fallbackTemplateKey,
         brand_kit: {
           business_name: profileData.professional_profile?.company_name || '',
           logo_url: '',
-          primary_color: '#0f766e',
-          accent_color: '#f59e0b',
-          page_background: '#ffffff',
-          font: 'Manrope',
-          button_shape: 'rounded',
-          image_style: 'editorial',
+          primary_color: defaults.primary_color || '#172554',
+          accent_color: defaults.accent_color || '#22c55e',
+          page_background: defaults.page_background || '#f8fafc',
+          font: defaults.font || 'Manrope',
+          button_shape: defaults.button_shape || 'rounded',
+          image_style: defaults.image_style || 'minimal',
           essentials: {},
         },
         blocks: normalizeBlocks(STOREFRONT_TEMPLATE_PRESETS[role] || []),
@@ -202,31 +916,39 @@ export default function useStorefrontEditorState({
       queuedDraftRef.current = { draft, signature };
       return undefined;
     }
-    if (signature === lastFailedDraftSignatureRef.current) return undefined;
     if (signature === lastSavedDraftSignatureRef.current) {
       setEditorDirty(false);
       return undefined;
     }
     const backupKey = `nesti-storefront-backup:${profileData?.profile?.slug || profileData?.suggested_slug || 'new'}`;
-    window.localStorage.setItem(backupKey, JSON.stringify({ savedAt: Date.now(), editorData }));
+    try {
+      window.localStorage.setItem(backupKey, JSON.stringify({ savedAt: Date.now(), editorData }));
+    } catch {
+      // Autosave remains authoritative when browser storage is unavailable.
+    }
+    const retryDelay = signature === lastFailedDraftSignatureRef.current ? 5000 : 1200;
     const timer = window.setTimeout(() => {
       saveStorefrontMutation.mutate(draft, {
         onSuccess: () => {
           lastSavedDraftSignatureRef.current = signature;
           lastFailedDraftSignatureRef.current = '';
+          setAutosaveRetryNonce(0);
           window.localStorage.removeItem(backupKey);
           const latestSignature = latestEditorDataRef.current
             ? draftSignature(buildStorefrontDraft(latestEditorDataRef.current))
             : signature;
           if (latestSignature === signature) setEditorDirty(false);
+          // Draft saved != live updated. Keep Update live enabled until publish.
+          setHasUnpublishedChanges(signature !== lastPublishedDraftSignatureRef.current);
         },
         onError: () => {
           lastFailedDraftSignatureRef.current = signature;
+          setAutosaveRetryNonce((current) => current + 1);
         },
       });
-    }, 1200);
+    }, retryDelay);
     return () => window.clearTimeout(timer);
-  }, [editorData, editorDirty, profileData, saveStorefrontMutation]);
+  }, [autosaveRetryNonce, editorData, editorDirty, profileData, saveStorefrontMutation]);
 
   useEffect(() => {
     if (saveStorefrontMutation.isPending || !queuedDraftRef.current) return;
@@ -237,14 +959,17 @@ export default function useStorefrontEditorState({
       onSuccess: () => {
         lastSavedDraftSignatureRef.current = queued.signature;
         lastFailedDraftSignatureRef.current = '';
+        setAutosaveRetryNonce(0);
         const latestSignature = latestEditorDataRef.current
           ? draftSignature(buildStorefrontDraft(latestEditorDataRef.current))
           : queued.signature;
         if (latestSignature === queued.signature) setEditorDirty(false);
+        setHasUnpublishedChanges(queued.signature !== lastPublishedDraftSignatureRef.current);
       },
       onError: () => {
         lastFailedDraftSignatureRef.current = queued.signature;
         setEditorDirty(true);
+        setAutosaveRetryNonce((current) => current + 1);
       },
     });
   }, [editorData, editorDirty, saveStorefrontMutation.isPending, saveStorefrontMutation]);
@@ -255,24 +980,25 @@ export default function useStorefrontEditorState({
     setHasUnpublishedChanges(true);
   };
 
-  const selectTemplate = (templateKey) => {
+  const selectTemplate = async (templateKey) => {
     if (editorData?.template_key === templateKey) return false;
     const template = getStorefrontTemplate(templateKey);
     if (!template) return false;
 
     if (editorData?.template_key) {
       templateDraftsRef.current[editorData.template_key] = cloneEditorData(editorData);
-      if (editorDirty) {
-        saveStorefrontMutation.mutate(buildStorefrontDraft(editorData), {
-          onSuccess: () => {
-            lastSavedDraftSignatureRef.current = draftSignature(buildStorefrontDraft(editorData));
-          },
-        });
-      }
     }
     const cachedTemplateDraft = templateDraftsRef.current[templateKey];
     if (cachedTemplateDraft) {
-      setEditorData(cloneEditorData(cachedTemplateDraft));
+      const restored = cloneEditorData(cachedTemplateDraft);
+      setEditorData({
+        ...restored,
+        blocks: applyTemplateBlocksMigrations(templateKey, restored.blocks, profileSeedFromData(profileData)),
+        brand_kit: applyStorefrontMedia(
+          restored.brand_kit,
+          editorData?.brand_kit,
+        ),
+      });
       setEditorDirty(true);
       setHasUnpublishedChanges(true);
       toast.success(`${template.label} restored`);
@@ -334,36 +1060,6 @@ export default function useStorefrontEditorState({
     if (!next) return false;
     const currentBlocks = normalizeBlocks(editorData.blocks || []);
     const templateBlocks = normalizeBlocks(next.blocks || []);
-
-    const currentByTypeAndIndex = new Map();
-    const currentTypeCounts = {};
-    currentBlocks.forEach((block) => {
-      const count = (currentTypeCounts[block.type] || 0) + 1;
-      currentTypeCounts[block.type] = count;
-      const key = `${block.type}:${count}`;
-      currentByTypeAndIndex.set(
-        key,
-        typeof structuredClone === 'function'
-          ? structuredClone(block?.data?.content || {})
-          : JSON.parse(JSON.stringify(block?.data?.content || {})),
-      );
-    });
-
-    const templateTypeCounts = {};
-    const blocksWithPreservedContent = templateBlocks.map((block) => {
-      const count = (templateTypeCounts[block.type] || 0) + 1;
-      templateTypeCounts[block.type] = count;
-      const key = `${block.type}:${count}`;
-      const preservedContent = currentByTypeAndIndex.get(key);
-      if (!preservedContent) return block;
-      return {
-        ...block,
-        data: {
-          ...block.data,
-          content: preservedContent,
-        },
-      };
-    });
     const nextBrandKit = {
       ...next.brand_kit,
       business_name: editorData.brand_kit.business_name || next.brand_kit.business_name,
@@ -387,7 +1083,7 @@ export default function useStorefrontEditorState({
     setEditorData({
       template_key: next.template_key,
       brand_kit: nextBrandKit,
-      blocks: blocksWithPreservedContent,
+      blocks: templateBlocks,
     });
     setEditorDirty(true);
     setHasUnpublishedChanges(true);
@@ -471,6 +1167,13 @@ export default function useStorefrontEditorState({
     setEditorData(null);
     setEditorDirty(false);
     setHasUnpublishedChanges(false);
+    templateDraftsRef.current = {};
+    latestEditorDataRef.current = null;
+    queuedDraftRef.current = null;
+    lastSavedDraftSignatureRef.current = '';
+    lastFailedDraftSignatureRef.current = '';
+    lastPublishedDraftSignatureRef.current = '';
+    setAutosaveRetryNonce(0);
     editorHydrated.current = false;
   };
 
@@ -483,7 +1186,13 @@ export default function useStorefrontEditorState({
     setEditorDirty(false);
   };
 
-  const markLiveSynced = () => {
+  const markLiveSynced = (draft = null) => {
+    if (draft) {
+      const signature = draftSignature(draft);
+      lastPublishedDraftSignatureRef.current = signature;
+      lastSavedDraftSignatureRef.current = signature;
+      setEditorDirty(false);
+    }
     setHasUnpublishedChanges(false);
   };
 

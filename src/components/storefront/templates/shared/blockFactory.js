@@ -16,6 +16,15 @@ export function block(type, content = {}, extras = {}) {
         mediaPosition: extras.mediaPosition || '',
         columns: String(extras.columns || ''),
         cardStyle: extras.cardStyle || '',
+        ...(extras.animationType
+          ? {
+              animationType: extras.animationType,
+              animationTrigger: extras.animationTrigger || 'scroll',
+              animationDuration: extras.animationDuration || 'medium',
+              animationDelay: extras.animationDelay ?? '0',
+              animationIntensity: extras.animationIntensity || 'medium',
+            }
+          : {}),
       },
       style: {
         background: extras.bg || '',

@@ -13,14 +13,18 @@ export const classicBalancedExperience = {
       animation: storefront-classic-enter 460ms ease both;
     }
     .storefront-experience-classic [data-storefront-block='expertise'],
-    .storefront-experience-classic [data-storefront-block='role_details'] {
-      border-top: 1px solid rgba(15, 118, 110, 0.12);
-      border-bottom: 1px solid rgba(15, 118, 110, 0.12);
+    .storefront-experience-classic [data-storefront-block='role-details'] {
+      border-top: 1px solid color-mix(in srgb, var(--storefront-primary) 14%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--storefront-primary) 14%, transparent);
     }
-    .storefront-experience-classic [data-storefront-block='featured_listings'] .storefront-anim-body,
+    .storefront-experience-classic [data-storefront-block='featured-listings'] .storefront-anim-body,
     .storefront-experience-classic [data-storefront-block='properties'] .storefront-anim-body {
       max-width: 92rem;
       margin-inline: auto;
+    }
+    .storefront-experience-classic [data-storefront-block='guidance'],
+    .storefront-experience-classic [data-storefront-block='cta'] {
+      background-image: linear-gradient(180deg, color-mix(in srgb, var(--storefront-primary) 4%, transparent), transparent 70%);
     }
     @keyframes storefront-classic-enter {
       from { opacity: 0; transform: translateY(8px); }

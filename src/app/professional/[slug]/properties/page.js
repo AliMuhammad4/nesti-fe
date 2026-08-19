@@ -1,1 +1,5 @@
-export { default, generateMetadata } from '@/app/p/[slug]/properties/page';
+import { redirect } from 'next/navigation';
+
+export default function ProfessionalPropertiesAliasPage({ params }) {
+  redirect(`/p/${encodeURIComponent(params.slug)}/properties`);
+}

@@ -7,6 +7,7 @@ export default function ChatWidgetHeader({
   resolvedRole,
   showHostAvatar,
   trimmedAvatarUrl,
+  hostAvatarStyle,
   setHostAvatarBroken,
   displayTitle,
   headerSubtitle,
@@ -29,6 +30,7 @@ export default function ChatWidgetHeader({
               src={trimmedAvatarUrl}
               alt=""
               className="h-full w-full object-cover"
+              style={hostAvatarStyle}
               onError={() => setHostAvatarBroken(true)}
             />
           </div>

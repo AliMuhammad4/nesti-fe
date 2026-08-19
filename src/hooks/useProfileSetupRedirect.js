@@ -12,6 +12,7 @@ const ALLOWED_PREFIXES = ["/settings", "/checkout", "/calendly-callback", "/prof
 
 function pathAllowedDuringSetup(pathname) {
   if (isPublicMarketingRoute(pathname)) return true;
+  if (pathname.startsWith("/p/") || pathname.startsWith("/professional/")) return true;
   return ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -23,7 +24,10 @@ export function useProfileSetupRedirect(isMounted) {
   const router = useRouter();
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
-  const { data: profileData, isSuccess, isPending } = useProfileQuery();
+  const allowedPath = pathAllowedDuringSetup(pathname);
+  const { data: profileData, isSuccess, isPending } = useProfileQuery({
+    enabled: !allowedPath,
+  });
   const toastShownRef = useRef(false);
 
   const effectiveRole = user?.role || profileData?.user?.role;
@@ -43,7 +47,7 @@ export function useProfileSetupRedirect(isMounted) {
     if (isPending || !isSuccess || !profileData) return;
     const setup = profileData.profile_setup;
     if (!setup || setup.is_complete) return;
-    if (pathAllowedDuringSetup(pathname)) return;
+    if (allowedPath) return;
     if (!toastShownRef.current) {
       toastShownRef.current = true;
       toast.info("Complete your personal and business information in Settings to unlock the workspace.", {
@@ -51,5 +55,5 @@ export function useProfileSetupRedirect(isMounted) {
       });
     }
     router.replace("/settings?tab=personal&setup=required");
-  }, [isMounted, token, needsGate, isPending, isSuccess, profileData, pathname, router]);
+  }, [isMounted, token, needsGate, isPending, isSuccess, profileData, allowedPath, router]);
 }

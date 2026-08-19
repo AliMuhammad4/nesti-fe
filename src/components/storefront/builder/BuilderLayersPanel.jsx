@@ -3,35 +3,64 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, MessageCircle, Plus, Trash2 } from 'lucide-react';
+import { Check, GripVertical, MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { labelForBlock } from './storefrontBuilderState';
 
-function LibraryBlock({ type, onClick }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `library-${type}`, data: { fromLibrary: true, type } });
+function LibraryBlock({ type, onClick, status = 'available' }) {
+  const canAdd = status === 'available';
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `library-${type}`,
+    data: { fromLibrary: true, type },
+    disabled: !canAdd,
+  });
+  const label = labelForBlock(type);
+  const hint = status === 'added'
+    ? 'Already in Layers — click to edit'
+    : status === 'blocked'
+      ? 'Unavailable while a similar listings section is on the page'
+      : 'Click or drag into the page';
+
   return (
     <div
       ref={setNodeRef}
-      className={`group flex min-h-10 items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50/50 hover:text-emerald-900 hover:shadow-sm ${isDragging ? 'opacity-40' : ''}`}
+      className={`group flex min-h-10 items-center border-b border-slate-100 bg-white p-1.5 text-slate-700 last:border-b-0 ${
+        canAdd ? 'hover:bg-slate-50' : 'bg-slate-50/70'
+      } ${isDragging ? 'opacity-40' : ''}`}
     >
-      <button
-        type="button"
-        {...listeners}
-        {...attributes}
-        className="grid h-7 w-7 shrink-0 cursor-grab place-items-center rounded-md text-slate-400 hover:bg-white hover:text-emerald-600 active:cursor-grabbing"
-        aria-label={`Drag ${labelForBlock(type)} into the page`}
-        title="Drag into page"
-      >
-        <GripVertical size={13} />
-      </button>
+      {canAdd ? (
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="grid h-7 w-7 shrink-0 cursor-grab place-items-center rounded-md text-slate-400 hover:bg-white hover:text-emerald-600 active:cursor-grabbing"
+          aria-label={`Drag ${label} into the page`}
+          title="Drag into page"
+        >
+          <GripVertical size={13} />
+        </button>
+      ) : (
+        <span className="grid h-7 w-7 shrink-0 place-items-center text-slate-300" aria-hidden>
+          <GripVertical size={13} />
+        </span>
+      )}
       <button
         type="button"
         onClick={onClick}
-        className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1 text-left text-[10px] font-semibold leading-3.5"
+        disabled={status === 'blocked'}
+        title={hint}
+        className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1 text-left text-[10px] font-semibold leading-3.5 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-400 transition group-hover:bg-white group-hover:text-emerald-600">
-          <Plus size={11} />
+        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md ${
+          status === 'added'
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-slate-100 text-slate-400 transition group-hover:bg-white group-hover:text-emerald-600'
+        }`}>
+          {status === 'added' ? <Check size={11} /> : <Plus size={11} />}
         </span>
-        <span className="truncate">{labelForBlock(type)}</span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {status === 'added' ? (
+          <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.08em] text-slate-400">In layers</span>
+        ) : null}
       </button>
     </div>
   );

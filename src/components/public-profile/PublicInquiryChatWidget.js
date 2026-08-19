@@ -7,6 +7,30 @@ const ChatWidget = dynamic(() => import('@/components/chatbot/ChatWidget'), {
   loading: () => null,
 });
 
+function resolveProfilePhoto(profile) {
+  return profile?.profile_photo_url
+    || profile?.storefront_profile_fallback_url
+    || profile?.storefront_essentials?.profile_photo_url
+    || profile?.storefront_essentials?.profile
+    || '';
+}
+
+function resolveProfilePhotoStyle(profile) {
+  const position = profile?.storefront_profile_position || {};
+  const clamp = (value, min, max, fallback) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  };
+  const x = clamp(position.x ?? profile?.profile_position_x ?? profile?.storefront_essentials?.profile_position_x, 0, 100, 50);
+  const y = clamp(position.y ?? profile?.profile_position_y ?? profile?.storefront_essentials?.profile_position_y, 0, 100, 25);
+  const zoom = clamp(profile?.storefront_profile_zoom ?? profile?.profile_zoom ?? profile?.storefront_essentials?.profile_zoom, 1, 3, 1);
+  return {
+    objectPosition: `${x}% ${y}%`,
+    transform: `scale(${zoom})`,
+    transformOrigin: `${x}% ${y}%`,
+  };
+}
+
 function getGreeting(profile, propertyContext) {
   const type = profile?.professional_type;
   const name = profile?.professional_name || 'this professional';
@@ -51,7 +75,8 @@ export default function PublicInquiryChatWidget({ profile, isOpen, onClose, inqu
       defaultOpen={true}
       allowLauncher={false}
       hostDisplayName={profile?.professional_name}
-      hostAvatarUrl={profile?.profile_photo_url}
+      hostAvatarUrl={resolveProfilePhoto(profile)}
+      hostAvatarStyle={resolveProfilePhotoStyle(profile)}
       initialGreeting={getGreeting(profile, propertyContext)}
       prefillLeadDraft={prefillLeadDraft}
       prefillIntent={propertyContext ? 'buy' : null}

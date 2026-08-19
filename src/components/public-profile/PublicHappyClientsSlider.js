@@ -121,7 +121,9 @@ function ClientCard({ client, className = '' }) {
             className="object-cover"
             sizes="(max-width: 1024px) 80vw, 320px"
           />
-        ) : null}
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200" aria-hidden="true" />
+        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-primary-dark">
           {client.lead_type}
@@ -143,15 +145,15 @@ function ClientCard({ client, className = '' }) {
         </p>
 
         <div className="mt-auto flex shrink-0 items-center gap-2.5 border-t border-slate-100 pt-3">
-          {client.client_photo_url ? (
-            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-100">
+          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-100">
+            {client.client_photo_url ? (
               <Image src={client.client_photo_url} alt={client.client_name} fill className="object-cover" sizes="32px" />
-            </div>
-          ) : (
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-              {initials(client.client_name)}
-            </div>
-          )}
+            ) : (
+              <span className="grid h-full w-full place-items-center bg-primary/10 text-[11px] font-bold text-primary">
+                {initials(client.client_name)}
+              </span>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[12px] font-semibold text-text-heading">{client.client_name}</div>
             <div className="mt-0.5 flex items-center gap-1 text-[10px] text-text-muted">

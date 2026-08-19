@@ -36,6 +36,19 @@ export async function getPublicProfile(slug) {
   return res.json();
 }
 
+export async function getPublicProfileShell(slug) {
+  return cachedPublicRequest(`profile-shell:${slug}`, PUBLIC_PROFILE_CACHE_MS, async () => {
+    const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/shell`, {
+      next: { revalidate: 10 },
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: 'Failed to fetch profile' }));
+      throw new Error(error.message || 'Failed to fetch profile');
+    }
+    return res.json();
+  });
+}
+
 export async function getPublishedStorefront(slug) {
   const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}/storefront`, {
     // Published media changes should be visible immediately after Update live.

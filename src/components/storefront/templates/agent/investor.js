@@ -8,6 +8,7 @@ const agentInvestor = {
   tagline: 'Deal-flow oriented investor storefront',
   description: 'Listings, ROI framing, market proof, and fast inquiry CTAs.',
   features: ['Deal pipeline', 'Sold comps', 'Investor CTA', 'Analytics tone'],
+  free: true,
   brand: brand('#172554', '#22c55e', 'Manrope', 'rounded', 'minimal', '#f8fafc'),
   blocks: (ctx) => [
     block(T.HERO, {
@@ -36,7 +37,6 @@ const agentInvestor = {
       heading: `About ${ctx.name}`,
       body: ctx.about || `${ctx.name} provides investment-focused real estate guidance across acquisitions, property evaluation, and portfolio decisions.`,
     }),
-    block(T.TESTIMONIALS, { heading: 'Investor partners', body: 'Operators and first-time investors who rely on this desk.' }),
     block(T.CTA, { heading: 'Get the next brief', body: 'Tell us your target yield, markets, and hold period.', cta_label: 'Join the deal list' }),
   ],
 };

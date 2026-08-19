@@ -47,7 +47,7 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
       className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Close */}
         <button
           type="button"
@@ -59,7 +59,7 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
         </button>
 
         {/* Image carousel */}
-        <div className="relative h-56 w-full overflow-hidden bg-slate-950 sm:h-80">
+        <div className="relative h-56 w-full shrink-0 overflow-hidden bg-slate-950 sm:h-80">
           {imgs.length > 0 ? (
             <>
               <Image
@@ -163,14 +163,15 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
             Listed by <span className="font-semibold text-text-heading">{profile?.professional_name}</span> · Seller: {property.seller_name}
           </p>
 
-          {/* CTA */}
-          <button
-            onClick={() => { onClose(); onInquire(property); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary/90 active:scale-[0.98]"
-          >
-            <MessageCircle size={16} />
-            I&apos;m Interested — Start Inquiry
-          </button>
+          {typeof onInquire === 'function' ? (
+            <button
+              onClick={() => { onClose(); onInquire(property); }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary/90 active:scale-[0.98]"
+            >
+              <MessageCircle size={16} />
+              I&apos;m Interested — Start Inquiry
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

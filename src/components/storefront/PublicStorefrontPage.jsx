@@ -1,12 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PublicChatBubble from '@/components/public-profile/PublicChatBubble';
 import PublicInquiryChatWidget from '@/components/public-profile/PublicInquiryChatWidget';
 import PublicLeadCaptureModal from '@/components/public-profile/PublicLeadCaptureModal';
 import { trackAnalyticsEvent } from '@/lib/publicProfileClient';
+import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontBlockRenderer from './StorefrontBlockRenderer';
+import { materializeTemplate } from './templates';
+
+const PROOF_TEMPLATE_KEYS = new Set([
+  'agent-luxury-advisor',
+  'agent-first-home',
+  'agent-community-expert',
+]);
+const PROOF_BLOCK_TYPES = new Set([
+  'seller-performance',
+  'seller-sold-results',
+  'seller-case-study',
+  'seller-credentials',
+]);
+const COMMUNITY_LEGACY_SURFACES = new Set([
+  '#eaf8ef',
+  '#f5fbf7',
+  '#f5fbf8',
+  '#f7fbf6',
+  '#e6f2f0',
+  '#d9f4df',
+]);
+
+function migrateCommunityPublishedBlocks(blocks = []) {
+  const migrateSurface = (value) => (
+    COMMUNITY_LEGACY_SURFACES.has(String(value || '').trim().toLowerCase()) ? '' : value
+  );
+  return blocks.map((block) => ({
+    ...block,
+    data: {
+      ...(block.data || {}),
+      style: {
+        ...(block.data?.style || {}),
+        background: migrateSurface(block.data?.style?.background),
+      },
+      content: {
+        ...(block.data?.content || {}),
+        panel_background: migrateSurface(block.data?.content?.panel_background),
+        section_background: migrateSurface(block.data?.content?.section_background),
+      },
+    },
+  }));
+}
 
 /**
  * Client interaction shell for every template. Individual blocks stay purely
@@ -16,6 +59,27 @@ export default function PublicStorefrontPage({ profile }) {
   const [chatbotOpen, setChatbotOpen] = useState(false);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [prefillInquiryProperty, setPrefillInquiryProperty] = useState(null);
+  const publicBlocks = useMemo(() => {
+    const savedBlocks = Array.isArray(profile.storefront_blocks) ? profile.storefront_blocks : [];
+    if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
+    const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
+      ? migrateCommunityPublishedBlocks(savedBlocks)
+      : savedBlocks;
+    const defaults = materializeTemplate(
+      profile.storefront_template_key,
+      profile,
+      profile.storefront_brand_kit || profile.brand_kit || {},
+    )?.blocks || [];
+    const existingTypes = new Set(baseBlocks.map((block) => block?.type));
+    const missingProof = defaults.filter(
+      (block) => PROOF_BLOCK_TYPES.has(block.type) && !existingTypes.has(block.type),
+    );
+    if (!missingProof.length) return baseBlocks;
+    const next = [...baseBlocks];
+    const footerIndex = next.findIndex((block) => block?.type === 'footer');
+    next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, ...missingProof);
+    return next;
+  }, [profile]);
 
   const track = async (eventType, data = {}) => {
     try {
@@ -36,13 +100,24 @@ export default function PublicStorefrontPage({ profile }) {
     setLeadModalOpen(true);
   };
 
+  // Same source as PublicHero / PublicCTA: professional profile Calendly URL.
+  const calendlyUrl = buildTrackedCalendlyUrl(
+    profile?.professional_profile?.calendly_link,
+    profile,
+  );
+
   const actions = {
     onCtaClick: async (ctaType = 'storefront_cta') => {
       await track('cta_click', { cta_type: String(ctaType) });
+      if (String(ctaType) === 'book_consultation' && calendlyUrl) {
+        window.open(calendlyUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
       // Default: keep published pages non-intrusive and open the lead form.
       openLeadModal();
     },
     onDirectLeadClick: () => openLeadModal(),
+    // Tracking-only, matching PublicHero/PublicCTA: callers open Calendly themselves.
     onAppointmentClick: () => track('cta_click', { cta_type: 'book_consultation' }),
     onPropertyInquiry: (property) => openLeadModal(property),
     onServiceClick: async (service) => {
@@ -57,7 +132,7 @@ export default function PublicStorefrontPage({ profile }) {
         <div className="w-full">
           <StorefrontBlockRenderer
             profile={profile}
-            blocks={profile.storefront_blocks}
+            blocks={publicBlocks}
             templateKey={profile.storefront_template_key}
             theme={profile.storefront_theme}
             actions={actions}
@@ -80,7 +155,11 @@ export default function PublicStorefrontPage({ profile }) {
         inquiryType="contact"
       />
       {profile?.storefront_show_chatbot === false ? null : (
-        <PublicChatBubble profile={profile} hideWhenOpen={chatbotOpen} />
+        <PublicChatBubble
+          profile={profile}
+          controlledOpen={chatbotOpen}
+          onControlledToggle={setChatbotOpen}
+        />
       )}
     </>
   );

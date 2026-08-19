@@ -38,10 +38,11 @@ export function useTrialExpiryRedirect(isMounted) {
   const { token, user } = useAppSelector((state) => state.auth);
   const [now, setNow] = useState(Date.now());
   const [quotaRedirectRequested, setQuotaRedirectRequested] = useState(false);
+  const allowedPath = isAllowedAfterTrial(pathname);
 
   const { data: profileData } = useQuery({
     queryKey: ["profile"],
-    enabled: Boolean(isMounted && token),
+    enabled: Boolean(isMounted && token && !allowedPath),
     staleTime: 15_000,
     queryFn: () =>
       apiClient({
@@ -81,7 +82,7 @@ export function useTrialExpiryRedirect(isMounted) {
     if (!isMounted || !token) return;
     const shouldHonorQuotaRedirect = quotaRedirectRequested && !trialStillActive;
     if (!trialHasEnded && !trialQuotaExhausted && !shouldHonorQuotaRedirect) return;
-    if (isAllowedAfterTrial(pathname)) return;
+    if (allowedPath) return;
 
     const quotaLocked = trialQuotaExhausted || shouldHonorQuotaRedirect;
     toast.info(
@@ -99,7 +100,7 @@ export function useTrialExpiryRedirect(isMounted) {
           ? "/checkout?trial=quota"
           : "/checkout?trial=expired"
     );
-  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, trialStillActive, pathname, router, isClient]);
+  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, trialStillActive, allowedPath, router, isClient]);
 
   useEffect(() => {
     if (!isMounted || !token) return;

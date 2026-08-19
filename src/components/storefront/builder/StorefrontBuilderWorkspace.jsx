@@ -62,6 +62,61 @@ const PANELS = [
 ];
 
 const PREVIEW_WIDTHS = { desktop: 1280, tablet: 834, mobile: 390 };
+const SELLER_SERVICE_SUPPLEMENTAL = [
+  {
+    id: 'seller-service-fallback-1',
+    title: 'Pre-listing prep plan',
+    description: 'Repairs, staging, media, and launch sequencing to maximize first-week momentum.',
+    icon: 'shield-check',
+  },
+  {
+    id: 'seller-service-fallback-2',
+    title: 'Offer decision room',
+    description: 'Compare pricing strength, terms, and closing confidence before choosing an offer.',
+    icon: 'target',
+  },
+  {
+    id: 'seller-service-fallback-3',
+    title: 'Closing confidence',
+    description: 'Coordinate conditions, documents, and handoffs so the accepted offer reaches a clean close.',
+    icon: 'handshake',
+  },
+];
+const SELLER_ROLE_SUPPLEMENTAL = [
+  {
+    id: 'seller-highlight-supp-1',
+    title: 'Launch timeline control',
+    text: 'Coordinate listing date, showing windows, and offer review milestones around your schedule.',
+  },
+  {
+    id: 'seller-highlight-supp-2',
+    title: 'Offer clarity framework',
+    text: 'Compare price, conditions, financing strength, and closing certainty before selecting a path.',
+  },
+];
+const COMMUNITY_SERVICE_SUPPLEMENTAL = {
+  id: 'community-service-6',
+  title: 'Neighborhood timing & offer strategy',
+  description: 'Know when to move, what to offer, and how local demand shapes your next step.',
+  icon: 'shield',
+  background: '',
+  text_color: '',
+  icon_background: '',
+  icon_color: '',
+};
+
+function appendUniqueItems(items, supplemental, limit) {
+  if (items.length >= limit) return items;
+  return [
+    ...items,
+    ...supplemental.filter((candidate) => (
+      !items.some((item) => (
+        item?.id === candidate.id
+        || String(item?.title || '').trim().toLowerCase() === candidate.title.toLowerCase()
+      ))
+    )),
+  ].slice(0, limit);
+}
 
 function normalizeHexForCompare(value = '') {
   const raw = String(value || '').trim();
@@ -84,6 +139,7 @@ function blockLayoutStyleSignature(blocks = []) {
       enabled: block?.data?.enabled ?? true,
       layout: block?.data?.layout || {},
       style: block?.data?.style || {},
+      content: block?.data?.content || {},
     })),
   );
 }
@@ -139,6 +195,7 @@ export default function StorefrontBuilderWorkspace({
   onResetTemplateDefaults,
   onMediaUpload,
   media,
+  onInlineEditingChange,
   saving,
   saveState,
   deleteConfirm = null,
@@ -146,6 +203,7 @@ export default function StorefrontBuilderWorkspace({
   const [activePanel, setActivePanel] = useState('layers');
   const [selectedId, setSelectedId] = useState(null);
   const [selectedElement, setSelectedElement] = useState(null);
+  const [inlineDraft, setInlineDraft] = useState(null);
   const [previewMode, setPreviewMode] = useState('desktop');
   const [activeDrag, setActiveDrag] = useState(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -155,6 +213,20 @@ export default function StorefrontBuilderWorkspace({
   const [frameHeight, setFrameHeight] = useState(720);
   const [viewportWidth, setViewportWidth] = useState(1400);
   const [confirmState, setConfirmState] = useState(null);
+
+  const setInlineEditingDraft = (draft) => {
+    setInlineDraft(draft);
+    onInlineEditingChange?.(Boolean(draft));
+  };
+
+  useEffect(() => {
+    setInlineDraft(null);
+    onInlineEditingChange?.(false);
+  }, [templateKey, onInlineEditingChange]);
+
+  useEffect(() => () => {
+    onInlineEditingChange?.(false);
+  }, [onInlineEditingChange]);
   const stageRef = useRef(null);
   const frameContentRef = useRef(null);
 
@@ -177,18 +249,34 @@ export default function StorefrontBuilderWorkspace({
   const hasChatbot = Boolean(embedToken);
 
   const normalized = useMemo(() => normalizeBlocks(blocks), [blocks]);
-  const availableBlockTypes = useMemo(() => availableBlocksForRole(role), [role]);
-  const addableBlockTypes = useMemo(() => {
-    const existingTypes = new Set(normalized.map((block) => block.type));
-    const hasFeaturedListings = existingTypes.has(STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS);
-    const hasProperties = existingTypes.has(STOREFRONT_BLOCK_TYPES.PROPERTIES);
-    return availableBlockTypes.filter((type) => {
-      if (existingTypes.has(type)) return false;
-      if (hasFeaturedListings && type === STOREFRONT_BLOCK_TYPES.PROPERTIES) return false;
-      if (hasProperties && type === STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS) return false;
-      return true;
+  const availableBlockTypes = useMemo(
+    () => availableBlocksForRole(role, templateKey),
+    [role, templateKey],
+  );
+  const libraryEntries = useMemo(() => {
+    const existingByType = new Map();
+    normalized.forEach((block) => {
+      if (!existingByType.has(block.type)) existingByType.set(block.type, block.id);
+    });
+    const hasFeaturedListings = existingByType.has(STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS);
+    const hasProperties = existingByType.has(STOREFRONT_BLOCK_TYPES.PROPERTIES);
+    return availableBlockTypes.map((type) => {
+      const existingId = existingByType.get(type) || null;
+      const blocked = !existingId && (
+        (hasFeaturedListings && type === STOREFRONT_BLOCK_TYPES.PROPERTIES)
+        || (hasProperties && type === STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS)
+      );
+      return {
+        type,
+        existingId,
+        status: existingId ? 'added' : blocked ? 'blocked' : 'available',
+      };
     });
   }, [availableBlockTypes, normalized]);
+  const addableBlockTypes = useMemo(
+    () => libraryEntries.filter((entry) => entry.status === 'available').map((entry) => entry.type),
+    [libraryEntries],
+  );
 
   const canResetTemplateDefaults = useMemo(() => {
     const next = materializeTemplate(templateKey, profile, brandKit);
@@ -250,12 +338,38 @@ export default function StorefrontBuilderWorkspace({
     });
   }, [templateKey, profile, brandKit, normalized]);
 
-  const materializeCollectionItems = (collection, content) => {
+  const materializeCollectionItems = (collection, content, blockType = '') => {
     // Respect an explicit array (including empty). Only fall back when the key is missing.
     if (Object.prototype.hasOwnProperty.call(content || {}, collection)
       && Array.isArray(content[collection])) {
       if (collection === 'steps' || collection === 'faqs' || collection === 'items' || collection === 'services' || collection === 'highlights' || collection === 'proof') {
-        return coerceCollectionItems(collection === 'services' ? 'items' : collection, content[collection]);
+        const persisted = coerceCollectionItems(
+          collection === 'services' ? 'items' : collection,
+          content[collection],
+        );
+        if (
+          templateKey === 'agent-seller-expert'
+          && blockType === STOREFRONT_BLOCK_TYPES.SERVICES
+          && (collection === 'items' || collection === 'services')
+        ) {
+          return appendUniqueItems(persisted, SELLER_SERVICE_SUPPLEMENTAL, 6);
+        }
+        if (
+          templateKey === 'agent-community-expert'
+          && blockType === STOREFRONT_BLOCK_TYPES.SERVICES
+          && (collection === 'items' || collection === 'services')
+          && persisted.length === 5
+        ) {
+          return [...persisted, { ...COMMUNITY_SERVICE_SUPPLEMENTAL }];
+        }
+        if (
+          templateKey === 'agent-seller-expert'
+          && blockType === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
+          && collection === 'highlights'
+        ) {
+          return appendUniqueItems(persisted, SELLER_ROLE_SUPPLEMENTAL, 5);
+        }
+        return persisted;
       }
     }
 
@@ -318,15 +432,25 @@ export default function StorefrontBuilderWorkspace({
           icon_background: '',
           icon_color: '',
         }));
+      if (
+        templateKey === 'agent-seller-expert'
+        && blockType === STOREFRONT_BLOCK_TYPES.SERVICES
+      ) {
+        return appendUniqueItems(base, SELLER_SERVICE_SUPPLEMENTAL, 6);
+      }
       if (base.length === 5) {
-        base.push({
-          ...(supplementalByRole[role] || supplementalByRole.agent),
-          id: 'fallback-service-5',
-          background: '',
-          text_color: '',
-          icon_background: '',
-          icon_color: '',
-        });
+        base.push(
+          templateKey === 'agent-community-expert'
+            ? { ...COMMUNITY_SERVICE_SUPPLEMENTAL }
+            : {
+                ...(supplementalByRole[role] || supplementalByRole.agent),
+                id: 'fallback-service-5',
+                background: '',
+                text_color: '',
+                icon_background: '',
+                icon_color: '',
+              },
+        );
       }
       return base.slice(0, 6);
     }
@@ -336,14 +460,22 @@ export default function StorefrontBuilderWorkspace({
     }
 
     if (collection === 'highlights' || collection === 'proof') {
-      return getRoleDetailsCollectionFallback(profile?.professional_type, collection);
+      const fallback = getRoleDetailsCollectionFallback(profile?.professional_type, collection);
+      if (
+        templateKey === 'agent-seller-expert'
+        && blockType === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
+        && collection === 'highlights'
+      ) {
+        return appendUniqueItems(fallback, SELLER_ROLE_SUPPLEMENTAL, 5);
+      }
+      return fallback;
     }
 
     return [];
   };
 
-  const resolveCollectionForEdit = (collection, content, itemId, itemIndex) => {
-    const items = materializeCollectionItems(collection, content);
+  const resolveCollectionForEdit = (collection, content, itemId, itemIndex, blockType = '') => {
+    const items = materializeCollectionItems(collection, content, blockType);
     if (items.some((item) => item?.id === itemId)) return items;
 
     const indexFromAttr = Number.isInteger(itemIndex) ? itemIndex : Number(itemIndex);
@@ -374,7 +506,7 @@ export default function StorefrontBuilderWorkspace({
       return null;
     }
     const content = selected?.data?.content || {};
-    const items = materializeCollectionItems(selectedElement.collection, content);
+    const items = materializeCollectionItems(selectedElement.collection, content, selected?.type);
     if (selectedElement.itemId) {
       const index = items.findIndex((item) => item?.id === selectedElement.itemId);
       if (index >= 0) return { item: items[index], index };
@@ -390,9 +522,23 @@ export default function StorefrontBuilderWorkspace({
     }
     return null;
   })();
+  const draftMatchesSelection = inlineDraft
+    && inlineDraft.blockId === selectedElement?.blockId
+    && inlineDraft.field === selectedElement?.field
+    && inlineDraft.collection === selectedElement?.collection
+    && (inlineDraft.itemId === selectedElement?.itemId
+      || inlineDraft.itemIndex === selectedElement?.itemIndex);
   const inspectorSelection = selectedItem
-    ? { ...selectedElement, item: selectedItem.item }
-    : selectedElement;
+    ? {
+        ...selectedElement,
+        item: draftMatchesSelection && inlineDraft.itemField
+          ? { ...selectedItem.item, [inlineDraft.itemField]: inlineDraft.value }
+          : selectedItem.item,
+      }
+    : {
+        ...selectedElement,
+        ...(draftMatchesSelection ? { inlineValue: inlineDraft.value } : {}),
+      };
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -545,6 +691,7 @@ export default function StorefrontBuilderWorkspace({
         content,
         selectedElement.itemId,
         selectedElement.itemIndex,
+        selected.type,
       );
       if (!resolvedItems?.length) return;
 
@@ -570,6 +717,72 @@ export default function StorefrontBuilderWorkspace({
     });
   };
 
+  const updateInlineContent = ({
+    blockId,
+    field,
+    collection,
+    itemId,
+    itemIndex,
+    itemField,
+    instance,
+    value,
+  }) => {
+    const block = normalized.find((candidate) => candidate.id === blockId);
+    if (!block || !field?.startsWith('content.')) return;
+    const content = block.data?.content || {};
+
+    if (!collection) {
+      const contentKey = field.slice('content.'.length);
+      const instanceIndex = Number(instance);
+      if (
+        contentKey === 'body'
+        && instance !== undefined
+        && Number.isInteger(instanceIndex)
+        && instanceIndex >= 0
+      ) {
+        const paragraphs = String(content.body || '')
+          .split('\n')
+          .map((paragraph) => paragraph.trim())
+          .filter(Boolean);
+        if (paragraphs[instanceIndex] !== undefined) {
+          paragraphs[instanceIndex] = value;
+          updateBlock(blockId, { content: { body: paragraphs.join('\n') } });
+          setInlineEditingDraft(null);
+          return;
+        }
+      }
+      updateBlock(blockId, { content: { [contentKey]: value } });
+      setInlineEditingDraft(null);
+      return;
+    }
+
+    const resolvedItems = resolveCollectionForEdit(
+      collection,
+      content,
+      itemId,
+      itemIndex,
+      block.type,
+    );
+    if (!resolvedItems?.length) return;
+    const targetIndex = resolvedItems.findIndex((item) => item?.id === itemId);
+    const index = targetIndex >= 0 ? targetIndex : Number(itemIndex);
+    if (!Number.isInteger(index) || !resolvedItems[index]) return;
+    const resolvedItemId = resolvedItems[index].id || itemId || createContentItemId();
+    const materializedItems = resolvedItems.map((item, currentIndex) => (
+      currentIndex === index ? { ...item, id: resolvedItemId } : item
+    ));
+    const nextContent = { ...content, [collection]: materializedItems };
+    updateBlock(blockId, {
+      content: updateContentItem(nextContent, {
+        collection,
+        itemId: resolvedItemId,
+      }, {
+        [itemField || 'text']: value,
+      }),
+    });
+    setInlineEditingDraft(null);
+  };
+
   const removeSelectedItem = () => {
     if (!selectedElement?.collection || !selected || !(selectedElement.itemId || selectedElement.itemIndex != null)) {
       return;
@@ -586,6 +799,7 @@ export default function StorefrontBuilderWorkspace({
         content,
         selectedElement.itemId,
         selectedElement.itemIndex,
+        selected.type,
       );
     if (!resolvedItems?.length) return;
     const nextContent = { ...content, [collection]: resolvedItems };
@@ -617,7 +831,7 @@ export default function StorefrontBuilderWorkspace({
             ? coerceCollectionItems(collection, content[collection])
             : content[collection]
         )
-      : materializeCollectionItems(collection, content);
+      : materializeCollectionItems(collection, content, selected?.type);
     const nextItems = [...currentItems, nextItem];
     const fieldLabel = collection === 'faqs'
       ? `FAQ ${nextItems.length}`
@@ -627,7 +841,9 @@ export default function StorefrontBuilderWorkspace({
           ? `Highlight ${nextItems.length}`
           : collection === 'proof'
             ? `Proof ${nextItems.length}`
-            : `Service ${nextItems.length}`;
+            : selected?.type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY
+              ? `Story card ${nextItems.length}`
+              : `Service ${nextItems.length}`;
     updateBlock(selectedElement.blockId, {
       content: {
         ...content,
@@ -673,6 +889,21 @@ export default function StorefrontBuilderWorkspace({
     setInspectorOpen(true);
   };
 
+  const createBlockForTemplate = (type) => {
+    const created = createBlock(type);
+    const templateBlock = materializeTemplate(templateKey, profile, brandKit)?.blocks
+      ?.find((block) => block.type === type);
+    if (!templateBlock) return created;
+    return {
+      ...templateBlock,
+      id: created.id,
+      data: {
+        ...templateBlock.data,
+        enabled: true,
+      },
+    };
+  };
+
   const addBlock = (type) => {
     const existing = normalized.find((block) => block.type === type);
     if (existing) {
@@ -682,7 +913,7 @@ export default function StorefrontBuilderWorkspace({
       setActivePanel('layers');
       return;
     }
-    const block = createBlock(type);
+    const block = createBlockForTemplate(type);
     const next = [...normalized];
     const footerIndex = next.findIndex((item) => item.type === 'footer');
     next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
@@ -782,7 +1013,7 @@ export default function StorefrontBuilderWorkspace({
         setActivePanel('layers');
         return;
       }
-      const block = createBlock(type);
+      const block = createBlockForTemplate(type);
       const index = normalized.findIndex((item) => item.id === over.id);
       const next = [...normalized];
       if (index >= 0) next.splice(index, 0, block);
@@ -807,12 +1038,16 @@ export default function StorefrontBuilderWorkspace({
 
   const previewProfile = useMemo(() => ({
     ...profile,
+    professional_name: profile?.professional_name,
+    storefront_template_key: templateKey,
     embed_token: embedToken || profile?.embed_token,
     storefront_builder_access_token: accessToken,
+    storefront_builder_selection: selectedElement,
     storefront_logo_url: brandKit.logo_url || profile?.storefront_logo_url,
     storefront_logo_size: Number(brandKit.logo_size) || profile?.storefront_logo_size || 40,
-    cover_photo_url: brandKit.cover_url || profile?.cover_photo_url,
-    profile_photo_url: brandKit.profile_photo_url || media?.profile || profile?.profile_photo_url,
+    cover_photo_url: media?.cover || brandKit.cover_url || profile?.cover_photo_url || profile?.cover_image,
+    profile_photo_url: media?.profile || brandKit.profile_photo_url || profile?.profile_photo_url,
+    storefront_profile_fallback_url: profile?.profile_photo_url || '',
     storefront_cover_position: {
       x: Number(brandKit.cover_position_x ?? 50),
       y: Number(brandKit.cover_position_y ?? 50),
@@ -823,6 +1058,7 @@ export default function StorefrontBuilderWorkspace({
       y: Number(brandKit.profile_position_y ?? 25),
     },
     storefront_profile_zoom: Number(brandKit.profile_zoom ?? 1),
+    storefront_essentials: brandKit.essentials || {},
     storefront_theme: {
       primary: brandKit.primary_color,
       accent: brandKit.accent_color,
@@ -832,9 +1068,12 @@ export default function StorefrontBuilderWorkspace({
     },
   }), [
     profile,
+    templateKey,
     embedToken,
     accessToken,
+    media?.cover,
     media?.profile,
+    brandKit.business_name,
     brandKit.logo_url,
     brandKit.logo_size,
     brandKit.cover_url,
@@ -845,11 +1084,13 @@ export default function StorefrontBuilderWorkspace({
     brandKit.profile_position_x,
     brandKit.profile_position_y,
     brandKit.profile_zoom,
+    brandKit.essentials,
     brandKit.primary_color,
     brandKit.accent_color,
     brandKit.page_background,
     brandKit.font,
     brandKit.button_shape,
+    selectedElement,
   ]);
 
   const rendererBlocks = useMemo(() => toRendererBlocks(normalized), [normalized]);
@@ -872,7 +1113,7 @@ export default function StorefrontBuilderWorkspace({
         className="relative h-[calc(100dvh-4rem)] min-h-[36rem] overflow-hidden bg-[#e8edf3]"
         style={{ display: 'grid', gridTemplateColumns }}
       >
-        <nav className="flex flex-col items-center gap-2 border-r border-slate-200 bg-white py-3 shadow-[2px_0_12px_rgba(15,23,42,0.04)]">
+        <nav className="flex flex-col items-center gap-2 bg-white py-3">
           {PANELS.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -897,14 +1138,14 @@ export default function StorefrontBuilderWorkspace({
 
         <aside className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white">
           {activePanel === 'layers' ? (
-            <div className="p-4">
+            <div className="px-3 py-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="text-[13px] font-bold text-slate-900">Page structure</h2>
                   <p className="mt-1 text-[11px] leading-4 text-slate-500" data-builder-version="v3-inline-grid">Drag to reorder. Click a layer to edit copy, layout, and style.</p>
                 </div>
               </div>
-              <div className="mt-5">
+              <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Layers</p>
                   <span className="text-[10px] font-medium text-slate-400">{normalized.length}</span>
@@ -936,8 +1177,8 @@ export default function StorefrontBuilderWorkspace({
               </div>
             </div>
           ) : activePanel === 'add' ? (
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-3">
+            <div className="flex min-h-full flex-col">
+              <div className="flex items-center justify-between gap-3 px-3 py-3">
                 <div>
                   <h2 className="text-[13px] font-bold text-slate-900">Add sections</h2>
                   <p className="mt-1 text-[10px] leading-4 text-slate-500">Click or drag into the page.</p>
@@ -946,16 +1187,36 @@ export default function StorefrontBuilderWorkspace({
                   {addableBlockTypes.length}
                 </span>
               </div>
-              <div className="mt-4 grid grid-cols-1 gap-1.5">
-                {addableBlockTypes.map((type) => (
-                  <LibraryBlock key={type} type={type} onClick={() => addBlock(type)} />
-                ))}
-                {!addableBlockTypes.length ? (
-                  <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] leading-4 text-slate-500">
-                    All available sections are already in Layers.
-                  </p>
-                ) : null}
-              </div>
+              {libraryEntries.length ? (
+                <div className="border-t border-slate-100">
+                  {libraryEntries.map((entry) => (
+                    <LibraryBlock
+                      key={entry.type}
+                      type={entry.type}
+                      status={entry.status}
+                      onClick={() => {
+                        if (entry.status === 'added' && entry.existingId) {
+                          selectBlock(entry.existingId);
+                          setActivePanel('layers');
+                          return;
+                        }
+                        if (entry.status === 'available') addBlock(entry.type);
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 border-t border-slate-100 px-3 py-8 text-center">
+                  <p className="text-[11px] leading-4 text-slate-500">No extra sections are available for this template.</p>
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel('layers')}
+                    className="text-[10px] font-semibold text-slate-700 underline-offset-2 hover:underline"
+                  >
+                    View layers
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <PageSettings
@@ -977,7 +1238,10 @@ export default function StorefrontBuilderWorkspace({
           )}
         </aside>
 
-        <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden">
+        <main
+          data-storefront-preview-shell
+          className="relative flex min-h-0 min-w-0 flex-col overflow-hidden"
+        >
           <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/70 bg-[#e8edf3]/95 px-3 py-1.5 backdrop-blur">
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
@@ -1023,6 +1287,8 @@ export default function StorefrontBuilderWorkspace({
                     onBlockSelect={selectBlock}
                     selectedElement={selectedElement}
                     onElementSelect={selectElement}
+                    onInlineContentInput={setInlineEditingDraft}
+                    onInlineContentChange={updateInlineContent}
                   />
                 </div>
               </div>

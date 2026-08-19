@@ -8,18 +8,19 @@ import {
 } from './storefrontPresets';
 import {
   experienceCanvasClass,
+  getStorefrontExperienceCss,
   resolveTemplateExperience,
   sectionInnerClass,
-  STOREFRONT_EXPERIENCE_CSS,
 } from './storefrontExperience';
 import {
   createStorefrontRendererRegistry,
   storefrontBlockRegistry,
 } from './renderers/createStorefrontRendererRegistry';
 import { getStorefrontTemplate } from './templates';
-import { visualTreatmentForTemplate } from './templates/visualTreatments';
 import { normalizeBlock } from './builder/storefrontBuilderState';
 import { StorefrontTheme } from './storefrontTheme';
+import { visualTreatmentForTemplate } from './templates/visualTreatments';
+import StorefrontInlineStyle from './StorefrontInlineStyle';
 import './storefrontAnimations.css';
 export { storefrontBlockRegistry };
 
@@ -28,6 +29,7 @@ const LISTING_BLOCK_TYPES = new Set([
   STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
   STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
   STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
+  STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
 ]);
 
 function markAnimatedChildren(root, blocks) {
@@ -66,6 +68,32 @@ function scheduleAnimationReveal(callback) {
   };
 }
 
+const INLINE_TEXT_SELECTOR = 'h1,h2,h3,h4,h5,h6,p,span,a,button,label,li,blockquote,strong,small';
+
+function isInlineTextTarget(node) {
+  if (node.matches(INLINE_TEXT_SELECTOR)) return true;
+  return Array.from(node.childNodes).some(
+    (child) => child.nodeType === 3 && child.textContent.trim(),
+  );
+}
+
+function selectEditableText(node) {
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let current = walker.nextNode();
+  while (current) {
+    if (current.textContent) textNodes.push(current);
+    current = walker.nextNode();
+  }
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  if (!textNodes.length) return;
+  const range = document.createRange();
+  range.setStart(textNodes[0], 0);
+  range.setEnd(textNodes[textNodes.length - 1], textNodes[textNodes.length - 1].textContent.length);
+  selection?.addRange(range);
+}
+
 /** Soft alternating bands for public pages — no tinted inset cards. */
 function publicBandBackground(blockType, index, pageBackground) {
   if (blockType === STOREFRONT_BLOCK_TYPES.HERO) return undefined;
@@ -84,6 +112,8 @@ const TEMPLATE_NEUTRAL_BANDS = new Set([
   '#f9fafb',
   '#f1f5f9',
   '#faf7ef',
+  '#f8f2e4',
+  '#fffaf1',
   '#eff6ff',
   '#fff7ed',
   '#fff1f2',
@@ -124,14 +154,21 @@ export default function StorefrontBlockRenderer({
   selectedElement,
   onBlockSelect,
   onElementSelect,
+  onInlineContentInput,
+  onInlineContentChange,
 }) {
+  const templateRef = templateKey || profile?.storefront_template_key || '';
   const [isHydrated, setIsHydrated] = useState(false);
   const [animatedVisibleById, setAnimatedVisibleById] = useState({});
   const canvasRef = useRef(null);
   useEffect(() => setIsHydrated(true), []);
   const resolvedBlocks = useMemo(
     () => (profile
-      ? resolveStorefrontBlocks(profile, blocks).map((block, index) => normalizeBlock(block, index))
+      ? resolveStorefrontBlocks(
+        { ...profile, storefront_template_key: templateRef },
+        blocks,
+        templateRef,
+      ).map((block, index) => normalizeBlock(block, index))
       : []),
     // Depend on fields that affect block resolution, not profile object identity.
     // Builder recreates preview profile objects often (e.g. show_chatbot), which must not
@@ -144,6 +181,7 @@ export default function StorefrontBlockRenderer({
       profile?.professional_name,
       profile?.about,
       profile?.storefront_blocks,
+      templateRef,
     ],
   );
   const animationConfigSignature = useMemo(
@@ -308,7 +346,6 @@ export default function StorefrontBlockRenderer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid restarting on profile/block array identity churn
   }, [isHydrated, animationConfigSignature, previewMode, preview]);
   if (!profile) return null;
-  const templateRef = templateKey || profile.storefront_template_key || '';
   const experience = resolveTemplateExperience(templateRef);
   // Profiles can store aliases such as realtor/real_estate_agent; renderer
   // overrides are registered under canonical storefront roles (agent, etc.).
@@ -326,6 +363,82 @@ export default function StorefrontBlockRenderer({
   const definedThemeValues = Object.fromEntries(
     Object.entries(explicitTheme).filter(([, value]) => value !== undefined && value !== null && value !== ''),
   );
+  // Migrate the original parchment Luxury Advisor canvas to its current
+  // architectural dark default without overriding a user-selected custom color.
+  if (
+    templateRef === 'agent-luxury-advisor'
+    && String(definedThemeValues.canvas || '').trim().toLowerCase() === '#faf7ef'
+  ) {
+    definedThemeValues.canvas = templateBrand.page_background || '#11100f';
+  }
+  // Soften the original mustard accent used by early Luxury Advisor drafts.
+  if (
+    templateRef === 'agent-luxury-advisor'
+    && String(definedThemeValues.accent || '').trim().toLowerCase() === '#c9a227'
+  ) {
+    definedThemeValues.accent = templateBrand.accent_color || '#c9b08a';
+  }
+  // Drop leftover Classic teal primary so Luxury Advisor stays on charcoal.
+  if (
+    templateRef === 'agent-luxury-advisor'
+    && ['#0f766e', '#0d9488', '#115e59'].includes(String(definedThemeValues.primary || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.primary = templateBrand.primary_color || '#1c1917';
+  }
+  // Move untouched First Home Specialist drafts onto the GreenVilla-inspired
+  // green/white system. User-selected custom colors remain untouched.
+  if (
+    templateRef === 'agent-first-home'
+    && ['#1d4ed8', '#2b221c', '#173740', '#2f7d78'].includes(String(definedThemeValues.primary || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.primary = templateBrand.primary_color || '#0b3d20';
+  }
+  if (
+    templateRef === 'agent-first-home'
+    && ['#f59e0b', '#fb7185', '#c78960', '#e58b5b', '#ed8b62'].includes(String(definedThemeValues.accent || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.accent = templateBrand.accent_color || '#5bd36d';
+  }
+  if (
+    templateRef === 'agent-first-home'
+    && ['#eff6ff', '#f8f6f2', '#f4efe7', '#f7f3ec'].includes(String(definedThemeValues.canvas || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.canvas = templateBrand.page_background || '#ffffff';
+  }
+  // Move untouched Seller Expert drafts from legacy rose/amber defaults to the
+  // updated teal/green palette without overriding deliberate custom colors.
+  if (
+    templateRef === 'agent-seller-expert'
+    && ['#9f1239', '#be123c', '#881337', '#0f766e'].includes(String(definedThemeValues.primary || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.primary = templateBrand.primary_color || '#0f172a';
+  }
+  if (
+    templateRef === 'agent-seller-expert'
+    && ['#f59e0b', '#fb7185', '#c9a227', '#22c55e'].includes(String(definedThemeValues.accent || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.accent = templateBrand.accent_color || '#06b6d4';
+  }
+  if (
+    templateRef === 'agent-seller-expert'
+    && ['#fff1f2', '#fff0f3', '#fff7e7', '#f5fbf8'].includes(String(definedThemeValues.canvas || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.canvas = templateBrand.page_background || '#f8fafc';
+  }
+  // Replace Community Expert indigo with a navy-blue accent that reads on the
+  // dark hero without overriding a user-picked custom color.
+  if (
+    templateRef === 'agent-community-expert'
+    && ['#8b5cf6', '#7c3aed', '#6366f1', '#a78bfa'].includes(String(definedThemeValues.accent || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.accent = templateBrand.accent_color || '#1f6fbf';
+  }
+  if (
+    templateRef === 'agent-community-expert'
+    && ['#f8f7fc', '#f5f7ff'].includes(String(definedThemeValues.canvas || '').trim().toLowerCase())
+  ) {
+    definedThemeValues.canvas = templateBrand.page_background || '#f5f7fa';
+  }
   const resolvedTheme = {
     primary: templateBrand.primary_color,
     accent: templateBrand.accent_color,
@@ -496,11 +609,16 @@ export default function StorefrontBlockRenderer({
     ].join('')
     : '';
 
+  const featuredListingDesign = resolvedBlocks.find(
+    (candidate) => candidate.type === STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS,
+  ) || null;
+
   return (
     <StorefrontTheme theme={resolvedTheme} className={className}>
-      <style jsx global>{STOREFRONT_EXPERIENCE_CSS}</style>
-      {isHydrated ? <style>{responsivePolishCss}</style> : null}
-      {isHydrated && selectedElementCss ? <style>{selectedElementCss}</style> : null}
+      {/* Injected via createElement so Turbopack does not rewrite these as styled-jsx. */}
+      <StorefrontInlineStyle css={getStorefrontExperienceCss()} />
+      {isHydrated ? <StorefrontInlineStyle css={responsivePolishCss} /> : null}
+      {isHydrated && selectedElementCss ? <StorefrontInlineStyle css={selectedElementCss} /> : null}
       <div
         ref={canvasRef}
         className={`${experienceClass} storefront-canvas ${previewSizeClass}`.trim()}
@@ -517,11 +635,13 @@ export default function StorefrontBlockRenderer({
         const contentItems = Array.isArray(content.items) ? content.items : [];
         const blockProfile = {
           ...profile,
+          storefront_template_key: templateRef,
           storefront_builder_preview: preview,
           storefront_preview_mode: previewMode,
           storefront_section_content: content,
           storefront_section_layout: block.data?.layout || block.layout || {},
           storefront_section_style: block.data?.style || block.style || {},
+          storefront_featured_listing_design: featuredListingDesign,
           storefront_expertise_areas: storefrontExpertiseAreas,
           ...(block.type === STOREFRONT_BLOCK_TYPES.HERO
             ? {
@@ -582,28 +702,55 @@ export default function StorefrontBlockRenderer({
         const style = block.data?.style || block.style || {};
         const isHero = block.type === STOREFRONT_BLOCK_TYPES.HERO;
         const isListing = LISTING_BLOCK_TYPES.has(block.type);
+        const isLuxuryHero = templateRef === 'agent-luxury-advisor'
+          && block.type === STOREFRONT_BLOCK_TYPES.HERO;
+        const isLuxuryServices = templateRef === 'agent-luxury-advisor'
+          && block.type === STOREFRONT_BLOCK_TYPES.SERVICES;
+        const isLuxuryFooter = templateRef === 'agent-luxury-advisor'
+          && block.type === STOREFRONT_BLOCK_TYPES.FOOTER;
+        const isFirstHomeServices = templateRef === 'agent-first-home'
+          && block.type === STOREFRONT_BLOCK_TYPES.SERVICES;
+        const isSellerExpertTemplate = templateRef === 'agent-seller-expert';
         // Always render full-bleed section bands in builder and on the public page
         // so layout stays consistent. Content width is handled by the inner wrapper.
         const bandLayout = {
           ...layout,
           columns: isListing
-            ? (isMobilePreview ? '1' : isTabletPreview ? '2' : (layout.columns || '4'))
+            ? (
+                isMobilePreview
+                  ? '1'
+                  : isTabletPreview
+                    ? '2'
+                    : (layout.columns || '4')
+              )
             : (layout.columns || '3'),
           ...(isHero ? { width: 'full', padding: 'none', cardStyle: 'flat' } : {}),
+          ...(isFirstHomeServices ? { width: 'full' } : {}),
+          ...(isSellerExpertTemplate ? { width: 'full' } : {}),
+          ...((isLuxuryHero || isLuxuryServices || isLuxuryFooter)
+            && (!layout.animationType || layout.animationType === 'none' || isLuxuryHero)
+            ? {
+                // Luxury hero/cover must paint immediately — fade/slide entrance
+                // left the portrait at opacity 0 or mid-blur on wide screens.
+                animationType: 'none',
+              }
+            : {}),
         };
 
         const variant = bandLayout.variant || 'standard';
         const columns = String(bandLayout.columns || (isListing ? '4' : '3'));
-        const templateVisual = visualTreatmentForTemplate(templateRef, block.type, index);
-        const storedBackground = String(style.background || '').trim();
-        const templateBackground = String(templateVisual.bg || '').trim();
-        const isTemplateDefaultBackground = Boolean(
-          storedBackground
-          && templateBackground
-          && storedBackground.toLowerCase() === templateBackground.toLowerCase(),
-        );
+        let storedBackground = String(style.background || '').trim();
+        if (
+          templateRef === 'agent-first-home'
+          && [
+            '#2b221c', '#f8f6f2', '#173740', '#f4efe7',
+            '#dcecea', '#e6f2f0', '#f7f3ec', '#edf2f7', '#e8f3f1', '#fcefe8',
+            '#edf5ff', '#fff4ea', '#eff6ff',
+          ].includes(storedBackground.toLowerCase())
+        ) {
+          storedBackground = visualTreatmentForTemplate(templateRef, block.type, index).bg || storedBackground;
+        }
         const useTemplateBand = !storedBackground
-          || isTemplateDefaultBackground
           || TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase());
         const sectionBackground = resolveSectionBandBackground({
           isHero,
@@ -647,30 +794,104 @@ export default function StorefrontBlockRenderer({
             data-anim-trigger={String(bandLayout.animationTrigger || 'load')}
             data-section-variant={variant}
             data-section-columns={columns}
-            onClick={(event) => {
+            onClickCapture={(event) => {
               if (!preview) return;
               const target = event.target.closest?.('[data-storefront-field]');
-              if (target) {
+              if (!target) return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (target.contentEditable === 'true') return;
+              const collection = target.dataset.storefrontCollection;
+              const itemId = target.dataset.storefrontItemId;
+              const itemIndexRaw = target.dataset.storefrontItemIndex;
+              onElementSelect?.({
+                blockId: block.id,
+                kind: itemId || itemIndexRaw != null ? 'item' : 'field',
+                field: target.dataset.storefrontField,
+                source: target.dataset.storefrontSource || 'persisted',
+                collection: collection || undefined,
+                itemId: itemId || undefined,
+                itemIndex: itemIndexRaw != null && itemIndexRaw !== '' ? Number(itemIndexRaw) : undefined,
+                itemField: target.dataset.storefrontItemField || undefined,
+                instance: target.dataset.storefrontInstance || undefined,
+                label: target.dataset.storefrontLabel || target.dataset.storefrontField,
+              });
+              if (
+                target.dataset.storefrontSource === 'profile'
+                || !isInlineTextTarget(target)
+              ) return;
+              target.dataset.storefrontOriginalValue = target.textContent || '';
+              target.dataset.storefrontOriginalHtml = target.innerHTML;
+              target.contentEditable = 'true';
+              target.spellcheck = true;
+              target.classList.add('storefront-inline-editing');
+              target.focus();
+              selectEditableText(target);
+            }}
+            onClick={() => {
+              if (!preview) return;
+              onBlockSelect?.(block.id);
+            }}
+            onKeyDown={(event) => {
+              if (!preview || !event.target.matches?.('[data-storefront-field][contenteditable="true"]')) return;
+              if (event.key === 'Escape') {
                 event.preventDefault();
-                event.stopPropagation();
-                const collection = target.dataset.storefrontCollection;
-                const itemId = target.dataset.storefrontItemId;
-                const itemIndexRaw = target.dataset.storefrontItemIndex;
-                onElementSelect?.({
-                  blockId: block.id,
-                  kind: itemId || itemIndexRaw != null ? 'item' : 'field',
-                  field: target.dataset.storefrontField,
-                  source: target.dataset.storefrontSource || 'persisted',
-                  collection: collection || undefined,
-                  itemId: itemId || undefined,
-                  itemIndex: itemIndexRaw != null && itemIndexRaw !== '' ? Number(itemIndexRaw) : undefined,
-                  itemField: target.dataset.storefrontItemField || undefined,
-                  instance: target.dataset.storefrontInstance || undefined,
-                  label: target.dataset.storefrontLabel || target.dataset.storefrontField,
-                });
+                event.target.innerHTML = event.target.dataset.storefrontOriginalHtml || '';
+                event.target.blur();
+              }
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.target.blur();
+              }
+            }}
+            onInput={(event) => {
+              const target = event.target;
+              if (!preview || !target.matches?.('[data-storefront-field][contenteditable="true"]')) return;
+              onInlineContentInput?.({
+                blockId: block.id,
+                field: target.dataset.storefrontField,
+                collection: target.dataset.storefrontCollection || undefined,
+                itemId: target.dataset.storefrontItemId || undefined,
+                itemIndex: target.dataset.storefrontItemIndex === undefined
+                  ? undefined
+                  : Number(target.dataset.storefrontItemIndex),
+                itemField: target.dataset.storefrontItemField || undefined,
+                instance: target.dataset.storefrontInstance || undefined,
+                value: target.textContent || '',
+              });
+            }}
+            onBlur={(event) => {
+              const target = event.target;
+              if (!preview || !target.matches?.('[data-storefront-field][contenteditable="true"]')) return;
+              const value = String(target.textContent || '');
+              const originalValue = target.dataset.storefrontOriginalValue || '';
+              target.contentEditable = 'false';
+              target.spellcheck = false;
+              target.classList.remove('storefront-inline-editing');
+              delete target.dataset.storefrontOriginalValue;
+              const originalHtml = target.dataset.storefrontOriginalHtml || '';
+              delete target.dataset.storefrontOriginalHtml;
+              if (!value.trim()) {
+                target.innerHTML = originalHtml;
+                onInlineContentInput?.(null);
                 return;
               }
-              onBlockSelect?.(block.id);
+              if (value === originalValue) {
+                onInlineContentInput?.(null);
+                return;
+              }
+              onInlineContentChange?.({
+                blockId: block.id,
+                field: target.dataset.storefrontField,
+                collection: target.dataset.storefrontCollection || undefined,
+                itemId: target.dataset.storefrontItemId || undefined,
+                itemIndex: target.dataset.storefrontItemIndex === undefined
+                  ? undefined
+                  : Number(target.dataset.storefrontItemIndex),
+                itemField: target.dataset.storefrontItemField || undefined,
+                instance: target.dataset.storefrontInstance || undefined,
+                value,
+              });
             }}
             className={[
               'storefront-public-band relative w-full max-w-none',

@@ -11,6 +11,14 @@
   }
 }
 
+.storefront-canvas[data-preview='true'] [data-storefront-field][contenteditable='true'] {
+  cursor: text !important;
+  outline: 2px solid var(--storefront-primary, #0f766e);
+  outline-offset: 3px;
+  border-radius: 3px;
+  caret-color: var(--storefront-primary, #0f766e);
+}
+
 @keyframes storefront-anim-body-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

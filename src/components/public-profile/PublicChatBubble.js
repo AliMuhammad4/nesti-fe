@@ -1,15 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import PublicInquiryChatWidget from './PublicInquiryChatWidget';
 
 const ROLE_LABEL = {
-  agent: 'Chat with Agent',
-  mortgage_broker: 'Chat with Broker',
-  lawyer: 'Chat with Lawyer',
+  agent: 'Need help ?',
+  mortgage_broker: 'Need help ?',
+  lawyer: 'Need help ?',
 };
+
+function resolveProfilePlacement(profile) {
+  const position = profile?.storefront_profile_position || {};
+  const clamp = (value, min, max, fallback) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  };
+  const x = clamp(position.x ?? profile?.profile_position_x ?? profile?.storefront_essentials?.profile_position_x, 0, 100, 50);
+  const y = clamp(position.y ?? profile?.profile_position_y ?? profile?.storefront_essentials?.profile_position_y, 0, 100, 25);
+  const zoom = clamp(profile?.storefront_profile_zoom ?? profile?.profile_zoom ?? profile?.storefront_essentials?.profile_zoom, 1, 3, 1);
+  return {
+    x,
+    y,
+    zoom,
+    style: {
+      objectPosition: `${x}% ${y}%`,
+      transform: `scale(${zoom})`,
+      transformOrigin: `${x}% ${y}%`,
+    },
+  };
+}
 
 export default function PublicChatBubble({
   profile,
@@ -21,8 +42,15 @@ export default function PublicChatBubble({
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const autoOpenedThisLoadRef = useRef(false);
+  const profilePhoto = profile?.profile_photo_url
+    || profile?.storefront_profile_fallback_url
+    || profile?.storefront_essentials?.profile_photo_url
+    || profile?.storefront_essentials?.profile
+    || '';
+  const profilePlacement = resolveProfilePlacement(profile);
 
-  const label = ROLE_LABEL[profile?.professional_type] || 'Chat Now';
+  const label = ROLE_LABEL[profile?.professional_type] || 'Need help ?';
   const isControlled = typeof controlledOpen === 'boolean';
   const isOpen = isControlled ? controlledOpen : open;
   const toggleOpen = () => {
@@ -45,6 +73,29 @@ export default function PublicChatBubble({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || !interactive) return;
+    if (!profile?.embed_token) return;
+    if (profile?.storefront_show_chatbot === false) return;
+    if (autoOpenedThisLoadRef.current) return;
+    if (isOpen) return;
+
+    if (isControlled) {
+      onControlledToggle?.(true);
+    } else {
+      setOpen(true);
+    }
+    autoOpenedThisLoadRef.current = true;
+  }, [
+    interactive,
+    isOpen,
+    isControlled,
+    mounted,
+    onControlledToggle,
+    profile?.embed_token,
+    profile?.storefront_show_chatbot,
+  ]);
 
   // If the professional has no embed token configured, hide everything
   if (!profile?.embed_token) return null;
@@ -92,20 +143,21 @@ export default function PublicChatBubble({
               type="button"
               onClick={toggleOpen}
               aria-label={label}
-              className="relative h-16 w-16 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-              style={{ padding: '3px', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', boxShadow: '0 8px 28px rgba(0,0,0,0.25)' }}
+              className="relative h-16 w-16 overflow-hidden rounded-full bg-white shadow-[0_8px_28px_rgba(0,0,0,0.25)] ring-1 ring-black/10 transition-all duration-200 hover:scale-105 active:scale-95"
             >
               <div className="relative h-full w-full overflow-hidden rounded-full">
-                {profile?.profile_photo_url ? (
+                {profilePhoto ? (
                   <Image
-                    src={profile.profile_photo_url}
+                    key={`${profilePhoto}-${profilePlacement.x}-${profilePlacement.y}-${profilePlacement.zoom}`}
+                    src={profilePhoto}
                     alt={profile.professional_name || 'Professional'}
                     fill
                     sizes="64px"
-                    className="object-cover object-center"
+                    className="object-cover"
+                    style={profilePlacement.style}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-primary text-lg font-bold text-white">
+                  <div className="flex h-full w-full items-center justify-center bg-slate-200 text-lg font-bold text-slate-700">
                     {String(profile?.professional_name || 'P').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()}
                   </div>
                 )}
