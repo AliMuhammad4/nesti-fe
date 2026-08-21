@@ -1,11 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const ChatWidget = dynamic(() => import('@/components/chatbot/ChatWidget'), {
-  ssr: false,
-  loading: () => null,
-});
+import ChatWidget from '@/components/chatbot/ChatWidget';
 
 function resolveProfilePhoto(profile) {
   return profile?.profile_photo_url

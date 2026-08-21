@@ -93,21 +93,25 @@ function SortableLayer({ block, index, selected, onSelect, onToggle, onDelete })
         onPointerDown={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
         onClick={(event) => { event.stopPropagation(); onToggle(); }}
-        className={`h-4 w-7 rounded-full p-0.5 transition ${block.data.enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+        className={`h-4 w-7 shrink-0 rounded-full p-0.5 transition ${block.data.enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
         aria-label={block.data.enabled ? 'Hide block' : 'Show block'}
       >
         <span className={`block h-3 w-3 rounded-full bg-white transition ${block.data.enabled ? 'translate-x-3' : ''}`} />
       </button>
-      <button
-        type="button"
-        onPointerDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-        onClick={(event) => { event.stopPropagation(); onDelete(); }}
-        className="rounded p-1 text-slate-300 transition hover:bg-red-50 hover:text-red-600"
-        aria-label="Delete block"
-      >
-        <Trash2 size={12} />
-      </button>
+      {onDelete ? (
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+          onClick={(event) => { event.stopPropagation(); onDelete(); }}
+          className="grid h-6 w-6 shrink-0 place-items-center rounded text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+          aria-label="Delete block"
+        >
+          <Trash2 size={12} />
+        </button>
+      ) : (
+        <span className="h-6 w-6 shrink-0" aria-hidden />
+      )}
     </div>
   );
 }

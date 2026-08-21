@@ -46,8 +46,72 @@ export const BLOCK_LIBRARY = {
     STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR,
     STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
     STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
+    STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST,
+    STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS,
   ],
 };
+
+export const LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER = [
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.ABOUT,
+  STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
+  STOREFRONT_BLOCK_TYPES.EXPERTISE,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+  STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST,
+  STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+  STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS,
+  STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+  STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+  STOREFRONT_BLOCK_TYPES.GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.FAQ,
+  STOREFRONT_BLOCK_TYPES.CTA,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+];
+
+const ALWAYS_SINGLETON_BLOCK_TYPES = new Set([
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+]);
+const PROTECTED_BLOCK_TYPES = new Set([
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+]);
+
+export function isSingletonBlockType(type, templateKey = '') {
+  if (ALWAYS_SINGLETON_BLOCK_TYPES.has(type)) return true;
+  return String(templateKey || '').trim().toLowerCase() === 'lawyer-classic'
+    && LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type);
+}
+
+export function isProtectedBlockType(type) {
+  return PROTECTED_BLOCK_TYPES.has(type);
+}
+
+export function insertBlockAtTemplateRank(blocks = [], block, templateKey = '') {
+  const next = [...blocks];
+  if (String(templateKey || '').trim().toLowerCase() !== 'lawyer-classic') {
+    const footerIndex = next.findIndex((item) => item.type === STOREFRONT_BLOCK_TYPES.FOOTER);
+    next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
+    return next;
+  }
+
+  const rank = new Map(LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.map((type, index) => [type, index]));
+  const blockRank = rank.get(block?.type);
+  if (blockRank == null) {
+    const footerIndex = next.findIndex((item) => item.type === STOREFRONT_BLOCK_TYPES.FOOTER);
+    next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
+    return next;
+  }
+  const insertionIndex = next.findIndex((item) => {
+    const itemRank = rank.get(item?.type);
+    return itemRank != null && itemRank > blockRank;
+  });
+  next.splice(insertionIndex >= 0 ? insertionIndex : next.length, 0, block);
+  return next;
+}
 
 export function labelForBlock(type) {
   const overrides = {
@@ -58,6 +122,10 @@ export function labelForBlock(type) {
     'seller-case-study': 'Success story',
     'seller-credentials': 'Credentials',
     'featured-listings': 'Listings',
+    'who-we-help': 'Who we help',
+    'document-checklist': 'Documents',
+    'fee-guidance': 'Legal fees',
+    'consultation-options': 'How to start',
   };
   const key = String(type || 'block').toLowerCase();
   if (overrides[key]) return overrides[key];
@@ -91,7 +159,7 @@ export function coerceCollectionItems(collection, items = []) {
     return next;
   };
 
-  if (collection === 'steps') {
+  if (collection === 'steps' || collection === 'process_steps') {
     return items
       .map((item, index) => {
         if (item == null) return null;
@@ -101,17 +169,19 @@ export function coerceCollectionItems(collection, items = []) {
             id: uniqueId(`fallback-step-${index}`, 'fallback-step', index),
             title,
             text,
+            icon: '',
           };
         }
         if (typeof item !== 'object') return null;
         return {
           id: uniqueId(item.id, 'fallback-step', index),
           title: item.title || '',
-          text: item.text || '',
+          icon: item.icon || '',
+          text: item.text ?? item.description ?? '',
         };
       })
       .filter(Boolean)
-      .slice(0, 8);
+      .slice(0, collection === 'process_steps' ? 4 : 8);
   }
 
   if (collection === 'faqs') {
@@ -138,7 +208,6 @@ export function coerceCollectionItems(collection, items = []) {
   }
 
   if (collection === 'items' || collection === 'services') {
-    const iconDefaults = ['target', 'building', 'home', 'percent', 'handshake', 'shield'];
     return items
       .map((item, index) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
@@ -147,7 +216,7 @@ export function coerceCollectionItems(collection, items = []) {
           id: uniqueId(item.id, 'fallback-service', index),
           title: item.title ?? item.name ?? '',
           description: item.description ?? item.text ?? '',
-          icon: item.icon || iconDefaults[index % iconDefaults.length],
+          icon: item.icon || '',
           background: item.background ?? item.card_background ?? '',
           text_color: item.text_color ?? item.card_text_color ?? '',
           icon_background: item.icon_background ?? '',
@@ -155,7 +224,7 @@ export function coerceCollectionItems(collection, items = []) {
         };
       })
       .filter((item) => item && (item.title || item.label))
-      .slice(0, 6);
+      .slice(0, 8);
   }
 
   if (collection === 'highlights') {
@@ -302,7 +371,7 @@ export function updateContentItem(content = {}, selection, patch) {
           id: next.id || createContentItemId(),
           title: next.title ?? '',
           description: next.description ?? '',
-          icon: next.icon || 'target',
+          icon: next.icon || '',
           background: next.background ?? '',
           text_color: next.text_color ?? '',
           icon_background: next.icon_background ?? '',
@@ -398,7 +467,56 @@ const DEFAULT_CONTENT = {
   },
   [STOREFRONT_BLOCK_TYPES.PROPERTIES]: { heading: 'Properties for sale', eyebrow: 'Available now', body: '' },
   [STOREFRONT_BLOCK_TYPES.GUIDANCE]: { heading: 'What happens next', body: 'A simple guide to the process ahead.' },
+  [STOREFRONT_BLOCK_TYPES.FAQ]: {
+    eyebrow: 'Helpful questions',
+    heading: 'What clients often ask',
+    body: 'Clear answers to common questions before you start.',
+    faqs: [],
+  },
   [STOREFRONT_BLOCK_TYPES.ROLE_DETAILS]: { heading: '', eyebrow: '', body: '' },
+  [STOREFRONT_BLOCK_TYPES.WHO_WE_HELP]: {
+    eyebrow: 'Who we help',
+    heading: 'Counsel for every side of the transaction',
+    body: 'Buyers, sellers, refinancers, and property owners can start with a structured inquiry.',
+    items: [
+      { title: 'Home buyers', description: 'Review the agreement, conditions, title, and closing timeline before you commit.' },
+      { title: 'Home sellers', description: 'Clarify obligations, closing funds, discharge, and registration requirements.' },
+      { title: 'Refinancing', description: 'Coordinate lender requirements, payout statements, and registration with a clear file.' },
+      { title: 'Investors and transfers', description: 'Organize ownership, title, and closing questions around the property at hand.' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST]: {
+    eyebrow: 'File preparation',
+    heading: 'What to send before we speak',
+    body: 'A complete file helps the lawyer understand the matter without asking you to repeat the basics.',
+    helper_text: 'Send copies, not originals, until representation is confirmed.',
+    items: [
+      { title: 'Agreement of purchase and sale', description: 'The signed offer, amendments, and any waivers or notices already exchanged.' },
+      { title: 'Identification and parties', description: 'Legal names, contact details, and how title should be taken if that is already decided.' },
+      { title: 'Financing documents', description: 'Mortgage commitment, payout statement, or private lending details if they exist.' },
+      { title: 'Property and title papers', description: 'Listing details, survey, status certificate, or prior title documents you already have.' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE]: {
+    eyebrow: 'Fee transparency',
+    heading: 'How legal fees are typically framed',
+    body: 'Use this as orientation before a consultation. It is not a quote, retainer, or promise of representation.',
+    items: [
+      { title: 'Legal fee range', description: 'Professional time for review, correspondence, signing, and registration is quoted for the specific matter.' },
+      { title: 'Disbursements', description: 'Title search, registration, courier, and government charges are typically billed in addition to legal fees.' },
+      { title: 'Land transfer and tax', description: 'Purchase files may include land transfer tax and related provincial charges. Final amounts depend on the transaction.' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS]: {
+    eyebrow: 'Start the conversation',
+    heading: 'Choose how you would like to begin',
+    body: 'Pick the path that matches your timeline. Confidential details should wait until the lawyer confirms representation.',
+    items: [
+      { title: 'Send an inquiry', description: 'Share the property, documents, and closing date so the first response is useful.', cta_label: 'Submit inquiry', action: 'inquiry' },
+      { title: 'Book a consultation', description: 'Request time to walk through the agreement, title issues, or closing requirements.', cta_label: 'Make an appointment', action: 'appointment' },
+      { title: 'Request document review', description: 'Ask for a focused review of a contract, amendment, or closing package.', cta_label: 'Request review', action: 'inquiry' },
+    ],
+  },
   [STOREFRONT_BLOCK_TYPES.FOOTER]: { heading: '', body: '', items: [] },
 };
 
@@ -487,6 +605,12 @@ const DEFAULT_LAYOUT = {
   animationIntensity: 'subtle',
 };
 
+function normalizeSurfaceColor(value) {
+  const next = String(value || '').trim();
+  if (!next || ['transparent', 'none', 'inherit', 'initial'].includes(next.toLowerCase())) return '';
+  return next;
+}
+
 function defaultAnimationLayoutForType(type) {
   if (type === STOREFRONT_BLOCK_TYPES.HERO) {
     return {
@@ -506,7 +630,10 @@ function defaultAnimationLayoutForType(type) {
       animationIntensity: 'subtle',
     };
   }
-  if (type === STOREFRONT_BLOCK_TYPES.GUIDANCE) {
+  if (
+    type === STOREFRONT_BLOCK_TYPES.GUIDANCE
+    || type === STOREFRONT_BLOCK_TYPES.FAQ
+  ) {
     return {
       animationType: 'slide-up',
       animationTrigger: 'scroll',
@@ -535,6 +662,11 @@ function defaultAnimationLayoutForType(type) {
     type === STOREFRONT_BLOCK_TYPES.SERVICES
     || type === STOREFRONT_BLOCK_TYPES.EXPERTISE
     || type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
+    || type === STOREFRONT_BLOCK_TYPES.WHO_WE_HELP
+    || type === STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST
+    || type === STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE
+    || type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS
+    || type === STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS
   ) {
     return {
       animationType: 'slide-up',
@@ -606,8 +738,14 @@ export function normalizeBlock(block, index = 0) {
   const animationDefaults = defaultAnimationLayoutForType(block?.type);
   const rawContent = data.content || block?.content || {};
   const content = block?.type === STOREFRONT_BLOCK_TYPES.GUIDANCE
+    || block?.type === STOREFRONT_BLOCK_TYPES.FAQ
     ? coerceGuidanceContent(rawContent)
     : block?.type === STOREFRONT_BLOCK_TYPES.SERVICES
+      || block?.type === STOREFRONT_BLOCK_TYPES.WHO_WE_HELP
+      || block?.type === STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST
+      || block?.type === STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE
+      || block?.type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS
+      || block?.type === STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS
       ? coerceServicesContent(rawContent)
       : block?.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
         ? coerceRoleDetailsContent(rawContent)
@@ -648,8 +786,8 @@ export function normalizeBlock(block, index = 0) {
         animationIntensity: rawLayout.animationIntensity || animationDefaults.animationIntensity,
       },
       style: {
-        background: data.style?.background || '',
-        textColor: data.style?.textColor || '',
+        background: normalizeSurfaceColor(data.style?.background),
+        textColor: normalizeSurfaceColor(data.style?.textColor),
         radius: data.style?.radius || 'default',
         shadow: data.style?.shadow || 'none',
       },
@@ -692,13 +830,18 @@ export function normalizeBlocks(blocks = []) {
 
 export function availableBlocksForRole(role, templateKey = '') {
   const normalized = normalizeStorefrontRole(role);
+  const normalizedTemplateKey = String(templateKey || '').trim().toLowerCase();
+  if (normalizedTemplateKey === 'lawyer-classic') {
+    return [...LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER];
+  }
   const types = [
     ...BLOCK_LIBRARY.shared,
     ...(BLOCK_LIBRARY[normalized] || []),
     ...(BLOCK_LIBRARY[templateKey] || []),
   ];
-  if (String(templateKey || '').trim().toLowerCase() !== 'agent-investor') return types;
-  return types.filter((type) => type !== STOREFRONT_BLOCK_TYPES.TESTIMONIALS);
+  const uniqueTypes = [...new Set(types)];
+  if (normalizedTemplateKey !== 'agent-investor') return uniqueTypes;
+  return uniqueTypes.filter((type) => type !== STOREFRONT_BLOCK_TYPES.TESTIMONIALS);
 }
 
 export function toRendererBlocks(blocks) {

@@ -186,7 +186,7 @@ export function ColorField({ label, value, onChange, onReset = null, showReset =
               const normalizedValue = normalizeHexColor(next);
               if (normalizedValue && normalizedValue !== normalized) onChange(normalizedValue);
             }}
-            className="min-w-0 flex-1 bg-transparent px-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700 outline-none"
+            className="min-w-0 flex-1 bg-transparent px-2 font-mono text-[11px] font-semibold uppercase text-slate-700 outline-none"
             maxLength={9}
             placeholder="#0F766E"
             aria-label={`${label} hex value`}

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { isInvestorSpecialistTemplate } from '@/components/storefront/storefrontPresets';
+import { hasPublicClientStories } from '@/components/storefront/storefrontContentVisibility';
 
 function roleLabelFor(professionalType) {
   if (professionalType === 'mortgage_broker') return 'Mortgage Broker';
@@ -17,6 +18,22 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
   const slug = profile?.slug || '';
   const hashBase = absoluteHashes && slug ? `/professional/${slug}` : '';
   const isInvestor = isInvestorSpecialistTemplate(profile?.storefront_template_key);
+  const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
+  const showReviews = Boolean(profile?.storefront_builder_preview)
+    || hasPublicClientStories(profile);
+
+  if (isLawyerClassic) {
+    return [
+      { href: `${hashBase}#about`, label: 'About' },
+      { href: `${hashBase}#clients`, label: 'Who we help' },
+      { href: `${hashBase}#services`, label: 'Practice areas' },
+      { href: `${hashBase}#documents`, label: 'Documents' },
+      { href: `${hashBase}#guidance`, label: 'Guide' },
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact' }]),
+    ];
+  }
 
   return [
     { href: `${hashBase}#about`, label: 'About' },
@@ -26,7 +43,7 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
       : professionalType === 'mortgage_broker'
         ? [{ href: `${hashBase}#programs`, label: 'Programs' }]
         : []),
-    ...(isInvestor ? [] : [{ href: `${hashBase}#reviews`, label: 'Reviews' }]),
+    ...(isInvestor || !showReviews ? [] : [{ href: `${hashBase}#reviews`, label: 'Reviews' }]),
     { href: `${hashBase}#guidance`, label: 'Guide' },
     ...(isInvestor ? [] : [{ href: slug ? `/professional/${slug}/contact` : `${hashBase}#contact`, label: 'Contact' }]),
   ];
@@ -51,6 +68,7 @@ export default function PublicStorefrontHeader({
     || profile?.storefront_template_key === 'agent-luxury-advisor';
   const isFirstHomeEditorial = variant === 'firstHome'
     || profile?.storefront_template_key === 'agent-first-home';
+  const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
   const hasBrandLogo = Boolean(profile?.storefront_logo_url || profile?.storefront_logo_dark_url);
   const hasDedicatedDarkLogo = Boolean(profile?.storefront_logo_dark_url);
   const logoChipModeRaw = String(profile?.storefront_essentials?.logo_chip_mode || 'auto').toLowerCase();
@@ -93,10 +111,12 @@ export default function PublicStorefrontHeader({
 
   return (
     <header
-      className={`${positionClass} z-[1000] border-b backdrop-blur ${navOpenClass} ${
+      className={`${positionClass} z-[1000] backdrop-blur ${navOpenClass} ${
         isLuxury
-          ? 'border-white/15 bg-[rgba(13,12,11,0.78)] text-[#f5f1e8] shadow-none'
-          : 'border-border/70 bg-white/95 shadow-sm'
+          ? 'border-b border-white/15 bg-[rgba(13,12,11,0.78)] text-[#f5f1e8] shadow-none'
+          : isLawyerClassic
+            ? 'border-0 bg-white/95 shadow-none'
+            : 'border-b border-border/70 bg-white/95 shadow-sm'
       }`}
     >
       <div className={`flex h-16 w-full items-center justify-between ${forceMobilePreview ? 'px-3' : 'px-5 sm:px-8 lg:px-12 xl:px-16'}`}>

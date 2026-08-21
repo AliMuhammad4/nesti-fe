@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { defaultStorefrontTemplateKey, STOREFRONT_TEMPLATE_PRESETS } from '@/components/storefront/storefrontPresets';
-import { normalizeBlocks } from '@/components/storefront/builder/storefrontBuilderState';
+import {
+  defaultStorefrontTemplateKey,
+  refreshLawyerClassicBlockCopy,
+  STOREFRONT_BLOCK_TYPES,
+  STOREFRONT_TEMPLATE_PRESETS,
+} from '@/components/storefront/storefrontPresets';
+import {
+  createBlock,
+  insertBlockAtTemplateRank,
+  isProtectedBlockType,
+  isSingletonBlockType,
+  LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER,
+  normalizeBlocks,
+} from '@/components/storefront/builder/storefrontBuilderState';
 import {
   getStorefrontTemplate,
   getTemplateBrandDefaults,
@@ -657,6 +669,155 @@ function migrateInvestorBlocks(templateKey, blocks = []) {
   });
 }
 
+function blockType(block) {
+  return block?.type || block?.data?.type || '';
+}
+
+function needsLawyerClassicV2Migration(templateKey, blocks = []) {
+  if (templateKey !== 'lawyer-classic') return false;
+  const hero = (Array.isArray(blocks) ? blocks : []).find(
+    (block) => blockType(block) === STOREFRONT_BLOCK_TYPES.HERO,
+  );
+  const content = hero?.data?.content || hero?.content || {};
+  return Number(content.lawyer_classic_design_version || 0) < 2;
+}
+
+function migrateLawyerClassicBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'lawyer-classic') return blocks;
+  const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+  const defaultsByType = new Map(defaults.map((block) => [block.type, block]));
+  const mergeWithDefault = (existing, fallback) => {
+    if (!fallback) return existing;
+    const fallbackData = fallback.data || {};
+    const existingData = existing?.data || {};
+    const existingContent = existingData.content || existing?.content || {};
+    const existingLayout = existingData.layout || existing?.layout || {};
+    const existingStyle = existingData.style || existing?.style || {};
+    return {
+      ...fallback,
+      ...existing,
+      data: {
+        ...fallbackData,
+        ...existingData,
+        enabled: existingData.enabled ?? existing?.enabled ?? fallbackData.enabled ?? true,
+        content: {
+          ...(fallbackData.content || {}),
+          ...existingContent,
+        },
+        layout: {
+          ...(fallbackData.layout || {}),
+          ...existingLayout,
+        },
+        style: {
+          ...(fallbackData.style || {}),
+          ...existingStyle,
+        },
+      },
+    };
+  };
+
+  if (!needsLawyerClassicV2Migration(templateKey, blocks)) {
+    const source = Array.isArray(blocks) ? blocks : [];
+    const hasPracticeAreas = source.some(
+      (block) => blockType(block) === STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+    );
+    let next = source
+      .filter((block) => (
+        !hasPracticeAreas
+        || blockType(block) !== STOREFRONT_BLOCK_TYPES.SERVICES
+      ))
+      .map((block) => (
+        refreshLawyerClassicBlockCopy(
+          mergeWithDefault(block, defaultsByType.get(blockType(block))),
+        )
+      ));
+    LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.forEach((type) => {
+      if (next.some((block) => blockType(block) === type)) return;
+      const fallback = defaultsByType.get(type);
+      if (!fallback) return;
+      next = insertBlockAtTemplateRank(next, fallback, templateKey);
+    });
+    return next;
+  }
+
+  const canonicalTypes = new Set(LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER);
+  const existingByType = new Map();
+  const supplemental = [];
+
+  (Array.isArray(blocks) ? blocks : []).forEach((block) => {
+    const type = blockType(block);
+    if (type === STOREFRONT_BLOCK_TYPES.SERVICES) {
+      return;
+    }
+    if (canonicalTypes.has(type)) {
+      if (!existingByType.has(type)) existingByType.set(type, block);
+      return;
+    }
+    supplemental.push(block);
+  });
+
+  const canonical = LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.map((type) => {
+    const existing = existingByType.get(type);
+    if (!existing) return defaultsByType.get(type);
+    return mergeWithDefault(existing, defaultsByType.get(type));
+  }).filter(Boolean).map(refreshLawyerClassicBlockCopy);
+  const heroIndex = canonical.findIndex(
+    (block) => blockType(block) === STOREFRONT_BLOCK_TYPES.HERO,
+  );
+  if (heroIndex >= 0) {
+    const hero = canonical[heroIndex];
+    const heroContent = hero.data?.content || hero.content || {};
+    const legacyEyebrow = String(heroContent.eyebrow || '').trim().toLowerCase();
+    canonical[heroIndex] = {
+      ...hero,
+      data: {
+        ...(hero.data || {}),
+        content: {
+          ...heroContent,
+          ...(['', 'community expert', 'real estate expert'].includes(legacyEyebrow)
+            ? { eyebrow: 'Property law · Closing counsel' }
+            : {}),
+          lawyer_classic_design_version: 2,
+        },
+      },
+    };
+  }
+
+  const footerIndex = canonical.findIndex(
+    (block) => blockType(block) === STOREFRONT_BLOCK_TYPES.FOOTER,
+  );
+  if (footerIndex >= 0) {
+    const footer = canonical[footerIndex];
+    const footerStyle = footer.data?.style || footer.style || {};
+    const legacyFooterBackground = String(footerStyle.background || '').trim().toLowerCase();
+    canonical[footerIndex] = {
+      ...footer,
+      data: {
+        ...(footer.data || {}),
+        layout: {
+          ...(footer.data?.layout || footer.layout || {}),
+          width: 'full',
+          padding: 'none',
+        },
+        style: {
+          ...footerStyle,
+          ...(['', '#ffffff', '#f8fafc'].includes(legacyFooterBackground)
+            ? { background: '#202020', textColor: '#ffffff' }
+            : {}),
+          radius: 'none',
+          shadow: 'none',
+        },
+      },
+    };
+  }
+  if (footerIndex < 0 || supplemental.length === 0) return canonical;
+  return [
+    ...canonical.slice(0, footerIndex),
+    ...supplemental,
+    ...canonical.slice(footerIndex),
+  ];
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
   return migrateCommunityHubBrandKit(
     templateKey,
@@ -665,7 +826,7 @@ function applyTemplateBrandKitMigrations(templateKey, input = {}) {
 }
 
 function applyTemplateBlocksMigrations(templateKey, blocks = [], profileSeed = {}) {
-  return migrateSharedProofBlocks(
+  const migrated = migrateSharedProofBlocks(
     templateKey,
     migrateCommunityHubBlocks(
       templateKey,
@@ -681,6 +842,15 @@ function applyTemplateBlocksMigrations(templateKey, blocks = [], profileSeed = {
     ),
     profileSeed,
   );
+  return migrateLawyerClassicBlocks(templateKey, migrated, profileSeed);
+}
+
+function hydrateTemplateBlocks(templateKey, blocks = [], profileSeed = {}, migrationApplied = false) {
+  const migrated = applyTemplateBlocksMigrations(templateKey, blocks, profileSeed);
+  if (templateKey === 'lawyer-classic' && !migrationApplied) {
+    return normalizeBlocks(migrated);
+  }
+  return seedBlockContentFromProfile(migrated, profileSeed, templateKey);
 }
 
 function editorDataFromDraft(
@@ -696,35 +866,40 @@ function editorDataFromDraft(
     sharedMediaBrandKit,
   );
   if (Array.isArray(draft?.blocks) && draft.blocks.length) {
+    const migrationApplied = needsLawyerClassicV2Migration(templateKey, draft.blocks);
     return {
-      template_key: templateKey,
-      brand_kit: {
-        business_name: savedBrandKit.business_name || professional.company_name || '',
-        logo_url: savedBrandKit.logo_url || '',
-        logo_dark_url: savedBrandKit.logo_dark_url || '',
-        cover_url: savedBrandKit.cover_url || '',
-        profile_photo_url: savedBrandKit.profile_photo_url || '',
-        logo_size: Number(savedBrandKit.logo_size) || 40,
-        cover_position_x: Number(savedBrandKit.cover_position_x ?? 50),
-        cover_position_y: Number(savedBrandKit.cover_position_y ?? 50),
-        cover_zoom: Math.max(1, Number(savedBrandKit.cover_zoom ?? 1)),
-        profile_position_x: Number(savedBrandKit.profile_position_x ?? 50),
-        profile_position_y: Number(savedBrandKit.profile_position_y ?? 25),
-        profile_zoom: Number(savedBrandKit.profile_zoom ?? 1),
-        primary_color: savedBrandKit.primary_color || '#0f766e',
-        accent_color: savedBrandKit.accent_color || '#f59e0b',
-        page_background: savedBrandKit.page_background || '#ffffff',
-        font: savedBrandKit.font_family || savedBrandKit.font || 'Manrope',
-        button_shape: savedBrandKit.button_shape || 'rounded',
-        image_style: savedBrandKit.image_style || 'editorial',
-        show_chatbot: savedBrandKit.show_chatbot !== false,
-        essentials: savedBrandKit.essentials || {},
+      migrationApplied,
+      editorData: {
+        template_key: templateKey,
+        brand_kit: {
+          business_name: savedBrandKit.business_name || professional.company_name || '',
+          logo_url: savedBrandKit.logo_url || '',
+          logo_dark_url: savedBrandKit.logo_dark_url || '',
+          cover_url: savedBrandKit.cover_url || '',
+          profile_photo_url: savedBrandKit.profile_photo_url || '',
+          logo_size: Number(savedBrandKit.logo_size) || 40,
+          cover_position_x: Number(savedBrandKit.cover_position_x ?? 50),
+          cover_position_y: Number(savedBrandKit.cover_position_y ?? 50),
+          cover_zoom: Math.max(1, Number(savedBrandKit.cover_zoom ?? 1)),
+          profile_position_x: Number(savedBrandKit.profile_position_x ?? 50),
+          profile_position_y: Number(savedBrandKit.profile_position_y ?? 25),
+          profile_zoom: Number(savedBrandKit.profile_zoom ?? 1),
+          primary_color: savedBrandKit.primary_color || '#0f766e',
+          accent_color: savedBrandKit.accent_color || '#f59e0b',
+          page_background: savedBrandKit.page_background || '#ffffff',
+          font: savedBrandKit.font_family || savedBrandKit.font || 'Manrope',
+          button_shape: savedBrandKit.button_shape || 'rounded',
+          image_style: savedBrandKit.image_style || 'editorial',
+          show_chatbot: savedBrandKit.show_chatbot !== false,
+          essentials: savedBrandKit.essentials || {},
+        },
+        blocks: hydrateTemplateBlocks(
+          templateKey,
+          draft.blocks,
+          profileSeed,
+          migrationApplied,
+        ),
       },
-      blocks: seedBlockContentFromProfile(
-        applyTemplateBlocksMigrations(templateKey, draft.blocks, profileSeed),
-        profileSeed,
-        templateKey,
-      ),
     };
   }
 
@@ -733,31 +908,34 @@ function editorDataFromDraft(
     ...sharedMediaBrandKit,
   });
   return {
-    template_key: templateKey,
-    brand_kit: {
-      business_name: professional.company_name || '',
-      logo_url: '',
-      logo_dark_url: '',
-      cover_url: '',
-      profile_photo_url: '',
-      logo_size: 40,
-      cover_position_x: 50,
-      cover_position_y: 50,
-      cover_zoom: 1,
-      profile_position_x: 50,
-      profile_position_y: 25,
-      profile_zoom: 1,
-      primary_color: '#0f766e',
-      accent_color: '#f59e0b',
-      page_background: '#ffffff',
-      font: 'Manrope',
-      button_shape: 'rounded',
-      image_style: 'editorial',
-      show_chatbot: true,
-      essentials: {},
-      ...(materialized?.brand_kit || {}),
+    migrationApplied: false,
+    editorData: {
+      template_key: templateKey,
+      brand_kit: {
+        business_name: professional.company_name || '',
+        logo_url: '',
+        logo_dark_url: '',
+        cover_url: '',
+        profile_photo_url: '',
+        logo_size: 40,
+        cover_position_x: 50,
+        cover_position_y: 50,
+        cover_zoom: 1,
+        profile_position_x: 50,
+        profile_position_y: 25,
+        profile_zoom: 1,
+        primary_color: '#0f766e',
+        accent_color: '#f59e0b',
+        page_background: '#ffffff',
+        font: 'Manrope',
+        button_shape: 'rounded',
+        image_style: 'editorial',
+        show_chatbot: true,
+        essentials: {},
+        ...(materialized?.brand_kit || {}),
+      },
+      blocks: materialized?.blocks || normalizeBlocks(STOREFRONT_TEMPLATE_PRESETS[professional.professional_type] || []),
     },
-    blocks: materialized?.blocks || normalizeBlocks(STOREFRONT_TEMPLATE_PRESETS[professional.professional_type] || []),
   };
 }
 
@@ -820,13 +998,14 @@ export default function useStorefrontEditorState({
       );
 
       const fallbackTemplateKey = defaultStorefrontTemplateKey(role);
-      const hydratedDrafts = savedDrafts.map((draft) => editorDataFromDraft(
+      const hydratedDraftResults = savedDrafts.map((draft) => editorDataFromDraft(
         draft,
         profileSeed,
         professional,
         fallbackTemplateKey,
         sharedMediaBrandKit,
       ));
+      const hydratedDrafts = hydratedDraftResults.map((result) => result.editorData);
       hydratedDrafts.forEach((draft) => {
         templateDraftsRef.current[draft.template_key] = cloneEditorData(draft);
       });
@@ -834,16 +1013,24 @@ export default function useStorefrontEditorState({
         || legacyDraft?.template?.id
         || hydratedDrafts[0]?.template_key
         || fallbackTemplateKey;
-      const activeDraft = templateDraftsRef.current[activeTemplateKey]
-        || editorDataFromDraft(
+      const activeHydratedResult = hydratedDraftResults.find(
+        (result) => result.editorData.template_key === activeTemplateKey,
+      );
+      const fallbackActiveResult = activeHydratedResult
+        ? null
+        : editorDataFromDraft(
           null,
           profileSeed,
           professional,
           activeTemplateKey,
           sharedMediaBrandKit,
         );
+      const activeDraft = activeHydratedResult?.editorData
+        || fallbackActiveResult.editorData;
+      const activeMigrationApplied = Boolean(activeHydratedResult?.migrationApplied);
       const backupKey = `nesti-storefront-backup:${savedProfile?.slug || profileData?.suggested_slug || 'new'}`;
       let recoveredDraft = null;
+      let recoveredMigrationApplied = false;
       try {
         const backup = JSON.parse(window.localStorage.getItem(backupKey) || 'null');
         if (
@@ -851,6 +1038,16 @@ export default function useStorefrontEditorState({
           && Array.isArray(backup.editorData.blocks)
         ) {
           recoveredDraft = cloneEditorData(backup.editorData);
+          recoveredMigrationApplied = needsLawyerClassicV2Migration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+          );
+          recoveredDraft.blocks = hydrateTemplateBlocks(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
+            recoveredMigrationApplied,
+          );
         }
       } catch {
         window.localStorage.removeItem(backupKey);
@@ -859,7 +1056,10 @@ export default function useStorefrontEditorState({
       templateDraftsRef.current[initialDraft.template_key] = cloneEditorData(initialDraft);
       setEditorData(initialDraft);
       const initialSignature = draftSignature(buildStorefrontDraft(initialDraft));
-      lastSavedDraftSignatureRef.current = recoveredDraft ? '' : initialSignature;
+      const initialMigrationApplied = recoveredDraft
+        ? recoveredMigrationApplied
+        : activeMigrationApplied;
+      lastSavedDraftSignatureRef.current = recoveredDraft || initialMigrationApplied ? '' : initialSignature;
       const activeRawDraft = savedDrafts.find(
         (draft) => (draft?.template?.id || '') === initialDraft.template_key,
       ) || legacyDraft;
@@ -870,9 +1070,9 @@ export default function useStorefrontEditorState({
         && draftUpdatedAt
         && new Date(draftUpdatedAt).getTime() > new Date(publishedAt).getTime()
       );
-      setEditorDirty(Boolean(recoveredDraft));
-      setHasUnpublishedChanges(Boolean(recoveredDraft) || draftAheadOfLive);
-      if (!draftAheadOfLive && !recoveredDraft) {
+      setEditorDirty(Boolean(recoveredDraft) || initialMigrationApplied);
+      setHasUnpublishedChanges(Boolean(recoveredDraft) || initialMigrationApplied || draftAheadOfLive);
+      if (!draftAheadOfLive && !recoveredDraft && !initialMigrationApplied) {
         lastPublishedDraftSignatureRef.current = initialSignature;
       }
       if (recoveredDraft) toast.info('Recovered unsaved storefront changes');
@@ -1150,16 +1350,43 @@ export default function useStorefrontEditorState({
   };
 
   const addBlock = (type) => {
-    if (!type) return;
+    if (!type || !editorData) return;
+    if (
+      editorData.template_key === 'lawyer-classic'
+      && !LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type)
+    ) {
+      return;
+    }
+    if (
+      isSingletonBlockType(type, editorData.template_key)
+      && editorData.blocks.some((block) => blockType(block) === type)
+    ) {
+      return;
+    }
+    const templateBlock = materializeTemplate(
+      editorData.template_key,
+      profileSeedFromData(profileData),
+      editorData.brand_kit,
+    )?.blocks?.find((block) => block.type === type);
+    const created = templateBlock
+      ? {
+          ...templateBlock,
+          id: `${type}-${crypto.randomUUID?.() || Date.now()}`,
+          data: { ...templateBlock.data, enabled: true },
+        }
+      : createBlock(type);
     updateEditor({
-      blocks: [
-        ...editorData.blocks,
-        { id: `${type}-${Date.now()}`, type, enabled: true, content: {} },
-      ],
+      blocks: insertBlockAtTemplateRank(
+        editorData.blocks,
+        created,
+        editorData.template_key,
+      ),
     });
   };
 
   const removeBlock = (id) => {
+    const target = editorData?.blocks?.find((block) => block.id === id);
+    if (!target || isProtectedBlockType(blockType(target))) return;
     updateEditor({ blocks: editorData.blocks.filter((block) => block.id !== id) });
   };
 

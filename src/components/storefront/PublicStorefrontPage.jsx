@@ -116,7 +116,10 @@ export default function PublicStorefrontPage({ profile }) {
       // Default: keep published pages non-intrusive and open the lead form.
       openLeadModal();
     },
-    onDirectLeadClick: () => openLeadModal(),
+    onDirectLeadClick: async () => {
+      await track('cta_click', { cta_type: 'direct_inquiry' });
+      openLeadModal();
+    },
     // Tracking-only, matching PublicHero/PublicCTA: callers open Calendly themselves.
     onAppointmentClick: () => track('cta_click', { cta_type: 'book_consultation' }),
     onPropertyInquiry: (property) => openLeadModal(property),

@@ -52,14 +52,16 @@ function mergeFeedback(curated = [], submitted = []) {
   });
 }
 
-function RatingStars({ value, size = 14 }) {
+function RatingStars({ value, size = 14, variant = 'default' }) {
+  const filled = variant === 'lawyer' ? 'fill-accent text-accent' : 'fill-amber-400 text-amber-400';
+  const empty = variant === 'lawyer' ? 'fill-primary/10 text-primary/25' : 'fill-slate-100 text-slate-200';
   return (
     <div className="flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
       {Array.from({ length: 5 }).map((_, index) => (
         <Star
           key={index}
           size={size}
-          className={index < value ? 'fill-amber-400 text-amber-400' : 'fill-slate-100 text-slate-200'}
+          className={index < value ? filled : empty}
         />
       ))}
     </div>
@@ -95,16 +97,19 @@ export default function IndustrialClientFeedbackSection({
   const [hoveredRating, setHoveredRating] = useState(0);
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const isLuxuryVariant = variant === 'luxury';
+  const isLawyerVariant = variant === 'lawyer';
 
   // Builder layout/style controls. Defaults reproduce the previous hard-coded
   // values so Classic and Industrial storefronts render unchanged; they only
   // take effect once a user actually picks a value in the inspector.
-  const sectionPaddingClass = {
-    none: 'py-0',
-    small: forceCompactPreview ? 'py-4' : 'py-4 sm:py-5',
-    medium: forceCompactPreview ? 'py-6' : 'py-6 sm:py-8',
-    large: forceCompactPreview ? 'py-9' : 'py-9 sm:py-12',
-  }[layout.padding || 'medium'] || (forceCompactPreview ? 'py-6' : 'py-6 sm:py-8');
+  const sectionPaddingClass = isLawyerVariant && (!layout.padding || layout.padding === 'medium')
+    ? (forceCompactPreview ? 'py-12' : 'py-16 sm:py-20')
+    : ({
+      none: 'py-0',
+      small: forceCompactPreview ? 'py-4' : 'py-4 sm:py-5',
+      medium: forceCompactPreview ? 'py-6' : 'py-6 sm:py-8',
+      large: forceCompactPreview ? 'py-9' : 'py-9 sm:py-12',
+    }[layout.padding || 'medium'] || (forceCompactPreview ? 'py-6' : 'py-6 sm:py-8'));
   const widthClass = {
     narrow: 'mx-auto w-full max-w-5xl',
     contained: 'mx-auto w-full max-w-6xl',
@@ -143,10 +148,13 @@ export default function IndustrialClientFeedbackSection({
   )
     ? ''
     : sectionStyle.background;
-  const hasShell = Boolean(effectiveSectionBackground)
-    || (sectionStyle.radius && sectionStyle.radius !== 'none')
-    || (sectionStyle.shadow && sectionStyle.shadow !== 'none');
+  const hasShell = isLawyerVariant
+    ? false
+    : Boolean(effectiveSectionBackground)
+      || (sectionStyle.radius && sectionStyle.radius !== 'none')
+      || (sectionStyle.shadow && sectionStyle.shadow !== 'none');
   const hasCustomTextColor = Boolean(sectionStyle.textColor);
+  const lawyerTone = isLawyerVariant && hasCustomTextColor;
   const headerAlignment = {
     left: 'text-left',
     center: 'text-center mx-auto',
@@ -163,12 +171,14 @@ export default function IndustrialClientFeedbackSection({
         ...item,
         rating: Number(item.rating) || 5,
         role: item.role || 'Verified client',
-        avatarTone: isCommunityTemplate
-          ? ['bg-primary/10 text-primary', 'bg-accent/15 text-primary'][index % 2]
-          : ['bg-emerald-100 text-emerald-700', 'bg-rose-100 text-rose-700'][index % 2],
+        avatarTone: isLawyerVariant
+          ? 'bg-primary text-primary-contrast'
+          : isCommunityTemplate
+            ? ['bg-primary/10 text-primary', 'bg-accent/15 text-primary'][index % 2]
+            : ['bg-emerald-100 text-emerald-700', 'bg-rose-100 text-rose-700'][index % 2],
       }));
     return published;
-  }, [databaseFeedback, isCommunityTemplate, testimonials]);
+  }, [databaseFeedback, isCommunityTemplate, isLawyerVariant, testimonials]);
 
   useEffect(() => {
     if (isPreview || !profile?.slug) {
@@ -265,24 +275,25 @@ export default function IndustrialClientFeedbackSection({
           <>
         <div className={`flex flex-col gap-5 ${forceMobilePreview ? '' : 'sm:flex-row sm:items-end sm:justify-between'}`}>
           <div className={`max-w-2xl ${headerAlignment}`}>
-            <p data-storefront-field="content.eyebrow" data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="Testimonials eyebrow" className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isLuxuryVariant ? 'text-accent' : isCommunityTemplate ? 'inline-flex rounded-md bg-primary px-2.5 py-1 text-primary-contrast' : 'text-primary'}`}>
+            <p data-storefront-field="content.eyebrow" data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="Testimonials eyebrow" className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isLuxuryVariant ? 'text-accent' : isLawyerVariant ? 'text-[11px] font-bold tracking-[0.28em] text-accent' : isCommunityTemplate ? 'inline-flex rounded-md bg-primary px-2.5 py-1 text-primary-contrast' : 'text-primary'}`}>
               {copy.eyebrow || 'Client feedback'}
             </p>
-            <h2 data-storefront-field="content.heading" data-storefront-source={content.heading ? 'persisted' : 'fallback'} data-storefront-label="Testimonials heading" className={`mt-1.5 text-xl tracking-tight sm:text-2xl ${isLuxuryVariant ? 'font-serif font-normal text-white' : hasCustomTextColor ? 'font-semibold text-current' : isCommunityTemplate ? 'font-semibold text-text-heading' : 'font-semibold text-slate-900'}`}>
+            <h2 data-storefront-field="content.heading" data-storefront-source={content.heading ? 'persisted' : 'fallback'} data-storefront-label="Testimonials heading" className={`mt-1.5 text-xl tracking-tight sm:text-2xl ${isLuxuryVariant ? 'font-serif font-normal text-white' : isLawyerVariant ? `mt-3 text-2xl font-semibold uppercase tracking-[-0.02em] sm:text-3xl ${hasCustomTextColor ? 'text-current' : 'text-primary'}` : hasCustomTextColor ? 'font-semibold text-current' : isCommunityTemplate ? 'font-semibold text-text-heading' : 'font-semibold text-slate-900'}`}>
               {copy.heading || 'Trusted by clients'}
             </h2>
-            <p data-storefront-field="content.body" data-storefront-source={content.body ? 'persisted' : 'fallback'} data-storefront-label="Testimonials description" className={`mt-2 text-[13px] leading-5 ${isLuxuryVariant ? 'text-white/65' : hasCustomTextColor ? 'text-current opacity-75' : isCommunityTemplate ? 'text-text-muted' : 'text-slate-500'}`}>
+            <p data-storefront-field="content.body" data-storefront-source={content.body ? 'persisted' : 'fallback'} data-storefront-label="Testimonials description" className={`mt-2 text-[13px] leading-5 ${isLuxuryVariant ? 'text-white/65' : isLawyerVariant ? `mt-4 max-w-2xl text-sm leading-7 ${hasCustomTextColor ? 'text-current opacity-80' : 'text-slate-500'}` : hasCustomTextColor ? 'text-current opacity-75' : isCommunityTemplate ? 'text-text-muted' : 'text-slate-500'}`}>
               {copy.body || 'Real experiences from clients who received practical, responsive guidance.'}
             </p>
+            {isLawyerVariant ? <div className="mt-5 h-0.5 w-16 bg-accent" /> : null}
           </div>
 
           <div className={`flex items-center gap-2 self-start ${forceMobilePreview ? '' : 'sm:self-auto'}`}>
-            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${isLuxuryVariant ? 'border-white/15 bg-white/[0.04]' : 'border-slate-200 bg-white shadow-sm'}`}>
-              <span className={`text-2xl font-bold tracking-tight ${isLuxuryVariant ? 'text-[#f5f1e8]' : 'text-slate-900'}`}>
+            <div className={`flex items-center gap-3 border px-4 py-3 ${isLuxuryVariant ? 'rounded-xl border-white/15 bg-white/[0.04]' : isLawyerVariant ? 'border-primary/15 bg-white/80' : 'rounded-xl border-slate-200 bg-white shadow-sm'}`}>
+              <span className={`text-2xl font-bold tracking-tight ${isLuxuryVariant ? 'text-[#f5f1e8]' : isLawyerVariant ? (lawyerTone ? 'text-current' : 'text-primary') : 'text-slate-900'}`}>
                 {reviews.length ? averageRating.toFixed(1) : '—'}
               </span>
               <div>
-                <RatingStars value={Math.round(averageRating)} size={13} />
+                <RatingStars value={Math.round(averageRating)} size={13} variant={isLawyerVariant ? 'lawyer' : 'default'} />
                 <p className={`mt-1 text-[10px] font-medium ${isLuxuryVariant ? 'text-white/60' : 'text-slate-500'}`}>
                   {reviews.length ? `Based on ${reviews.length} client reviews` : 'No ratings yet'}
                 </p>
@@ -294,10 +305,12 @@ export default function IndustrialClientFeedbackSection({
                 type="button"
                 onClick={() => scrollCarousel(-1)}
                 aria-label="Previous reviews"
-                className={`grid h-9 w-9 place-items-center rounded-full border transition ${
+                className={`grid h-9 w-9 place-items-center border transition ${
                   isLuxuryVariant
-                    ? 'border-white/20 bg-white/[0.04] text-white/65 hover:border-accent/60 hover:text-accent'
-                    : 'border-slate-200 bg-white text-slate-500 shadow-sm hover:border-primary/30 hover:text-primary'
+                    ? 'rounded-full border-white/20 bg-white/[0.04] text-white/65 hover:border-accent/60 hover:text-accent'
+                    : isLawyerVariant
+                      ? 'border-primary/15 bg-primary text-primary-contrast hover:bg-accent hover:text-accent-contrast'
+                      : 'rounded-full border-slate-200 bg-white text-slate-500 shadow-sm hover:border-primary/30 hover:text-primary'
                 }`}
               >
                 <ChevronLeft size={16} />
@@ -306,10 +319,12 @@ export default function IndustrialClientFeedbackSection({
                 type="button"
                 onClick={() => scrollCarousel(1)}
                 aria-label="Next reviews"
-                className={`grid h-9 w-9 place-items-center rounded-full border transition ${
+                className={`grid h-9 w-9 place-items-center border transition ${
                   isLuxuryVariant
-                    ? 'border-white/20 bg-white/[0.04] text-white/65 hover:border-accent/60 hover:text-accent'
-                    : 'border-slate-200 bg-white text-slate-500 shadow-sm hover:border-primary/30 hover:text-primary'
+                    ? 'rounded-full border-white/20 bg-white/[0.04] text-white/65 hover:border-accent/60 hover:text-accent'
+                    : isLawyerVariant
+                      ? 'border-primary/15 bg-primary text-primary-contrast hover:bg-accent hover:text-accent-contrast'
+                      : 'rounded-full border-slate-200 bg-white text-slate-500 shadow-sm hover:border-primary/30 hover:text-primary'
                 }`}
               >
                 <ChevronRight size={16} />
@@ -322,7 +337,7 @@ export default function IndustrialClientFeedbackSection({
         {feedbackLoading && !reviews.length ? (
           <div className={`mt-6 grid gap-3 ${forceMobilePreview ? 'grid-cols-1' : forceTabletPreview ? 'sm:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className={`h-44 animate-pulse rounded-xl border ${isLuxuryVariant ? 'border-white/15 bg-white/[0.04]' : 'border-slate-200 bg-slate-100/70'}`} />
+              <div key={index} className={`h-44 animate-pulse border ${isLuxuryVariant ? 'rounded-xl border-white/15 bg-white/[0.04]' : isLawyerVariant ? 'border-primary/15 bg-white/70' : 'rounded-xl border-slate-200 bg-slate-100/70'}`} />
             ))}
           </div>
         ) : reviews.length ? (
@@ -341,11 +356,11 @@ export default function IndustrialClientFeedbackSection({
               data-storefront-item-index={index}
               data-storefront-item-field="text"
               data-storefront-label={`Testimonial ${index + 1}`}
-              className={`flex min-w-full snap-start flex-col rounded-xl border p-4 ${isLuxuryVariant ? 'border-white/15 bg-white/[0.03]' : 'border-slate-200/90 bg-white shadow-sm'} ${carouselColumnsClass}`}
+              className={`flex min-w-full snap-start flex-col border p-7 ${isLuxuryVariant ? 'rounded-xl border-white/15 bg-white/[0.03]' : isLawyerVariant ? 'border-primary/15 bg-white/80 shadow-[0_14px_36px_rgba(15,23,42,.05)]' : 'rounded-xl border-slate-200/90 bg-white shadow-sm'} ${carouselColumnsClass}`}
             >
               <div className="flex items-start justify-between gap-3">
-                <RatingStars value={item.rating} size={12} />
-                <Quote size={15} className={isLuxuryVariant ? 'text-accent/45' : 'text-primary/40'} />
+                <RatingStars value={item.rating} size={12} variant={isLawyerVariant ? 'lawyer' : 'default'} />
+                <Quote size={15} className={isLuxuryVariant || isLawyerVariant ? 'text-accent/45' : 'text-primary/40'} />
               </div>
               <p
                 data-storefront-field="content.items"
@@ -355,13 +370,13 @@ export default function IndustrialClientFeedbackSection({
                 data-storefront-item-index={index}
                 data-storefront-item-field="text"
                 data-storefront-label={`Testimonial ${index + 1} text`}
-                className={`mt-3 flex-1 text-[12px] leading-5 ${isLuxuryVariant ? 'text-white/80' : 'text-slate-600'}`}
+                className={`mt-3 flex-1 text-[12px] leading-5 ${isLuxuryVariant ? 'text-white/80' : isLawyerVariant ? `text-sm leading-6 ${lawyerTone ? 'text-current opacity-80' : 'text-slate-500'}` : 'text-slate-600'}`}
               >
                 &ldquo;{item.text}&rdquo;
               </p>
-              <div className={`mt-4 flex items-center gap-2.5 border-t pt-3 ${isLuxuryVariant ? 'border-white/10' : 'border-slate-100'}`}>
+              <div className={`mt-4 flex items-center gap-2.5 border-t pt-3 ${isLuxuryVariant ? 'border-white/10' : isLawyerVariant ? 'border-primary/10' : 'border-slate-100'}`}>
                 <span
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cover bg-center text-[11px] font-bold ${item.avatarTone}`}
+                  className={`grid h-9 w-9 shrink-0 place-items-center bg-cover bg-center text-[11px] font-bold ${isLawyerVariant ? '' : 'rounded-full'} ${item.avatarTone}`}
                   style={item.client_photo_url ? { backgroundImage: `url("${item.client_photo_url}")` } : undefined}
                   aria-label={`${item.client_name} avatar`}
                 >
@@ -376,12 +391,12 @@ export default function IndustrialClientFeedbackSection({
                     data-storefront-item-index={index}
                     data-storefront-item-field="client_name"
                     data-storefront-label={`Testimonial ${index + 1} client`}
-                    className={`truncate text-[12px] font-semibold ${isLuxuryVariant ? 'text-white' : 'text-slate-900'}`}
+                    className={`truncate text-[12px] font-semibold ${isLuxuryVariant ? 'text-white' : isLawyerVariant ? (lawyerTone ? 'text-current' : 'text-primary') : 'text-slate-900'}`}
                   >
                     {item.client_name}
                   </p>
                   <p className={`mt-0.5 flex items-center gap-1 text-[10px] ${isLuxuryVariant ? 'text-white/55' : 'text-slate-500'}`}>
-                    <ShieldCheck size={10} className={isLuxuryVariant ? 'text-accent' : 'text-primary'} />
+                    <ShieldCheck size={10} className={isLuxuryVariant || isLawyerVariant ? 'text-accent' : 'text-primary'} />
                     {item.role}
                   </p>
                 </div>
@@ -390,23 +405,27 @@ export default function IndustrialClientFeedbackSection({
             ))}
           </div>
         ) : (
-          <div className={`mt-6 rounded-xl border border-dashed px-5 py-8 text-center ${isLuxuryVariant ? 'border-white/20 bg-white/[0.03]' : 'border-slate-300 bg-slate-50/70'}`}>
-            <MessageSquareText size={20} className={`mx-auto ${isLuxuryVariant ? 'text-white/45' : 'text-slate-400'}`} />
-            <p className={`mt-3 text-sm font-semibold ${isLuxuryVariant ? 'text-white' : 'text-slate-800'}`}>No verified feedback yet</p>
+          <div className={`mt-6 border border-dashed px-5 py-8 text-center ${isLuxuryVariant ? 'rounded-xl border-white/20 bg-white/[0.03]' : isLawyerVariant ? 'border-primary/20 bg-white/50' : 'rounded-xl border-slate-300 bg-slate-50/70'}`}>
+            <MessageSquareText size={20} className={`mx-auto ${isLuxuryVariant ? 'text-white/45' : isLawyerVariant ? 'text-accent' : 'text-slate-400'}`} />
+            <p className={`mt-3 text-sm font-semibold ${isLuxuryVariant ? 'text-white' : isLawyerVariant ? (lawyerTone ? 'text-current' : 'text-primary') : 'text-slate-800'}`}>No verified feedback yet</p>
             <p className={`mt-1 text-[12px] ${isLuxuryVariant ? 'text-white/60' : 'text-slate-500'}`}>Be the first client to share an experience.</p>
           </div>
         )}
           </>
         ) : null}
 
-        <div className={`${showReviews ? 'mt-5' : ''} flex flex-col gap-3 rounded-xl border p-4 ${isLuxuryVariant ? 'border-white/15 bg-white/[0.03]' : 'border-slate-200 bg-slate-50/80'} ${forceMobilePreview ? '' : 'sm:flex-row sm:items-center sm:justify-between'}`}>
+        <div className={`${showReviews ? 'mt-5' : ''} flex flex-col gap-3 border p-4 ${isLuxuryVariant ? 'rounded-xl border-white/15 bg-white/[0.03]' : isLawyerVariant ? 'border-primary/15 bg-white/80' : 'rounded-xl border-slate-200 bg-slate-50/80'} ${forceMobilePreview ? '' : 'sm:flex-row sm:items-center sm:justify-between'}`}>
           <div className="flex items-center gap-3">
-            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${isLuxuryVariant ? 'bg-white/[0.06] text-accent ring-1 ring-white/20' : 'bg-white text-primary shadow-sm ring-1 ring-slate-200'}`}>
+            <span className={`grid h-9 w-9 shrink-0 place-items-center ${isLuxuryVariant ? 'rounded-lg bg-white/[0.06] text-accent ring-1 ring-white/20' : isLawyerVariant ? 'bg-primary text-primary-contrast' : 'rounded-lg bg-white text-primary shadow-sm ring-1 ring-slate-200'}`}>
               <MessageSquareText size={16} />
             </span>
             <div>
-              <p className={`text-sm font-semibold ${isLuxuryVariant ? 'text-white' : 'text-slate-900'}`}>Worked with this professional?</p>
-              <p className={`mt-0.5 text-[11px] ${isLuxuryVariant ? 'text-white/60' : 'text-slate-500'}`}>Share your experience to help future clients decide.</p>
+              <p className={`text-sm font-semibold ${isLuxuryVariant ? 'text-white' : isLawyerVariant ? (lawyerTone ? 'text-current' : 'text-primary') : 'text-slate-900'}`}>
+                {isLawyerVariant ? 'Worked with this lawyer?' : 'Worked with this professional?'}
+              </p>
+              <p className={`mt-0.5 text-[11px] ${isLuxuryVariant ? 'text-white/60' : 'text-slate-500'}`}>
+                {isLawyerVariant ? 'Share your experience to help future clients choose counsel.' : 'Share your experience to help future clients decide.'}
+              </p>
             </div>
           </div>
           <button
@@ -416,10 +435,12 @@ export default function IndustrialClientFeedbackSection({
             }}
             disabled={isPreview}
             aria-disabled={isPreview}
-            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-lg px-4 text-xs font-semibold shadow-sm transition ${
+            className={`inline-flex h-9 shrink-0 items-center justify-center px-4 text-xs font-semibold shadow-sm transition ${
               isLuxuryVariant
-                ? 'bg-accent text-[#1a1510] hover:brightness-105'
-                : 'bg-primary text-white hover:bg-primary-dark'
+                ? 'rounded-lg bg-accent text-[#1a1510] hover:brightness-105'
+                : isLawyerVariant
+                  ? 'storefront-btn min-h-11 border border-accent bg-accent px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-accent-contrast'
+                  : 'rounded-lg bg-primary text-white hover:bg-primary-dark'
             } disabled:cursor-default disabled:opacity-65`}
           >
             {isPreview ? 'Feedback disabled in preview' : 'Leave feedback'}
@@ -428,27 +449,27 @@ export default function IndustrialClientFeedbackSection({
       </div>
 
       {formOpen ? (
-        <div className={`fixed inset-0 z-[90] flex items-center justify-center p-4 ${isLuxuryVariant || isCommunityTemplate ? 'bg-black/45' : 'bg-transparent'}`}>
-          <div role="dialog" aria-modal="true" aria-labelledby="feedback-title" className={`max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border shadow-[0_24px_70px_rgba(15,23,42,0.28)] ${isLuxuryVariant ? 'border-white/20 bg-[#151210]' : 'border-white/70 bg-white'}`}>
-            <div className={`flex items-start justify-between border-b px-4 py-3.5 ${isLuxuryVariant ? 'border-white/10' : 'border-slate-100'}`}>
+        <div className={`fixed inset-0 z-[90] flex items-center justify-center p-4 ${isLuxuryVariant || isCommunityTemplate || isLawyerVariant ? 'bg-black/45' : 'bg-transparent'}`}>
+          <div role="dialog" aria-modal="true" aria-labelledby="feedback-title" className={`max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto border shadow-[0_24px_70px_rgba(15,23,42,0.28)] ${isLuxuryVariant ? 'rounded-xl border-white/20 bg-[#151210]' : isLawyerVariant ? 'border-primary/15 bg-white' : 'rounded-xl border-white/70 bg-white'}`}>
+            <div className={`flex items-start justify-between border-b px-4 py-3.5 ${isLuxuryVariant ? 'border-white/10' : isLawyerVariant ? 'border-primary/10' : 'border-slate-100'}`}>
               <div>
-                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${isLuxuryVariant ? 'text-accent' : 'text-primary'}`}>Client review</p>
-                <h3 id="feedback-title" className={`mt-0.5 text-base font-semibold ${isLuxuryVariant ? 'text-white' : 'text-slate-900'}`}>Share your experience</h3>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${isLuxuryVariant || isLawyerVariant ? 'text-accent' : 'text-primary'}`}>Client review</p>
+                <h3 id="feedback-title" className={`mt-0.5 text-base font-semibold ${isLuxuryVariant ? 'text-white' : isLawyerVariant ? 'uppercase tracking-[-0.02em] text-primary' : 'text-slate-900'}`}>Share your experience</h3>
                 <p className={`mt-0.5 text-[10px] ${isLuxuryVariant ? 'text-white/60' : 'text-slate-500'}`}>Your feedback will appear after submission.</p>
               </div>
-              <button type="button" onClick={closeForm} aria-label="Close feedback form" className={`grid h-7 w-7 place-items-center rounded-full transition ${isLuxuryVariant ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
+              <button type="button" onClick={closeForm} aria-label="Close feedback form" className={`grid h-7 w-7 place-items-center transition ${isLuxuryVariant ? 'rounded-full text-white/50 hover:bg-white/10 hover:text-white' : isLawyerVariant ? 'bg-primary/5 text-primary hover:bg-primary hover:text-primary-contrast' : 'rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
                 <X size={15} />
               </button>
             </div>
 
             {status.type === 'success' ? (
               <div className="px-4 py-7 text-center">
-                <span className={`mx-auto grid h-10 w-10 place-items-center rounded-full ${isCommunityTemplate ? 'bg-primary/10 text-primary' : 'bg-emerald-50 text-emerald-600'}`}>
+                <span className={`mx-auto grid h-10 w-10 place-items-center ${isLawyerVariant ? 'bg-primary text-primary-contrast' : isCommunityTemplate ? 'rounded-full bg-primary/10 text-primary' : 'rounded-full bg-emerald-50 text-emerald-600'}`}>
                   <CheckCircle2 size={20} />
                 </span>
-                <h4 className={`mt-3 text-sm font-semibold ${isLuxuryVariant ? 'text-white' : 'text-slate-900'}`}>Feedback received</h4>
+                <h4 className={`mt-3 text-sm font-semibold ${isLuxuryVariant ? 'text-white' : isLawyerVariant ? 'text-primary' : 'text-slate-900'}`}>Feedback received</h4>
                 <p className={`mx-auto mt-1.5 max-w-sm text-xs leading-5 ${isLuxuryVariant ? 'text-white/65' : 'text-slate-500'}`}>{status.message}</p>
-                <button type="button" onClick={closeForm} className={`mt-4 h-8 rounded-lg px-4 text-[11px] font-semibold ${isLuxuryVariant ? 'bg-accent text-[#1a1510]' : 'bg-slate-900 text-white'}`}>
+                <button type="button" onClick={closeForm} className={`mt-4 h-8 px-4 text-[11px] font-semibold ${isLuxuryVariant ? 'rounded-lg bg-accent text-[#1a1510]' : isLawyerVariant ? 'storefront-btn border border-accent bg-accent text-accent-contrast' : 'rounded-lg bg-slate-900 text-white'}`}>
                   Done
                 </button>
               </div>
@@ -470,7 +491,7 @@ export default function IndustrialClientFeedbackSection({
                           onClick={() => updateField('rating', rating)}
                           className="p-0.5 transition hover:scale-110"
                         >
-                          <Star size={20} className={active ? 'fill-amber-400 text-amber-400' : 'text-slate-200'} />
+                          <Star size={20} className={active ? (isLawyerVariant ? 'fill-accent text-accent' : 'fill-amber-400 text-amber-400') : (isLawyerVariant ? 'text-primary/20' : 'text-slate-200')} />
                         </button>
                       );
                     })}
@@ -485,10 +506,12 @@ export default function IndustrialClientFeedbackSection({
                       maxLength={120}
                       value={form.client_name}
                       onChange={(event) => updateField('client_name', event.target.value)}
-                      className={`mt-1 h-9 w-full rounded-lg border px-3 text-xs font-normal outline-none transition ${
+                      className={`mt-1 h-9 w-full border px-3 text-xs font-normal outline-none transition ${
                         isLuxuryVariant
-                          ? 'border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
-                          : 'border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
+                          ? 'rounded-lg border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
+                          : isLawyerVariant
+                            ? 'border-primary/20 bg-white text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
+                            : 'rounded-lg border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
                       }`}
                       placeholder="Full name"
                     />
@@ -501,10 +524,12 @@ export default function IndustrialClientFeedbackSection({
                       maxLength={180}
                       value={form.email}
                       onChange={(event) => updateField('email', event.target.value)}
-                      className={`mt-1 h-9 w-full rounded-lg border px-3 text-xs font-normal outline-none transition ${
+                      className={`mt-1 h-9 w-full border px-3 text-xs font-normal outline-none transition ${
                         isLuxuryVariant
-                          ? 'border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
-                          : 'border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
+                          ? 'rounded-lg border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
+                          : isLawyerVariant
+                            ? 'border-primary/20 bg-white text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
+                            : 'rounded-lg border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
                       }`}
                       placeholder="you@example.com"
                     />
@@ -520,10 +545,12 @@ export default function IndustrialClientFeedbackSection({
                     rows={3}
                     value={form.text}
                     onChange={(event) => updateField('text', event.target.value)}
-                    className={`mt-1 w-full resize-none rounded-lg border px-3 py-2 text-xs font-normal leading-5 outline-none transition ${
+                    className={`mt-1 w-full resize-none border px-3 py-2 text-xs font-normal leading-5 outline-none transition ${
                       isLuxuryVariant
-                        ? 'border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
-                        : 'border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
+                        ? 'rounded-lg border-white/20 bg-white/[0.05] text-white placeholder:text-white/45 focus:border-accent focus:ring-2 focus:ring-accent/20'
+                        : isLawyerVariant
+                          ? 'border-primary/20 bg-white text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
+                          : 'rounded-lg border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
                     }`}
                     placeholder="Tell others about your experience..."
                   />
@@ -543,20 +570,24 @@ export default function IndustrialClientFeedbackSection({
                 ) : null}
 
                 <div className={`flex items-center justify-end gap-2 border-t pt-3 ${isLuxuryVariant ? 'border-white/10' : 'border-slate-100'}`}>
-                  <button type="button" onClick={closeForm} className={`h-8 rounded-lg border px-3.5 text-[11px] font-semibold transition ${
+                  <button type="button" onClick={closeForm} className={`h-8 border px-3.5 text-[11px] font-semibold transition ${
                     isLuxuryVariant
-                      ? 'border-white/20 text-white/75 hover:bg-white/10 hover:text-white'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'rounded-lg border-white/20 text-white/75 hover:bg-white/10 hover:text-white'
+                      : isLawyerVariant
+                        ? 'storefront-btn border-primary/20 text-primary hover:bg-primary hover:text-primary-contrast'
+                        : 'rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}>
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={status.type === 'loading'}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`inline-flex h-8 items-center gap-1.5 px-3.5 text-[11px] font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
                       isLuxuryVariant
-                        ? 'bg-accent text-[#1a1510] hover:brightness-105'
-                        : 'bg-primary text-white hover:bg-primary-dark'
+                        ? 'rounded-lg bg-accent text-[#1a1510] hover:brightness-105'
+                        : isLawyerVariant
+                          ? 'storefront-btn border border-accent bg-accent text-accent-contrast'
+                          : 'rounded-lg bg-primary text-white hover:bg-primary-dark'
                     }`}
                   >
                     <Send size={13} />

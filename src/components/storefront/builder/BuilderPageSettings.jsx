@@ -188,21 +188,21 @@ function TemplateBrandControls({
           <div className="space-y-2">
             <ColorField
               label="Primary"
-              value={brandKit.primary_color || '#0f766e'}
+              value={brandKit.primary_color || defaults?.primary_color || '#0f766e'}
               onChange={(primary_color) => onChange({ primary_color })}
               showReset={Boolean(primaryCustom)}
               onReset={() => defaults && onChange({ primary_color: defaults.primary_color })}
             />
             <ColorField
               label="Accent"
-              value={brandKit.accent_color || '#f59e0b'}
+              value={brandKit.accent_color || defaults?.accent_color || '#f59e0b'}
               onChange={(accent_color) => onChange({ accent_color })}
               showReset={Boolean(accentCustom)}
               onReset={() => defaults && onChange({ accent_color: defaults.accent_color })}
             />
             <ColorField
               label="Page background"
-              value={brandKit.page_background || '#ffffff'}
+              value={brandKit.page_background || defaults?.page_background || '#ffffff'}
               onChange={(page_background) => onChange({ page_background })}
               showReset={Boolean(pageBgCustom)}
               onReset={() => defaults && onChange({ page_background: defaults.page_background })}
@@ -219,7 +219,7 @@ function TemplateBrandControls({
             ) : null}
           >
             <BuilderSelect
-              value={brandKit.button_shape || 'rounded'}
+              value={brandKit.button_shape || defaults?.button_shape || 'rounded'}
               options={[
                 { value: 'square', label: 'Square' },
                 { value: 'rounded', label: 'Rounded' },

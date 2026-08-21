@@ -109,7 +109,9 @@ export function seedBlockContentFromProfile(blocks = [], profile = {}, templateK
         content,
         layout: {
           ...block.data.layout,
-          alignment: originalLayout.alignment || visual.align,
+          alignment: templateKey === 'lawyer-classic'
+            ? (originalLayout.alignment === 'right' ? 'right' : 'left')
+            : (originalLayout.alignment || visual.align),
           padding: originalLayout.padding || visual.padding,
           width: originalLayout.width || visual.width,
           variant: originalLayout.variant || visual.variant,

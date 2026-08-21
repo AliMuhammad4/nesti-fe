@@ -57,6 +57,68 @@
   }
 }
 
+@keyframes lawyer-classic-hero-zoom {
+  from { transform: scale(1.04); }
+  to { transform: scale(1.08); }
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-anim-enabled='true'] .lawyer-classic-hero-media {
+  animation: lawyer-classic-hero-zoom 9s ease-out both;
+  transform-origin: center center;
+}
+
+[data-template-key='lawyer-classic'] .lawyer-classic-hero-media {
+  inset: -4px !important;
+  filter: none !important;
+}
+
+[data-template-key='lawyer-classic'] header {
+  border-bottom: none;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+
+[data-template-key='lawyer-classic'] [data-storefront-block='hero'],
+[data-template-key='lawyer-classic'] [data-storefront-block='hero'] .storefront-anim-body,
+[data-template-key='lawyer-classic'] [data-storefront-block='hero'] .is-media-background,
+[data-template-key='lawyer-classic'] .lawyer-classic-hero {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  isolation: auto;
+}
+
+[data-template-key='lawyer-classic'] [data-storefront-block='about'] {
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+[data-template-key='lawyer-classic'] .success-stories-track article {
+  border-radius: 0;
+}
+
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover h3,
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible h3,
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover p,
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible p {
+  color: var(--storefront-primary-contrast, #ffffff) !important;
+}
+
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover p,
+[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible p {
+  opacity: 0.78;
+}
+
+[data-template-key='lawyer-classic'] :where(a, button, input, select):focus-visible {
+  outline: 2px solid var(--storefront-accent);
+  outline-offset: 3px;
+}
+
+[data-template-key='lawyer-classic'] :where(#about, #services, #reviews, #guidance, #contact) {
+  scroll-margin-top: 5rem;
+}
+
 /* Hidden until JS flips data-anim-visible */
 .storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body {
   opacity: 0;
@@ -125,6 +187,53 @@
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
 }
 
+@keyframes lawyer-classic-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 34px, 0);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-kicker,
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-heading,
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-description,
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-action {
+  animation-name: lawyer-classic-hero-copy-in !important;
+  animation-duration: 880ms !important;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+  animation-fill-mode: both !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-kicker {
+  animation-delay: 80ms !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-heading {
+  animation-delay: 190ms !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-description {
+  animation-delay: 320ms !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-action:nth-child(1) {
+  animation-delay: 450ms !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-action:nth-child(2) {
+  animation-delay: 560ms !important;
+}
+
+[data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-enabled='true'][data-anim-visible='true'] .lawyer-classic-hero-action:nth-child(3) {
+  animation-delay: 670ms !important;
+}
+
 /* Built-in hover lift only for marked interactive cards. */
 .storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] [data-storefront-anim-item='true'][data-storefront-anim-hover='lift']:hover {
   transform: translate3d(0, -5px, 0);
@@ -132,6 +241,26 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-template-key='lawyer-classic'] .lawyer-classic-hero-kicker,
+  [data-template-key='lawyer-classic'] .lawyer-classic-hero-heading,
+  [data-template-key='lawyer-classic'] .lawyer-classic-hero-description,
+  [data-template-key='lawyer-classic'] .lawyer-classic-hero-actions,
+  [data-template-key='lawyer-classic'] .lawyer-classic-hero-media {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none;
+  }
+
+  [data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-visible='true'] .lawyer-classic-hero-kicker,
+  [data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-visible='true'] .lawyer-classic-hero-heading,
+  [data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-visible='true'] .lawyer-classic-hero-description,
+  [data-template-key='lawyer-classic'] .storefront-public-band[data-storefront-block='hero'][data-anim-visible='true'] .lawyer-classic-hero-action {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
   .storefront-public-band[data-anim-enabled='true'] .storefront-anim-body,
   .storefront-public-band[data-anim-enabled='true'] [data-storefront-anim-item='true'] {
     animation: none !important;

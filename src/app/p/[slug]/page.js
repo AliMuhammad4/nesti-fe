@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getPublicProfile, getPublishedStorefront, getSellerProperties } from '@/lib/publicProfileClient';
-import PublicProfileLayout from '@/components/public-profile/PublicProfileLayout';
-import PublicStorefrontPage from '@/components/storefront/PublicStorefrontPage';
+import PublicStorefrontPageClient from '@/components/storefront/PublicStorefrontPageClient';
 
 function normalizePublishedListing(property = {}) {
   return {
@@ -200,9 +199,5 @@ export default async function PublicProfilePage({ params }) {
         recent_closed_seller_leads: publishedSoldListings,
       };
 
-  return (
-    <PublicProfileLayout profile={storefrontProfile}>
-      <PublicStorefrontPage profile={storefrontProfile} />
-    </PublicProfileLayout>
-  );
+  return <PublicStorefrontPageClient profile={storefrontProfile} />;
 }

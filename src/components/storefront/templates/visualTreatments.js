@@ -145,16 +145,22 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'none',
     },
     'lawyer-classic': {
-      bg: index % 2 === 0 ? '#f8fafc' : '#ffffff',
-      align: isHero ? 'left' : 'center',
-      padding: isHero || isTool ? 'large' : 'medium',
-      radius: 'default',
-      variant: isHero ? 'split' : isTool ? 'lead-magnet' : 'editorial',
+      bg: '',
+      align: 'left',
+      padding: isHero ? 'none' : isTool ? 'large' : 'medium',
+      radius: 'none',
+      variant: isHero ? 'premium' : isTool ? 'lead-magnet' : 'editorial',
       cardStyle: isTool ? 'elevated' : 'bordered',
-      columns: '2',
-      mediaPosition: isHero ? 'right' : 'none',
-      width: isTool ? 'narrow' : 'contained',
-      shadow: isTool ? 'large' : 'small',
+      columns: type === T.PRACTICE_AREAS || type === T.WHO_WE_HELP
+        ? (type === T.WHO_WE_HELP ? '4' : '3')
+        : type === T.DOCUMENT_CHECKLIST
+          ? '2'
+          : type === T.FEE_GUIDANCE || type === T.CONSULTATION_OPTIONS
+            ? '3'
+            : '2',
+      mediaPosition: isHero ? 'background' : 'none',
+      width: isTool ? 'narrow' : 'full',
+      shadow: isTool ? 'large' : 'none',
     },
     'lawyer-first-home-closing': {
       bg: index % 2 === 0 ? '#eff6ff' : '#ffffff',

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import { Copy, Link2, Loader2, Mail, MessageCircle, RefreshCw, Settings2, Share2, X } from "lucide-react";
 import DashboardInviteRewardButton from "@/components/dashboard/DashboardInviteRewardButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,24 +31,9 @@ import DashboardCalendlyButton from "@/components/dashboard/DashboardCalendlyBut
 import DashboardStartGuide from "@/components/dashboard/DashboardStartGuide";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 import CoverImageEditor from "@/components/dashboard/CoverImageEditor";
+import DashboardAnalyticsPanels from "@/components/dashboard/DashboardAnalyticsPanels";
+import LeadDetailsModal from "@/components/dashboard/LeadDetailsModal";
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
-
-const DashboardAnalyticsPanels = dynamic(
-  () => import("@/components/dashboard/DashboardAnalyticsPanels"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
-        <p className="text-sm text-text-muted">Loading charts…</p>
-      </div>
-    ),
-  }
-);
-
-const LeadDetailsModal = dynamic(
-  () => import("@/components/dashboard/LeadDetailsModal"),
-  { ssr: false }
-);
 const WINDOW_OPTIONS = [
   { value: 7, label: "7d" },
   { value: 30, label: "30d" },

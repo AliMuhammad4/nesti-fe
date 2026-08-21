@@ -41,6 +41,9 @@ import {
   coerceCollectionItems,
   createBlock,
   createContentItemId,
+  insertBlockAtTemplateRank,
+  isProtectedBlockType,
+  isSingletonBlockType,
   labelForBlock,
   normalizeBlocks,
   removeContentItem,
@@ -50,10 +53,15 @@ import {
   updateContentItem,
 } from './storefrontBuilderState';
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
+import { LAWYER_CLASSIC_PROCESS_DEFAULTS } from '../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import { ChatBubbleLayer, LibraryBlock, SortableLayer } from './BuilderLayersPanel';
 import PageSettings from './BuilderPageSettings';
 import Inspector from './BuilderBlockInspector';
-import { getStorefrontTemplate, materializeTemplate } from '../templates';
+import {
+  getStorefrontTemplate,
+  getTemplateBrandDefaults,
+  materializeTemplate,
+} from '../templates';
 
 const PANELS = [
   { id: 'layers', label: 'Layers', Icon: LayoutTemplate },
@@ -248,7 +256,82 @@ export default function StorefrontBuilderWorkspace({
   const embedToken = embeds[0]?.token || embeds[0]?.embed_token || '';
   const hasChatbot = Boolean(embedToken);
 
-  const normalized = useMemo(() => normalizeBlocks(blocks), [blocks]);
+  const normalized = useMemo(() => {
+    let next = normalizeBlocks(blocks);
+    if (templateKey !== 'lawyer-classic') return next;
+
+    next = next.filter(
+      (block) => block.type !== STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR,
+    );
+    if (!next.some((block) => block.type === STOREFRONT_BLOCK_TYPES.FAQ)) {
+      const templateFaq = materializeTemplate(templateKey, profile, brandKit)?.blocks
+        ?.find((block) => block.type === STOREFRONT_BLOCK_TYPES.FAQ);
+      if (templateFaq) {
+        const guidanceContent = next.find(
+          (block) => block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE,
+        )?.data?.content || {};
+        const templateFaqs = templateFaq.data?.content?.faqs || [];
+        const guidanceFaqs = Array.isArray(guidanceContent.faqs)
+          ? guidanceContent.faqs
+          : [];
+        const usesLegacyDefaultFaqs = guidanceFaqs.length === 4
+          && templateFaqs.slice(0, 4).every(
+            (item, index) => String(guidanceFaqs[index]?.q || '').trim() === item.q,
+          );
+        const migratedFaqs = usesLegacyDefaultFaqs
+          ? [...guidanceFaqs, ...templateFaqs.slice(4)]
+          : guidanceFaqs;
+        const faqBlock = normalizeBlocks([{
+          ...templateFaq,
+          id: 'lawyer-classic-faq-restored',
+          data: {
+            ...(templateFaq.data || {}),
+            content: {
+              ...(templateFaq.data?.content || {}),
+              ...(guidanceContent.faq_label ? { eyebrow: guidanceContent.faq_label } : {}),
+              ...(guidanceContent.faq_heading ? { heading: guidanceContent.faq_heading } : {}),
+              ...(migratedFaqs.length
+                ? { faqs: migratedFaqs }
+                : {}),
+            },
+          },
+        }])[0];
+        next = insertBlockAtTemplateRank(next, faqBlock, templateKey);
+      }
+    }
+    return next;
+  }, [blocks, templateKey, profile, brandKit]);
+
+  useEffect(() => {
+    if (templateKey !== 'lawyer-classic') return;
+    const essentials = brandKit?.essentials || {};
+    if (Number(essentials.lawyer_classic_brand_version || 0) >= 1) return;
+
+    const defaults = getTemplateBrandDefaults(templateKey);
+    if (!defaults) return;
+    const normalizedColor = (value) => String(value || '').trim().toLowerCase();
+    const legacyColors = {
+      primary_color: new Set(['', '#0f766e']),
+      accent_color: new Set(['', '#f59e0b']),
+      page_background: new Set(['', '#ffffff']),
+    };
+    const updates = {
+      essentials: {
+        ...essentials,
+        lawyer_classic_brand_version: 1,
+      },
+    };
+    Object.entries(legacyColors).forEach(([key, values]) => {
+      if (values.has(normalizedColor(brandKit?.[key]))) {
+        updates[key] = defaults[key];
+      }
+    });
+    if (!brandKit?.button_shape || brandKit.button_shape === 'rounded') {
+      updates.button_shape = defaults.button_shape;
+    }
+    onBrandKitChange(updates);
+  }, [brandKit, onBrandKitChange, templateKey]);
+
   const availableBlockTypes = useMemo(
     () => availableBlocksForRole(role, templateKey),
     [role, templateKey],
@@ -342,7 +425,7 @@ export default function StorefrontBuilderWorkspace({
     // Respect an explicit array (including empty). Only fall back when the key is missing.
     if (Object.prototype.hasOwnProperty.call(content || {}, collection)
       && Array.isArray(content[collection])) {
-      if (collection === 'steps' || collection === 'faqs' || collection === 'items' || collection === 'services' || collection === 'highlights' || collection === 'proof') {
+      if (collection === 'steps' || collection === 'faqs' || collection === 'items' || collection === 'services' || collection === 'highlights' || collection === 'proof' || collection === 'process_steps') {
         const persisted = coerceCollectionItems(
           collection === 'services' ? 'items' : collection,
           content[collection],
@@ -457,6 +540,11 @@ export default function StorefrontBuilderWorkspace({
 
     if (collection === 'steps' || collection === 'faqs') {
       return getGuidanceCollectionFallback(profile?.professional_type, collection);
+    }
+
+    if (collection === 'process_steps') {
+      if (templateKey !== 'lawyer-classic') return [];
+      return coerceCollectionItems('process_steps', LAWYER_CLASSIC_PROCESS_DEFAULTS);
     }
 
     if (collection === 'highlights' || collection === 'proof') {
@@ -861,6 +949,8 @@ export default function StorefrontBuilderWorkspace({
   };
 
   const removeBlock = (id) => {
+    const target = normalized.find((block) => block.id === id);
+    if (!target || isProtectedBlockType(target.type)) return;
     const next = normalized.filter((block) => block.id !== id);
     commit(next);
     if (selectedId === id) {
@@ -874,6 +964,7 @@ export default function StorefrontBuilderWorkspace({
     const index = normalized.findIndex((block) => block.id === id);
     if (index < 0) return;
     const original = normalized[index];
+    if (isSingletonBlockType(original.type, templateKey)) return;
     const copy = {
       ...createBlock(original.type),
       data: {
@@ -914,9 +1005,7 @@ export default function StorefrontBuilderWorkspace({
       return;
     }
     const block = createBlockForTemplate(type);
-    const next = [...normalized];
-    const footerIndex = next.findIndex((item) => item.type === 'footer');
-    next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
+    const next = insertBlockAtTemplateRank(normalized, block, templateKey);
     commit(next);
     setSelectedId(block.id);
     setSelectedElement({ blockId: block.id, kind: 'block' });
@@ -1015,11 +1104,15 @@ export default function StorefrontBuilderWorkspace({
       }
       const block = createBlockForTemplate(type);
       const index = normalized.findIndex((item) => item.id === over.id);
-      const next = [...normalized];
-      if (index >= 0) next.splice(index, 0, block);
-      else {
-        const footerIndex = next.findIndex((item) => item.type === 'footer');
-        next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
+      const next = templateKey === 'lawyer-classic'
+        ? insertBlockAtTemplateRank(normalized, block, templateKey)
+        : [...normalized];
+      if (templateKey !== 'lawyer-classic') {
+        if (index >= 0) next.splice(index, 0, block);
+        else {
+          const footerIndex = next.findIndex((item) => item.type === 'footer');
+          next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
+        }
       }
       commit(next);
       setSelectedId(block.id);
@@ -1059,6 +1152,8 @@ export default function StorefrontBuilderWorkspace({
     },
     storefront_profile_zoom: Number(brandKit.profile_zoom ?? 1),
     storefront_essentials: brandKit.essentials || {},
+    storefront_brand_kit: brandKit,
+    brand_kit: brandKit,
     storefront_theme: {
       primary: brandKit.primary_color,
       accent: brandKit.accent_color,
@@ -1069,27 +1164,11 @@ export default function StorefrontBuilderWorkspace({
   }), [
     profile,
     templateKey,
+    brandKit,
     embedToken,
     accessToken,
     media?.cover,
     media?.profile,
-    brandKit.business_name,
-    brandKit.logo_url,
-    brandKit.logo_size,
-    brandKit.cover_url,
-    brandKit.profile_photo_url,
-    brandKit.cover_position_x,
-    brandKit.cover_position_y,
-    brandKit.cover_zoom,
-    brandKit.profile_position_x,
-    brandKit.profile_position_y,
-    brandKit.profile_zoom,
-    brandKit.essentials,
-    brandKit.primary_color,
-    brandKit.accent_color,
-    brandKit.page_background,
-    brandKit.font,
-    brandKit.button_shape,
     selectedElement,
   ]);
 
@@ -1160,7 +1239,7 @@ export default function StorefrontBuilderWorkspace({
                         selected={block.id === selected?.id}
                         onSelect={() => selectBlock(block.id)}
                         onToggle={() => updateBlock(block.id, { enabled: !block.data.enabled })}
-                        onDelete={() => removeBlock(block.id)}
+                        onDelete={isProtectedBlockType(block.type) ? null : () => removeBlock(block.id)}
                       />
                     ))}
                   </div>

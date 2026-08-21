@@ -11,7 +11,7 @@ export function block(type, content = {}, extras = {}) {
       layout: {
         alignment: extras.align || 'left',
         padding: extras.padding || 'medium',
-        width: 'full',
+        width: extras.width || 'full',
         variant: extras.variant || '',
         mediaPosition: extras.mediaPosition || '',
         columns: String(extras.columns || ''),

@@ -3,11 +3,19 @@
 import { useEffect, useState } from 'react';
 import { Copy, Plus, Trash2 } from 'lucide-react';
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
-import { coerceCollectionItems, createContentItemId, labelForBlock, SECTION_SETTINGS } from './storefrontBuilderState';
+import {
+  coerceCollectionItems,
+  createContentItemId,
+  isProtectedBlockType,
+  isSingletonBlockType,
+  labelForBlock,
+  SECTION_SETTINGS,
+} from './storefrontBuilderState';
 import { CONTENT_COLLECTIONS } from './builderContentCollections';
 import { getGuidanceCollectionFallback, getGuidanceTextDefaults } from '@/components/public-profile/PublicGuidanceSection';
 import { getRoleDetailsCollectionFallback, getRoleDetailsDefaults } from '@/components/public-profile/PublicRoleDetailSection';
 import { listingCardThemeFromTemplate, materializeTemplate } from '../templates';
+import { LAWYER_CLASSIC_PROCESS_DEFAULTS, lawyerClassicIconDefault } from '../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import {
   getServiceIconEntry,
   resolveServiceIconKey,
@@ -41,13 +49,42 @@ export default function Inspector({
   templateKey,
 }) {
   const [tab, setTab] = useState('content');
-  const [collectionDraft, setCollectionDraft] = useState('');
+  const [collectionDraft, setCollectionDraft] = useState(null);
   const isElementSelection = Boolean(selection?.kind && selection.kind !== 'block');
   const selectedField = selection?.field || '';
   const selectedSource = selection?.source || '';
   const isItemSelection = selection?.kind === 'item';
   const isProfileSelection = selectedSource === 'profile' && !isItemSelection;
   const isHero = block?.type === STOREFRONT_BLOCK_TYPES.HERO;
+  const isLawyerClassic = templateKey === 'lawyer-classic';
+  const lawyerClassicItemCardTypes = [
+    STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+    STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
+    STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST,
+    STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS,
+  ];
+  const isLawyerClassicItemCards = isLawyerClassic && lawyerClassicItemCardTypes.includes(block?.type);
+  const lawyerClassicUsesCardIcons = isLawyerClassicItemCards
+    && block.type !== STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST;
+  const lawyerClassicLayoutTypes = [
+    ...lawyerClassicItemCardTypes,
+    STOREFRONT_BLOCK_TYPES.GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.FAQ,
+    STOREFRONT_BLOCK_TYPES.EXPERTISE,
+    STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+    STOREFRONT_BLOCK_TYPES.ABOUT,
+    STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+    STOREFRONT_BLOCK_TYPES.CTA,
+    STOREFRONT_BLOCK_TYPES.FOOTER,
+  ];
+  const isLawyerClassicLayout = isLawyerClassic && lawyerClassicLayoutTypes.includes(block?.type);
+  const lawyerClassicCardLimit = block?.type === STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST
+    ? 8
+    : block?.type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS
+      ? 3
+      : 6;
   const isThemeDrivenAgentHero = isHero
     && String(templateKey || '').startsWith('agent-')
     && templateKey !== 'agent-investor';
@@ -57,7 +94,7 @@ export default function Inspector({
     && isProfileSelection
     && ['brandKit.cover_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
   useEffect(() => {
-    setCollectionDraft('');
+    setCollectionDraft(null);
   }, [block?.id]);
   useEffect(() => {
     if (isElementSelection && tab === 'content' && !allowHeroContentTabForSelection) setTab('layout');
@@ -96,13 +133,22 @@ export default function Inspector({
     STOREFRONT_BLOCK_TYPES.SELLER_SOLD_RESULTS,
     STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY,
     STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
-    ...(isCommunityTemplate
-      ? [STOREFRONT_BLOCK_TYPES.GUIDANCE, STOREFRONT_BLOCK_TYPES.EXPERTISE]
+    ...(isCommunityTemplate || isLawyerClassic
+      ? [STOREFRONT_BLOCK_TYPES.GUIDANCE, STOREFRONT_BLOCK_TYPES.FAQ, STOREFRONT_BLOCK_TYPES.EXPERTISE]
       : [STOREFRONT_BLOCK_TYPES.EXPERTISE]),
+    STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
+    STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST,
+    STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS,
   ].includes(block.type) && !(
     isSellerExpertTemplate
     && block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS
-  );
+  ) && (!isLawyerClassic || isLawyerClassicItemCards || [
+    STOREFRONT_BLOCK_TYPES.GUIDANCE,
+    STOREFRONT_BLOCK_TYPES.FAQ,
+    STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+    STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+  ].includes(block.type));
   const collection = isHero
     || (isSellerExpertTemplate && block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS)
     ? null
@@ -126,8 +172,17 @@ export default function Inspector({
   const isSellerCaseStudy = block.type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY;
   const isSellerCredentials = block.type === STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS;
   const hasEditableCards = isServices || isSellerCaseStudy;
-  const isGuidance = block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE;
+  const isFaq = block.type === STOREFRONT_BLOCK_TYPES.FAQ;
+  const isGuidance = block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE || isFaq;
   const isRoleDetails = block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS;
+  const isCredentials = block.type === STOREFRONT_BLOCK_TYPES.CREDENTIALS;
+  const isFooter = block.type === STOREFRONT_BLOCK_TYPES.FOOTER;
+  const lawyerCredentialsVerified = profile?.credentials_verified === true
+    || profile?.professional_profile?.credentials_verified === true;
+  const isLawyerClassicStatement = isLawyerClassic && isRoleDetails;
+  const isLawyerClassicGuidance = isLawyerClassic && isGuidance;
+  const guidanceStepLimit = isLawyerClassicGuidance ? 6 : 8;
+  const guidanceFaqLimit = isLawyerClassicGuidance ? 6 : 8;
   const sellerCustomBlock = isSellerExpertTemplate && [
     STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
     STOREFRONT_BLOCK_TYPES.ABOUT,
@@ -202,11 +257,11 @@ export default function Inspector({
     'content.icon_color',
   ]);
   const isProcessCardContext = Boolean(
-    isGuidance && !isSellerExpertTemplate
+    isGuidance && !isSellerExpertTemplate && !isLawyerClassic
       && (selection?.collection === 'steps' || PROCESS_CARD_FIELDS.has(selectedField)),
   );
   const isFaqCardContext = Boolean(
-    isGuidance && !isSellerExpertTemplate
+    isGuidance && !isSellerExpertTemplate && !isLawyerClassic
       && (selection?.collection === 'faqs' || FAQ_CARD_FIELDS.has(selectedField)),
   );
   const clearGuidanceCardStyles = (scope) => {
@@ -456,19 +511,47 @@ export default function Inspector({
     }));
     onChange(block.id, { content: { items: normalized } });
   };
-  const guidanceSteps = Array.isArray(content.steps) && content.steps.length
-    ? coerceCollectionItems('steps', content.steps)
+  const lawyerClassicCards = isLawyerClassicItemCards
+    ? coerceCollectionItems('items', Array.isArray(content.items) ? content.items : []).slice(0, lawyerClassicCardLimit)
+    : [];
+  const commitLawyerClassicCards = (next) => {
+    onChange(block.id, {
+      content: {
+        items: next.slice(0, lawyerClassicCardLimit).map((item) => ({
+          id: item?.id || createContentItemId(),
+          title: item?.title || '',
+          description: item?.description || item?.text || '',
+          cta_label: item?.cta_label || '',
+          action: item?.action || 'inquiry',
+          icon: item?.icon || '',
+          background: item?.background || '',
+          text_color: item?.text_color || '',
+        })),
+      },
+    });
+  };
+  const guidanceStepsSource = Array.isArray(content.steps)
+    && (content.steps.length || isLawyerClassicGuidance)
+    ? content.steps.map((item) => (
+        item && typeof item === 'object'
+          ? { ...item, text: item.text ?? item.description ?? '' }
+          : item
+      ))
     : getGuidanceCollectionFallback(profile?.professional_type, 'steps');
+  const guidanceSteps = coerceCollectionItems('steps', guidanceStepsSource)
+    .slice(0, guidanceStepLimit);
   const guidanceFaqs = Array.isArray(content.faqs) && content.faqs.length
     ? coerceCollectionItems('faqs', content.faqs)
     : getGuidanceCollectionFallback(profile?.professional_type, 'faqs');
   const commitGuidanceSteps = (next) => {
     onChange(block.id, {
       content: {
-        steps: next.slice(0, 8).map((item) => ({
+        steps: next.slice(0, guidanceStepLimit).map((item) => ({
+          ...item,
           id: item?.id || createContentItemId(),
           title: item?.title || '',
-          text: item?.text || '',
+          icon: item?.icon || '',
+          text: item?.text ?? item?.description ?? '',
         })),
       },
     });
@@ -476,10 +559,31 @@ export default function Inspector({
   const commitGuidanceFaqs = (next) => {
     onChange(block.id, {
       content: {
-        faqs: next.slice(0, 8).map((item) => ({
+        faqs: next.slice(0, guidanceFaqLimit).map((item) => ({
           id: item?.id || createContentItemId(),
           q: item?.q || '',
           a: item?.a || '',
+        })),
+      },
+    });
+  };
+  const isLawyerClassicExpertise = isLawyerClassic && block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE;
+  const expertiseProcessLimit = 4;
+  const expertiseProcessSteps = isLawyerClassicExpertise
+    ? coerceCollectionItems(
+      'process_steps',
+      Object.prototype.hasOwnProperty.call(content, 'process_steps') && Array.isArray(content.process_steps)
+        ? content.process_steps
+        : LAWYER_CLASSIC_PROCESS_DEFAULTS,
+    ).slice(0, expertiseProcessLimit)
+    : [];
+  const commitExpertiseProcessSteps = (next) => {
+    onChange(block.id, {
+      content: {
+        process_steps: next.slice(0, expertiseProcessLimit).map((item) => ({
+          id: item?.id || createContentItemId(),
+          title: item?.title || '',
+          text: item?.text ?? item?.description ?? '',
         })),
       },
     });
@@ -568,8 +672,12 @@ export default function Inspector({
           <h2 className="mt-1 text-sm font-bold text-slate-900">{labelForBlock(block.type)}</h2>
         </div>
         <div className="flex gap-1">
-          <button type="button" onClick={() => onDuplicate(block.id)} className={iconButton} title="Duplicate"><Copy size={14} /></button>
-          <button type="button" onClick={() => onDelete(block.id)} className={`${iconButton} hover:border-red-200 hover:text-red-600`} title="Delete"><Trash2 size={14} /></button>
+          {!isSingletonBlockType(block.type, templateKey) ? (
+            <button type="button" onClick={() => onDuplicate(block.id)} className={iconButton} title="Duplicate"><Copy size={14} /></button>
+          ) : null}
+          {!isProtectedBlockType(block.type) ? (
+            <button type="button" onClick={() => onDelete(block.id)} className={`${iconButton} hover:border-red-200 hover:text-red-600`} title="Delete"><Trash2 size={14} /></button>
+          ) : null}
         </div>
       </div>
 
@@ -620,7 +728,59 @@ export default function Inspector({
             </div>
           ) : isItemSelection ? (
             <div className="mt-2 space-y-2">
-              {isGuidance && selection?.collection === 'steps' ? (
+              {isLawyerClassic && isFooter && selection?.collection === 'items' ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Footer link</p>
+                  <Field label="Label">
+                    <input
+                      value={selection.item?.label || ''}
+                      onChange={(event) => onItemChange?.({ label: event.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Target">
+                    <input
+                      value={selection.item?.target || selection.item?.url || ''}
+                      onChange={(event) => onItemChange?.({ target: event.target.value })}
+                      className={inputClass}
+                      placeholder="#about or https://example.com"
+                    />
+                  </Field>
+                </>
+              ) : isLawyerClassicExpertise && selection?.collection === 'process_steps' ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Process step</p>
+                  <Field label="Step title">
+                    <input
+                      value={selection.item?.title || ''}
+                      onChange={(event) => onItemChange?.({ title: event.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Step description">
+                    <textarea
+                      value={selection.item?.text || selection.item?.description || ''}
+                      onChange={(event) => onItemChange?.({ text: event.target.value })}
+                      className={`${inputClass} min-h-20 resize-y`}
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    disabled={expertiseProcessSteps.length >= expertiseProcessLimit}
+                    onClick={() => commitExpertiseProcessSteps([...expertiseProcessSteps, {
+                      id: createContentItemId(),
+                      title: 'New step',
+                      text: 'Describe this intake step for visitors.',
+                    }])}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    <Plus size={13} />
+                    {expertiseProcessSteps.length >= expertiseProcessLimit
+                      ? `Max ${expertiseProcessLimit} steps reached`
+                      : 'Add step'}
+                  </button>
+                </>
+              ) : isGuidance && selection?.collection === 'steps' ? (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Process card · Step</p>
                   <Field label="Step title">
@@ -632,23 +792,39 @@ export default function Inspector({
                   </Field>
                   <Field label="Step description">
                     <textarea
-                      value={selection.item?.text || ''}
+                      value={selection.item?.text || selection.item?.description || ''}
                       onChange={(event) => onItemChange?.({ text: event.target.value })}
                       className={`${inputClass} min-h-20 resize-y`}
                     />
                   </Field>
+                  {isLawyerClassicGuidance ? (
+                    <Field label="Card icon">
+                      <ServiceIconDropdown
+                        value={resolveServiceIconKey(
+                          selection.item?.icon || lawyerClassicIconDefault(block.type, Number(selection.itemIndex) || 0),
+                          Number(selection.itemIndex) || 0,
+                        )}
+                        onChange={(icon) => onItemChange?.({ icon })}
+                      />
+                    </Field>
+                  ) : null}
                   {isCommunityTemplate ? null : processCardControls}
                   <button
                     type="button"
-                    disabled={guidanceSteps.length >= 8}
+                    disabled={guidanceSteps.length >= guidanceStepLimit}
                     onClick={() => onItemAdd?.({
                       title: 'New step',
                       text: 'Describe this step for your clients.',
+                      icon: isLawyerClassicGuidance
+                        ? lawyerClassicIconDefault(block.type, guidanceSteps.length)
+                        : '',
                     })}
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <Plus size={13} />
-                    {guidanceSteps.length >= 8 ? 'Max 8 steps reached' : 'Add step'}
+                    {guidanceSteps.length >= guidanceStepLimit
+                      ? `Max ${guidanceStepLimit} steps reached`
+                      : 'Add step'}
                   </button>
                 </>
               ) : isGuidance && selection?.collection === 'faqs' ? (
@@ -671,7 +847,7 @@ export default function Inspector({
                   {isCommunityTemplate ? null : faqCardControls}
                   <button
                     type="button"
-                    disabled={guidanceFaqs.length >= 8}
+                    disabled={guidanceFaqs.length >= guidanceFaqLimit}
                     onClick={() => onItemAdd?.({
                       q: 'New question',
                       a: 'Add a clear answer clients can skim quickly.',
@@ -679,7 +855,90 @@ export default function Inspector({
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <Plus size={13} />
-                    {guidanceFaqs.length >= 8 ? 'Max 8 FAQs reached' : 'Add FAQ'}
+                    {guidanceFaqs.length >= guidanceFaqLimit ? `Max ${guidanceFaqLimit} FAQs reached` : 'Add FAQ'}
+                  </button>
+                </>
+              ) : isLawyerClassicItemCards && selection?.collection === 'items' ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    {labelForBlock(block.type)} card
+                  </p>
+                  <Field label="Title">
+                    <input
+                      value={selection.item?.title || ''}
+                      onChange={(event) => onItemChange?.({ title: event.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Description">
+                    <textarea
+                      value={selection.item?.description || selection.item?.text || ''}
+                      onChange={(event) => onItemChange?.({ description: event.target.value })}
+                      className={`${inputClass} min-h-24 resize-y`}
+                    />
+                  </Field>
+                  {lawyerClassicUsesCardIcons ? (
+                    <Field label="Card icon">
+                      <ServiceIconDropdown
+                        value={resolveServiceIconKey(
+                          selection.item?.icon || lawyerClassicIconDefault(block.type, Number(selection.itemIndex) || 0),
+                          Number(selection.itemIndex) || 0,
+                        )}
+                        onChange={(icon) => onItemChange?.({ icon })}
+                      />
+                    </Field>
+                  ) : null}
+                  {block.type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS ? (
+                    <>
+                      <Field label="Button label">
+                        <input
+                          value={selection.item?.cta_label || ''}
+                          onChange={(event) => onItemChange?.({ cta_label: event.target.value })}
+                          className={inputClass}
+                          placeholder="Submit inquiry"
+                        />
+                      </Field>
+                      <Field label="Button action">
+                        <BuilderSelect
+                          value={selection.item?.action === 'appointment' ? 'appointment' : 'inquiry'}
+                          options={[
+                            { value: 'inquiry', label: 'Open inquiry' },
+                            { value: 'appointment', label: 'Book consultation' },
+                          ]}
+                          onChange={(action) => onItemChange?.({ action })}
+                          ariaLabel="Button action"
+                        />
+                      </Field>
+                    </>
+                  ) : null}
+                  <ColorField
+                    label="Card background"
+                    value={selection.item?.background || ''}
+                    onChange={(background) => onItemChange?.({ background })}
+                  />
+                  <ColorField
+                    label="Card text"
+                    value={selection.item?.text_color || ''}
+                    onChange={(text_color) => onItemChange?.({ text_color })}
+                  />
+                  <button
+                    type="button"
+                    disabled={lawyerClassicCards.length >= lawyerClassicCardLimit}
+                    onClick={() => onItemAdd?.({
+                      title: 'New item',
+                      description: 'Add a clear description visitors can scan quickly.',
+                      icon: lawyerClassicUsesCardIcons
+                        ? lawyerClassicIconDefault(block.type, lawyerClassicCards.length)
+                        : '',
+                      cta_label: block.type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS ? 'Get started' : '',
+                      action: 'inquiry',
+                    })}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    <Plus size={13} />
+                    {lawyerClassicCards.length >= lawyerClassicCardLimit
+                      ? `Max ${lawyerClassicCardLimit} cards reached`
+                      : 'Add card'}
                   </button>
                 </>
               ) : hasEditableCards ? (
@@ -782,10 +1041,15 @@ export default function Inspector({
                       className={`${inputClass} min-h-24 resize-y`}
                     />
                   </Field>
-                  {isCommunityTemplate ? (
+                  {isCommunityTemplate || isLawyerClassicStatement ? (
                     <Field label="Card icon">
                       <ServiceIconDropdown
-                        value={selection.item?.icon || 'target'}
+                        value={resolveServiceIconKey(
+                          selection.item?.icon || (isLawyerClassicStatement
+                            ? lawyerClassicIconDefault(block.type, Number(selection.itemIndex) || 0)
+                            : 'target'),
+                          Number(selection.itemIndex) || 0,
+                        )}
                         onChange={(icon) => onItemChange?.({ icon })}
                       />
                     </Field>
@@ -815,7 +1079,11 @@ export default function Inspector({
                     onClick={() => onItemAdd?.({
                       title: 'New highlight',
                       text: 'Describe this highlight for visitors.',
-                      icon: isCommunityTemplate ? 'target' : '',
+                      icon: isCommunityTemplate
+                        ? 'target'
+                        : isLawyerClassicStatement
+                          ? lawyerClassicIconDefault(block.type, roleHighlights.length)
+                          : '',
                       background: '',
                       text_color: '',
                     })}
@@ -884,7 +1152,9 @@ export default function Inspector({
               >
                 {hasEditableCards
                   ? (isSellerCaseStudy ? 'Delete this story card' : 'Delete this service card')
-                  : isRoleDetails && selection?.collection === 'highlights'
+                  : isLawyerClassicItemCards && selection?.collection === 'items'
+                    ? `Delete this ${labelForBlock(block.type).toLowerCase()} card`
+                    : isRoleDetails && selection?.collection === 'highlights'
                     ? 'Delete this highlight'
                     : isRoleDetails && selection?.collection === 'proof'
                       ? 'Delete this proof chip'
@@ -901,7 +1171,7 @@ export default function Inspector({
               {selectedField === 'content.panel_background'
                 || selectedField === 'content.panel_text_color'
                 || selectedField === 'content.proof_panel'
-                ? rolePanelControls
+                ? (isLawyerClassic ? null : rolePanelControls)
                 : null}
               {selectedField === 'content.process_card_background'
                 || selectedField === 'content.faq_card_background'
@@ -987,7 +1257,9 @@ export default function Inspector({
                       label={isSellerExpertTemplate ? 'Professional photo' : 'Page profile'}
                       hint={isSellerExpertTemplate
                         ? 'Used by Seller About, footer, and profile surfaces'
-                        : 'Displayed inside the hero card'}
+                        : isLawyerClassic
+                          ? 'Used by profile sections and as a hero fallback when no cover is set'
+                          : 'Displayed inside the hero card'}
                       image={media?.profile || brandKit?.profile_photo_url}
                       onUpload={(file) => onMediaUpload?.('profile', file)}
                       circle
@@ -1037,7 +1309,9 @@ export default function Inspector({
               || isListings
               || hasEditableCards
               || isRoleDetails
+              || (isLawyerClassic && isCredentials)
               || isSellerCredentials
+              || isLawyerClassicItemCards
               || block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE) && !isElementSelection ? (
               <Field label="Eyebrow">
                 <input
@@ -1072,14 +1346,35 @@ export default function Inspector({
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.ABOUT && !isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
               <>
-                <Field label={templateKey === 'agent-luxury-advisor' ? 'Advisor credential' : 'Practice badge'}>
-                  <input
-                    value={contentValue('about_badge')}
-                    onChange={(event) => onChange(block.id, { content: { about_badge: event.target.value } })}
-                    className={inputClass}
-                    placeholder={templateKey === 'agent-luxury-advisor' ? 'Real Estate Market Advisor' : 'A relationship-first real estate practice'}
-                  />
-                </Field>
+                {templateKey === 'lawyer-classic' ? (
+                  <>
+                    <Field label="Image name">
+                      <input
+                        value={contentValue('image_name')}
+                        onChange={(event) => onChange(block.id, { content: { image_name: event.target.value } })}
+                        className={inputClass}
+                        placeholder={profile?.professional_name || 'Your lawyer'}
+                      />
+                    </Field>
+                    <Field label="Image role">
+                      <input
+                        value={contentValue('image_role')}
+                        onChange={(event) => onChange(block.id, { content: { image_role: event.target.value } })}
+                        className={inputClass}
+                        placeholder="Real Estate Lawyer"
+                      />
+                    </Field>
+                  </>
+                ) : (
+                  <Field label={templateKey === 'agent-luxury-advisor' ? 'Advisor credential' : 'Practice badge'}>
+                    <input
+                      value={contentValue('about_badge')}
+                      onChange={(event) => onChange(block.id, { content: { about_badge: event.target.value } })}
+                      className={inputClass}
+                      placeholder={templateKey === 'agent-luxury-advisor' ? 'Real Estate Market Advisor' : 'A relationship-first real estate practice'}
+                    />
+                  </Field>
+                )}
                 {templateKey === 'agent-luxury-advisor' ? (
                   <>
                     <Field label="Editorial label">
@@ -1136,6 +1431,16 @@ export default function Inspector({
                 ) : null}
               </>
             ) : null}
+            {isLawyerClassicStatement && !isElementSelection ? (
+              <Field label="Statement button">
+                <input
+                  value={contentValue('cta_label')}
+                  onChange={(event) => onChange(block.id, { content: { cta_label: event.target.value } })}
+                  className={inputClass}
+                  placeholder="Discuss your matter"
+                />
+              </Field>
+            ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.HERO && !isElementSelection ? (
               <>
                 <Field label="Hero eyebrow">
@@ -1146,7 +1451,27 @@ export default function Inspector({
                     placeholder="Full-service real estate"
                   />
                 </Field>
-                {!isThemeDrivenAgentHero ? (
+                {isLawyerClassic ? (
+                  <>
+                    <Field label="Hero heading">
+                      <input
+                        value={contentValue('heading')}
+                        onChange={(event) => onChange(block.id, { content: { heading: event.target.value } })}
+                        className={inputClass}
+                        placeholder={placeholders.heading}
+                      />
+                    </Field>
+                    <Field label="Hero description">
+                      <textarea
+                        value={contentValue('body')}
+                        onChange={(event) => onChange(block.id, { content: { body: event.target.value } })}
+                        className={`${inputClass} min-h-28 resize-y`}
+                        placeholder={profile?.headline || 'Clear legal guidance for your matter.'}
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                {!isThemeDrivenAgentHero && !isLawyerClassic ? (
                   <>
                     <Field label="Hero card name">
                       <input
@@ -1166,14 +1491,16 @@ export default function Inspector({
                     </Field>
                   </>
                 ) : null}
-                <Field label="Company badge text">
-                  <input
-                    value={contentValue('hero_company_badge')}
-                    onChange={(event) => onChange(block.id, { content: { hero_company_badge: event.target.value } })}
-                    className={inputClass}
-                    placeholder={profile?.professional_profile?.company_name || 'Company name'}
-                  />
-                </Field>
+                {!isLawyerClassic ? (
+                  <Field label="Company badge text">
+                    <input
+                      value={contentValue('hero_company_badge')}
+                      onChange={(event) => onChange(block.id, { content: { hero_company_badge: event.target.value } })}
+                      className={inputClass}
+                      placeholder={profile?.professional_profile?.company_name || 'Company name'}
+                    />
+                  </Field>
+                ) : null}
                 <Field label="Primary button label">
                   <input
                     value={contentValue('primary_cta_label')}
@@ -1317,15 +1644,16 @@ export default function Inspector({
                 Listing cards pull from your connected property inventory. Edit heading and supporting copy here; style the cards in the Style tab.
               </p>
             ) : null}
-            {collection && !hasEditableCards ? (
+            {collection && !hasEditableCards && !isLawyerClassicItemCards && !(isLawyerClassic && isCredentials) ? (
               <Field label={collection.label}>
                 <textarea
-                  value={collectionDraft || collection.format(content.items)}
+                  value={collectionDraft ?? collection.format(content.items)}
                   onChange={(event) => setCollectionDraft(event.target.value)}
                   onBlur={() => {
-                    const parsed = collection.parse(collectionDraft || collection.format(content.items));
+                    const raw = collectionDraft ?? collection.format(content.items);
+                    const parsed = collection.parse(raw, content.items);
                     onChange(block.id, { content: { items: parsed } });
-                    setCollectionDraft('');
+                    setCollectionDraft(null);
                   }}
                   className={`${inputClass} min-h-32 resize-y font-mono text-xs`}
                   placeholder={collection.hint}
@@ -1333,36 +1661,144 @@ export default function Inspector({
                 <p className="mt-1.5 text-[10px] text-slate-400">{collection.hint}</p>
               </Field>
             ) : null}
-            {block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE && !isElementSelection ? (
+            {isLawyerClassic && isCredentials && !isElementSelection ? (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
-                Service, expertise, and area items come from your professional profile and can’t be edited here.
+                The standing metrics come from the legal profile. Edit heading and copy here; change the section colors in Style.
               </p>
+            ) : null}
+            {isLawyerClassic && isCredentials && !lawyerCredentialsVerified && !isElementSelection ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">
+                Credential claims remain visible in this preview but stay private on the published page until the legal profile is verified. Profile details such as languages and practice affiliation can still appear.
+              </p>
+            ) : null}
+            {block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE && !isElementSelection ? (
+              <>
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
+                  {isLawyerClassic
+                    ? 'Practice focus, markets, and professional experience come from your profile. Matching-style tags are omitted so the snapshot stays client-facing.'
+                    : 'Service, expertise, and area items come from your professional profile and can’t be edited here.'}
+                </p>
+                {isLawyerClassic ? (
+                  <>
+                    <Field label="Process label">
+                      <input
+                        value={contentValue('process_label')}
+                        onChange={(event) => onChange(block.id, { content: { process_label: event.target.value } })}
+                        className={inputClass}
+                        placeholder="How representation starts"
+                      />
+                    </Field>
+                    <Field label="Process heading">
+                      <input
+                        value={contentValue('process_heading')}
+                        onChange={(event) => onChange(block.id, { content: { process_heading: event.target.value } })}
+                        className={inputClass}
+                        placeholder="A clear path before any file is opened"
+                      />
+                    </Field>
+                    <Field label="Process description">
+                      <textarea
+                        value={contentValue('process_body')}
+                        onChange={(event) => onChange(block.id, { content: { process_body: event.target.value } })}
+                        className={`${inputClass} min-h-20 resize-y`}
+                        placeholder="This is an inquiry process, not legal advice or a promise of representation."
+                      />
+                    </Field>
+                    <Field label={`Process steps (${expertiseProcessSteps.length}/${expertiseProcessLimit})`}>
+                      <div className="space-y-1.5">
+                        {expertiseProcessSteps.map((item, index) => (
+                          <div
+                            key={item?.id || `${block.id}-process-${index}`}
+                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                          >
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                              {item?.title || 'Untitled step'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => commitExpertiseProcessSteps(expertiseProcessSteps.filter((_, itemIndex) => itemIndex !== index))}
+                              className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Delete process step ${index + 1}`}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={expertiseProcessSteps.length >= expertiseProcessLimit}
+                          onClick={() => commitExpertiseProcessSteps([...expertiseProcessSteps, {
+                            id: createContentItemId(),
+                            title: 'New step',
+                            text: 'Describe this intake step for visitors.',
+                          }])}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          <Plus size={13} />
+                          {expertiseProcessSteps.length >= expertiseProcessLimit
+                            ? `Max ${expertiseProcessLimit} steps reached`
+                            : 'Add step'}
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+                        Click any step in the preview to edit its title and description.
+                      </p>
+                    </Field>
+                  </>
+                ) : null}
+              </>
             ) : null}
             {block.type === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS ? (
               <>
                 <Field label={`Highlight cards (${roleHighlights.length}/6)`}>
-                  <div className="space-y-1.5">
-                    {roleHighlights.map((item, index) => (
-                      <div
-                        key={item?.id || `${block.id}-highlight-${index}`}
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
-                      >
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
-                          {item?.title || 'Untitled highlight'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => commitRoleHighlights(roleHighlights.filter((_, itemIndex) => itemIndex !== index))}
-                          className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                          aria-label={`Delete highlight ${index + 1}`}
+                  <div className="space-y-2">
+                    {roleHighlights.map((item, index) => {
+                      const showIconPicker = isCommunityTemplate || isLawyerClassicStatement;
+                      const iconKey = resolveServiceIconKey(
+                        item?.icon || (isLawyerClassicStatement
+                          ? lawyerClassicIconDefault(block.type, index)
+                          : 'target'),
+                        index,
+                      );
+                      return (
+                        <div
+                          key={item?.id || `${block.id}-highlight-${index}`}
+                          className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2"
                         >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                              {item?.title || 'Untitled highlight'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => commitRoleHighlights(roleHighlights.filter((_, itemIndex) => itemIndex !== index))}
+                              className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Delete highlight ${index + 1}`}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          {showIconPicker ? (
+                            <ServiceIconDropdown
+                              value={iconKey}
+                              onChange={(icon) => {
+                                commitRoleHighlights(roleHighlights.map((card, cardIndex) => (
+                                  cardIndex === index
+                                    ? { ...card, id: card?.id || createContentItemId(), icon }
+                                    : card
+                                )));
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    })}
                     <button
                       type="button"
                       disabled={roleHighlights.length >= 6}
@@ -1370,7 +1806,11 @@ export default function Inspector({
                         id: createContentItemId(),
                         title: 'New highlight',
                         text: 'Describe this highlight for visitors.',
-                        icon: isCommunityTemplate ? 'target' : '',
+                        icon: isCommunityTemplate
+                          ? 'target'
+                          : isLawyerClassicStatement
+                            ? lawyerClassicIconDefault(block.type, roleHighlights.length)
+                            : '',
                         background: '',
                         text_color: '',
                       }])}
@@ -1381,10 +1821,12 @@ export default function Inspector({
                     </button>
                   </div>
                   <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
-                    Click any highlight card in the preview to edit title, description, and card colors.
+                    {isCommunityTemplate || isLawyerClassicStatement
+                      ? 'Choose an icon here, or click a card in the preview to edit title, description, and colors.'
+                      : 'Click any highlight card in the preview to edit title, description, and card colors.'}
                   </p>
                 </Field>
-                {!isCommunityTemplate ? (
+                {!isCommunityTemplate && !isLawyerClassicStatement ? (
                 <Field label={`Proof chips (${roleProof.length}/8)`}>
                   <div className="space-y-1.5">
                     {roleProof.map((item, index) => (
@@ -1430,7 +1872,93 @@ export default function Inspector({
                 ) : null}
               </>
             ) : null}
-            {block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE ? (
+            {isLawyerClassicItemCards && !isElementSelection ? (
+              <>
+                {block.type === STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST ? (
+                  <Field label="Helper note">
+                    <textarea
+                      value={contentValue('helper_text')}
+                      onChange={(event) => onChange(block.id, { content: { helper_text: event.target.value } })}
+                      className={`${inputClass} min-h-20 resize-y`}
+                      placeholder="Send copies, not originals, until representation is confirmed."
+                    />
+                  </Field>
+                ) : null}
+                <Field label={`${labelForBlock(block.type)} cards (${lawyerClassicCards.length}/${lawyerClassicCardLimit})`}>
+                  <div className={lawyerClassicUsesCardIcons ? 'space-y-2' : 'space-y-1.5'}>
+                    {lawyerClassicCards.map((item, index) => {
+                      const iconKey = resolveServiceIconKey(
+                        item?.icon || lawyerClassicIconDefault(block.type, index),
+                        index,
+                      );
+                      return (
+                        <div
+                          key={item?.id || `${block.id}-layer-${index}`}
+                          className={lawyerClassicUsesCardIcons
+                            ? 'space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2'
+                            : 'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5'}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                              {item?.title || 'Untitled card'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => commitLawyerClassicCards(lawyerClassicCards.filter((_, itemIndex) => itemIndex !== index))}
+                              className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Delete card ${index + 1}`}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          {lawyerClassicUsesCardIcons ? (
+                            <ServiceIconDropdown
+                              value={iconKey}
+                              onChange={(icon) => {
+                                commitLawyerClassicCards(lawyerClassicCards.map((card, cardIndex) => (
+                                  cardIndex === index
+                                    ? { ...card, id: card?.id || createContentItemId(), icon }
+                                    : card
+                                )));
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      disabled={lawyerClassicCards.length >= lawyerClassicCardLimit}
+                      onClick={() => commitLawyerClassicCards([...lawyerClassicCards, {
+                        id: createContentItemId(),
+                        title: 'New item',
+                        description: 'Add a clear description visitors can scan quickly.',
+                        icon: lawyerClassicUsesCardIcons
+                          ? lawyerClassicIconDefault(block.type, lawyerClassicCards.length)
+                          : '',
+                        cta_label: block.type === STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS ? 'Get started' : '',
+                        action: 'inquiry',
+                      }])}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <Plus size={13} />
+                      {lawyerClassicCards.length >= lawyerClassicCardLimit
+                        ? `Max ${lawyerClassicCardLimit} cards reached`
+                        : 'Add card'}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+                    {lawyerClassicUsesCardIcons
+                      ? 'Choose an icon here, or click a card in the preview to edit title, description, and colors.'
+                      : 'Click any card in the preview to edit title, description, and colors.'}
+                  </p>
+                </Field>
+              </>
+            ) : null}
+            {isGuidance ? (
               <>
                 {!isElementSelection && isCommunityTemplate ? (
                   <Field label="FAQ section label">
@@ -1442,7 +1970,7 @@ export default function Inspector({
                     />
                   </Field>
                 ) : null}
-                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
+                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLawyerClassic ? (
                   <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Process card</p>
                     <Field label="Process label">
@@ -1479,7 +2007,7 @@ export default function Inspector({
                     </Field>
                   </div>
                 ) : null}
-                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate ? (
+                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLawyerClassic ? (
                   <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">FAQ card</p>
                     <Field label="FAQ label">
@@ -1516,48 +2044,81 @@ export default function Inspector({
                     </Field>
                   </div>
                 ) : null}
-                <Field label={`Guide steps (${guidanceSteps.length}/8)`}>
-                  <div className="space-y-1.5">
-                    {guidanceSteps.map((item, index) => (
-                      <div
-                        key={item?.id || `${block.id}-step-${index}`}
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                {!isFaq ? (
+                  <Field label={`Guide steps (${guidanceSteps.length}/${guidanceStepLimit})`}>
+                    <div className={isLawyerClassicGuidance ? 'space-y-2' : 'space-y-1.5'}>
+                      {guidanceSteps.map((item, index) => {
+                        const iconKey = resolveServiceIconKey(
+                          item?.icon || lawyerClassicIconDefault(block.type, index),
+                          index,
+                        );
+                        return (
+                          <div
+                            key={item?.id || `${block.id}-step-${index}`}
+                            className={isLawyerClassicGuidance
+                              ? 'space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2'
+                              : 'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5'}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+                                {String(index + 1).padStart(2, '0')}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                                {item?.title || 'Untitled step'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => commitGuidanceSteps(guidanceSteps.filter((_, itemIndex) => itemIndex !== index))}
+                                className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                aria-label={`Delete step ${index + 1}`}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                            {isLawyerClassicGuidance ? (
+                              <ServiceIconDropdown
+                                value={iconKey}
+                                onChange={(icon) => {
+                                  commitGuidanceSteps(guidanceSteps.map((step, stepIndex) => (
+                                    stepIndex === index
+                                      ? { ...step, id: step?.id || createContentItemId(), icon }
+                                      : step
+                                  )));
+                                }}
+                              />
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        disabled={guidanceSteps.length >= guidanceStepLimit}
+                        onClick={() => commitGuidanceSteps([...guidanceSteps, {
+                          id: createContentItemId(),
+                          title: 'New step',
+                          text: 'Describe this step for your clients.',
+                          icon: isLawyerClassicGuidance
+                            ? lawyerClassicIconDefault(block.type, guidanceSteps.length)
+                            : '',
+                        }])}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                       >
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
-                          {item?.title || 'Untitled step'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => commitGuidanceSteps(guidanceSteps.filter((_, itemIndex) => itemIndex !== index))}
-                          className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                          aria-label={`Delete step ${index + 1}`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={guidanceSteps.length >= 8}
-                      onClick={() => commitGuidanceSteps([...guidanceSteps, {
-                        id: createContentItemId(),
-                        title: 'New step',
-                        text: 'Describe this step for your clients.',
-                      }])}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                    >
-                      <Plus size={13} />
-                      {guidanceSteps.length >= 8 ? 'Max 8 steps reached' : 'Add step'}
-                    </button>
-                  </div>
-                  <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
-                    Click any step in the preview to edit its title and description.
-                  </p>
-                </Field>
-                <Field label={`FAQs (${guidanceFaqs.length}/8)`}>
+                        <Plus size={13} />
+                        {guidanceSteps.length >= guidanceStepLimit
+                          ? `Max ${guidanceStepLimit} steps reached`
+                          : 'Add step'}
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+                      {isLawyerClassicGuidance
+                        ? 'Choose an icon here, or click any step in the preview to edit its title and description.'
+                        : 'Click any step in the preview to edit its title and description.'}
+                    </p>
+                  </Field>
+                ) : null}
+                {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate
+                  && (!isLawyerClassic || isFaq) ? (
+                <Field label={`FAQs (${guidanceFaqs.length}/${guidanceFaqLimit})`}>
                   <div className="space-y-1.5">
                     {guidanceFaqs.map((item, index) => (
                       <div
@@ -1582,7 +2143,7 @@ export default function Inspector({
                     ))}
                     <button
                       type="button"
-                      disabled={guidanceFaqs.length >= 8}
+                      disabled={guidanceFaqs.length >= guidanceFaqLimit}
                       onClick={() => commitGuidanceFaqs([...guidanceFaqs, {
                         id: createContentItemId(),
                         q: 'New question',
@@ -1591,13 +2152,14 @@ export default function Inspector({
                       className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       <Plus size={13} />
-                      {guidanceFaqs.length >= 8 ? 'Max 8 FAQs reached' : 'Add FAQ'}
+                      {guidanceFaqs.length >= guidanceFaqLimit ? `Max ${guidanceFaqLimit} FAQs reached` : 'Add FAQ'}
                     </button>
                   </div>
                   <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
                     Click any question in the preview to edit the question and answer.
                   </p>
                 </Field>
+                ) : null}
               </>
             ) : null}
           </>
@@ -1607,22 +2169,22 @@ export default function Inspector({
           <>
             {!isHero ? (
               <>
-                {!sellerCustomBlock ? (
+                {!sellerCustomBlock && !isLawyerClassic ? (
                   <Field label="Section variant">
                     <BuilderSelect value={layout.variant || 'standard'} options={SECTION_SETTINGS.variants} onChange={(variant) => onChange(block.id, { layout: { variant } })} ariaLabel="Section variant" />
                   </Field>
                 ) : null}
-                {sellerSupportsAlignment ? (
+                {sellerSupportsAlignment && (!isLawyerClassic || isLawyerClassicLayout) ? (
                   <Field label="Alignment">
                     <BuilderSelect value={layout.alignment} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} onChange={(alignment) => onChange(block.id, { layout: { alignment } })} ariaLabel="Alignment" />
                   </Field>
                 ) : null}
-                {sellerSupportsPadding ? (
+                {sellerSupportsPadding && (!isLawyerClassic || isLawyerClassicLayout) ? (
                   <Field label="Section padding">
                     <BuilderSelect value={layout.padding} options={[{ value: 'small', label: 'Compact' }, { value: 'medium', label: 'Comfortable' }, { value: 'large', label: 'Spacious' }]} onChange={(padding) => onChange(block.id, { layout: { padding } })} ariaLabel="Section padding" />
                   </Field>
                 ) : null}
-                {sellerSupportsWidth ? (
+                {sellerSupportsWidth && !isLawyerClassic ? (
                   <Field label="Container width">
                     <BuilderSelect value={layout.width || 'full'} options={SECTION_SETTINGS.widths} onChange={(width) => onChange(block.id, { layout: { width } })} ariaLabel="Container width" />
                   </Field>
@@ -1645,7 +2207,7 @@ export default function Inspector({
                     />
                   </Field>
                 ) : null}
-                {sellerSupportsCardStyle && !isListings ? (
+                {sellerSupportsCardStyle && !isListings && !isLawyerClassic ? (
                   <Field label="Card style">
                     <BuilderSelect value={layout.cardStyle || 'bordered'} options={SECTION_SETTINGS.cardStyles} onChange={(cardStyle) => onChange(block.id, { layout: { cardStyle } })} ariaLabel="Card style" />
                   </Field>
@@ -1745,7 +2307,7 @@ export default function Inspector({
                     Currently using the template hero background.
                   </p>
                 )}
-                {!isThemeDrivenAgentHero ? (
+                {!isThemeDrivenAgentHero && !isLawyerClassic ? (
                   <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Legacy strip</p>
                     <p className="text-[10px] leading-4 text-slate-500">
@@ -1769,7 +2331,7 @@ export default function Inspector({
                 ) : null}
                 <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Hero text + buttons</p>
-                  {!isThemeDrivenAgentHero ? (
+                  {!isThemeDrivenAgentHero && !isLawyerClassic ? (
                     <ColorField
                       label="Hero surface"
                       value={content.hero_card_background || ''}
@@ -1801,7 +2363,7 @@ export default function Inspector({
                     value={content.secondary_button_text_color || ''}
                     onChange={(secondary_button_text_color) => onChange(block.id, { content: { secondary_button_text_color } })}
                   />
-                  {((!isThemeDrivenAgentHero && content.hero_card_background)
+                  {((!isThemeDrivenAgentHero && !isLawyerClassic && content.hero_card_background)
                     || content.hero_card_text_color
                     || content.primary_button_background
                     || content.primary_button_text_color
@@ -1850,7 +2412,7 @@ export default function Inspector({
                   })}
                   showReset={(style.textColor || '') !== templateSectionTextColor}
                 />
-                {isGuidance && !isSellerExpertTemplate && !isCommunityTemplate ? (
+                {isGuidance && !isSellerExpertTemplate && !isCommunityTemplate && !isLawyerClassic ? (
                   <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
                     Click the Process or FAQ card for optional card-level colors. Steps and FAQs inherit those styles—no per-item colors.
                   </p>
@@ -1863,7 +2425,7 @@ export default function Inspector({
                     </p>
                   </div>
                 ) : null}
-                {isRoleDetails ? (
+                {isRoleDetails && !isLawyerClassic ? (
                   <div className="space-y-3">
                     {rolePanelControls}
                     <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
@@ -1941,7 +2503,7 @@ export default function Inspector({
                     ) : null}
                   </div>
                 ) : null}
-                {sellerSupportsRadiusShadow ? (
+                {sellerSupportsRadiusShadow && !isLawyerClassic ? (
                   <>
                     <Field label="Corner radius">
                       <BuilderSelect value={style.radius || 'default'} options={[{ value: 'none', label: 'Sharp' }, { value: 'default', label: 'Soft' }, { value: 'large', label: 'Rounded' }]} onChange={(radius) => onChange(block.id, { style: { radius } })} ariaLabel="Corner radius" />

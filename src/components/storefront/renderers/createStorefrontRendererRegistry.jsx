@@ -88,6 +88,23 @@ import {
   AgentCredentialsSection,
   AgentPerformanceSection,
 } from './variants/AgentProofSections';
+import {
+  LawyerClassicAbout,
+  LawyerClassicConsultationOptions,
+  LawyerClassicCredentials,
+  LawyerClassicCta,
+  LawyerClassicDocumentChecklist,
+  LawyerClassicExpertise,
+  LawyerClassicFaq,
+  LawyerClassicFeeGuidance,
+  LawyerClassicFooter,
+  LawyerClassicGuidance,
+  LawyerClassicHero,
+  LawyerClassicPracticeAreas,
+  LawyerClassicStatement,
+  LawyerClassicTestimonials,
+  LawyerClassicWhoWeHelp,
+} from './variants/LawyerClassicSections';
 
 function listingBlockProps(block, profile = {}) {
   return {
@@ -173,8 +190,12 @@ const sharedRegistry = {
       role={profile.professional_type}
     />
   ),
-  [T.TESTIMONIALS]: ({ profile }) => (
-    <PublicHappyClientsSlider testimonials={profile.testimonials} profile={profile} />
+  [T.TESTIMONIALS]: ({ profile, block }) => (
+    <PublicHappyClientsSlider
+      testimonials={profile.testimonials}
+      profile={profile}
+      content={block?.data?.content || {}}
+    />
   ),
   [T.SERVICES]: ({ profile, block }) => (
     <PublicServices
@@ -299,8 +320,8 @@ const roleRegistry = {
     ),
   },
   lawyer: {
-    [T.CLOSING_COST_ESTIMATOR]: () => (
-      <ClosingCostEstimator />
+    [T.CLOSING_COST_ESTIMATOR]: ({ block }) => (
+      <ClosingCostEstimator content={block?.data?.content || {}} />
     ),
     [T.PRACTICE_AREAS]: ({ profile, actions, block }) => (
       <LawyerPracticeAreasSection
@@ -325,6 +346,30 @@ const experienceOverrides = {
       [T.TESTIMONIALS]: ({ profile }) => <ClassicTestimonialsSection profile={profile} testimonials={profile.testimonials} />,
       [T.GUIDANCE]: ({ profile, block }) => <ClassicGuidanceSection profile={profile} block={block} />,
       [T.CTA]: ({ profile, actions }) => <ClassicCtaSection profile={profile} actions={actions} />,
+    },
+    lawyer: {
+      [T.HERO]: ({ profile, actions, block }) => <LawyerClassicHero profile={profile} actions={actions} block={block} />,
+      [T.ABOUT]: ({ profile, block }) => <LawyerClassicAbout profile={profile} block={block} />,
+      [T.WHO_WE_HELP]: ({ profile, block }) => <LawyerClassicWhoWeHelp profile={profile} block={block} />,
+      [T.EXPERTISE]: ({ profile, block }) => <LawyerClassicExpertise profile={profile} block={block} />,
+      [T.PRACTICE_AREAS]: ({ profile, actions, block }) => <LawyerClassicPracticeAreas profile={profile} actions={actions} block={block} />,
+      [T.DOCUMENT_CHECKLIST]: ({ profile, block }) => <LawyerClassicDocumentChecklist profile={profile} block={block} />,
+      [T.CLOSING_COST_ESTIMATOR]: () => null,
+      [T.FEE_GUIDANCE]: ({ profile, block }) => <LawyerClassicFeeGuidance profile={profile} block={block} />,
+      [T.ROLE_DETAILS]: ({ profile, actions, block }) => <LawyerClassicStatement profile={profile} actions={actions} block={block} />,
+      [T.CONSULTATION_OPTIONS]: ({ profile, actions, block }) => <LawyerClassicConsultationOptions profile={profile} actions={actions} block={block} />,
+      [T.TESTIMONIALS]: ({ profile, block }) => (
+        <LawyerClassicTestimonials
+          profile={profile}
+          testimonials={block?.data?.content?.items || profile.testimonials}
+          block={block}
+        />
+      ),
+      [T.CREDENTIALS]: ({ profile, block }) => <LawyerClassicCredentials profile={profile} block={block} />,
+      [T.GUIDANCE]: ({ profile, block }) => <LawyerClassicGuidance profile={profile} block={block} />,
+      [T.FAQ]: ({ profile, block }) => <LawyerClassicFaq profile={profile} block={block} />,
+      [T.CTA]: ({ profile, actions, block }) => <LawyerClassicCta profile={profile} actions={actions} block={block} />,
+      [T.FOOTER]: ({ profile, block }) => <LawyerClassicFooter profile={profile} block={block} />,
     },
   },
   'luxury-editorial': {
