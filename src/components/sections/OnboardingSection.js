@@ -8,7 +8,7 @@ const userTypes = [
   {
     id: "realtor",
     title: "Realtor / Agent",
-    description: "Generate quality leads and connect with ready-to-buy clients",
+    description: "Launch your storefront, capture demand, and convert with AI follow-up.",
     icon: Users,
     gradient: "from-purple-500 to-pink-500",
     path: "/sign-up",
@@ -17,7 +17,7 @@ const userTypes = [
     id: "lawyer",
     title: "Real Estate Lawyer",
     description:
-      "Connect with clients needing legal expertise for transactions",
+      "Turn document, title and closing inquiries into organized legal intake.",
     icon: Scale,
     gradient: "from-orange-500 to-red-500",
     path: "/sign-up",
@@ -25,7 +25,7 @@ const userTypes = [
   {
     id: "broker",
     title: "Mortgage Broker",
-    description: "Match with pre-qualified buyers needing financing",
+    description: "Qualify financing conversations and stay in every deal from first inquiry.",
     icon: DollarSign,
     gradient: "from-indigo-500 to-purple-500",
     path: "/sign-up",
@@ -35,7 +35,7 @@ const userTypes = [
 export default function OnboardingSection() {
   return (
     <section id="onboarding" className="relative bg-transparent py-10 md:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
         <div className="mx-auto mb-8 max-w-2xl text-center md:mb-9">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -57,9 +57,9 @@ export default function OnboardingSection() {
             className="mb-2.5 text-2xl font-black leading-tight text-text-heading md:text-3xl lg:text-4xl"
             suppressHydrationWarning
           >
-            I am a{" "}
+            Built for the people who{" "}
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark">
-              Real Estate...
+              move real estate forward
             </span>
           </motion.h2>
           <motion.p
@@ -70,8 +70,8 @@ export default function OnboardingSection() {
             className="mx-auto max-w-2xl text-sm leading-6 text-text-body md:text-base"
             suppressHydrationWarning
           >
-            Select your role to get personalized AI assistance and perfect
-            matches tailored to your goals.
+            Realtors, mortgage brokers and real estate lawyers. One platform for
+            your website, pipeline, network and next client.
           </motion.p>
         </div>
 

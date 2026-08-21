@@ -134,7 +134,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-white/90 backdrop-blur-xl">
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
         <div className="flex h-14 items-center justify-between">
           {/* Logo — public landing home */}
           <button

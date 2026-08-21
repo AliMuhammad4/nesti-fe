@@ -24,7 +24,7 @@ export default function FeaturedProfessionalsSection() {
   if (loading) {
     return (
       <section className="relative bg-transparent py-10 md:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
+        <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
           <div className="text-center">
             <p className="text-gray-500">Loading featured professionals...</p>
           </div>
@@ -65,7 +65,7 @@ export default function FeaturedProfessionalsSection() {
 
   return (
     <section id="featured-professionals" className="relative bg-gradient-to-b from-primary/5 to-transparent py-10 md:py-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
         <div className="mx-auto mb-8 max-w-2xl text-center md:mb-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

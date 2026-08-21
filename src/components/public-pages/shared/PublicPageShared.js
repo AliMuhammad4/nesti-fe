@@ -90,7 +90,7 @@ export function PageCta({
   if (compact) {
     return (
       <section className={`${transparentSection ? "bg-transparent" : "bg-white"} py-6 md:py-8`}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
           <motion.div
             {...fadeUp}
             className="relative overflow-hidden rounded-2xl border border-border bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] md:p-6"
@@ -103,7 +103,8 @@ export function PageCta({
                   {compactHeading}
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-text-body md:text-[15px]">
-                  Use Nesti AI to strengthen lead intelligence, automate repetitive workflows, and create smoother client experiences across your real estate business.
+                  Use Nesti to build your presence, capture every inquiry, qualify with AI,
+                  and keep relationships moving until they convert.
                 </p>
               </div>
 
@@ -112,7 +113,7 @@ export function PageCta({
                   href="/sign-up"
                   className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  Start Free Trial
+                  Start Free
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link

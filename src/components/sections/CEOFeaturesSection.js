@@ -71,7 +71,7 @@ export default function CEOFeaturesSection() {
 
   return (
     <section className="relative bg-transparent pb-9 pt-1 md:pb-11">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
