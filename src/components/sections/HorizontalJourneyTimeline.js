@@ -59,14 +59,103 @@ export default function HorizontalJourneyTimeline({ steps = [], advanced = false
     });
 
     return (
-      <div
-        ref={ref}
-        className="-mx-2 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <div
-          className="relative mx-auto h-[250px]"
-          style={{ width: 1196, minWidth: 1196 }}
-        >
+      <div ref={ref}>
+        <ol className="relative space-y-3 lg:hidden">
+          {steps.map((item, index) => {
+            const reached = index <= active;
+            const current = index === active;
+            const StepIcon = item.Icon;
+            const last = index === steps.length - 1;
+
+            return (
+              <motion.li
+                key={`mobile-${item.label}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+                transition={{
+                  delay: index * 0.07,
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="relative flex items-stretch gap-3"
+              >
+                <div className="relative flex w-11 shrink-0 justify-center">
+                  {!last ? (
+                    <>
+                      <span className="absolute bottom-[-0.75rem] top-11 w-px bg-slate-200" />
+                      <motion.span
+                        className="absolute bottom-[-0.75rem] top-11 w-px origin-top bg-primary"
+                        animate={{ scaleY: index < active ? 1 : 0 }}
+                        transition={{ duration: 0.65, ease: "easeInOut" }}
+                      />
+                    </>
+                  ) : null}
+
+                  <motion.span
+                    className={`relative z-10 grid h-11 w-11 place-items-center rounded-xl border ${
+                      current
+                        ? "border-primary bg-primary text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.9)]"
+                        : reached
+                          ? "border-primary/30 bg-emerald-50 text-primary"
+                          : "border-slate-200 bg-white text-slate-400"
+                    }`}
+                    animate={
+                      current && !reduceMotion
+                        ? { scale: [1, 1.06, 1] }
+                        : { scale: 1 }
+                    }
+                    transition={{
+                      duration: 1.8,
+                      repeat: current && !reduceMotion ? Infinity : 0,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    {StepIcon ? <StepIcon size={18} strokeWidth={2} /> : null}
+                  </motion.span>
+                </div>
+
+                <div
+                  className={`min-w-0 flex-1 rounded-2xl border px-4 py-3 transition-colors duration-500 ${
+                    current
+                      ? "border-primary/40 bg-white shadow-[0_14px_32px_-24px_rgba(16,185,129,0.75)] ring-4 ring-primary/[0.05]"
+                      : reached
+                        ? "border-primary/15 bg-white/85"
+                        : "border-slate-200/80 bg-white/65"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary/70">
+                      {item.type}
+                    </span>
+                    {current ? (
+                      <span className="inline-flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-[0.12em] text-primary">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Running
+                      </span>
+                    ) : null}
+                  </div>
+                  <span
+                    className={`mt-1 block text-sm font-bold ${
+                      current ? "text-primary-dark" : "text-text-heading"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-text-muted">
+                    {item.note}
+                  </span>
+                </div>
+              </motion.li>
+            );
+          })}
+        </ol>
+
+        <div className="hidden lg:block">
+          <div className="-mx-2 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div
+              className="relative mx-auto h-[250px]"
+              style={{ width: 1196, minWidth: 1196 }}
+            >
           <svg
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
@@ -219,6 +308,8 @@ export default function HorizontalJourneyTimeline({ steps = [], advanced = false
               );
             })}
           </ol>
+            </div>
+          </div>
         </div>
       </div>
     );

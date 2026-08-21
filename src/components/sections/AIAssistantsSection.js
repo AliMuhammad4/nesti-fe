@@ -178,8 +178,68 @@ export default function AIAssistantsSection() {
           className="relative mt-8 overflow-hidden rounded-3xl border border-white/90 bg-white/55 p-5 shadow-[0_22px_70px_-45px_rgba(15,23,42,0.35)] ring-1 ring-primary/10 backdrop-blur-xl md:p-6"
           suppressHydrationWarning
         >
-          <div className="-mx-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="relative mx-auto grid min-w-[760px] grid-cols-6 gap-0">
+          <div className="relative space-y-2 lg:hidden">
+            <span className="pointer-events-none absolute bottom-5 left-4 top-5 w-px bg-primary/15" />
+            {pipeline.map((stage, index) => {
+              const reached = index <= activeAssistant;
+              const current = index === activeAssistant;
+
+              return (
+                <motion.div
+                  key={`mobile-${stage.label}`}
+                  animate={{
+                    x: current && !reduceMotion ? 3 : 0,
+                    scale: current && !reduceMotion ? 1.01 : 1,
+                  }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className={`relative flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                    current
+                      ? "border-primary/35 bg-white shadow-[0_12px_28px_-22px_rgba(16,185,129,0.8)]"
+                      : reached
+                        ? "border-primary/15 bg-white/80"
+                        : "border-white/80 bg-white/55"
+                  }`}
+                >
+                  <motion.span
+                    className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-lg border-2 border-white ${
+                      reached ? "bg-primary" : "bg-slate-300"
+                    }`}
+                    animate={
+                      current && !reduceMotion
+                        ? { boxShadow: ["0 0 0 0 rgba(16,185,129,0.15)", "0 0 0 6px rgba(16,185,129,0)"] }
+                        : { boxShadow: "0 0 0 0 rgba(16,185,129,0)" }
+                    }
+                    transition={{
+                      duration: 1.8,
+                      repeat: current && !reduceMotion ? Infinity : 0,
+                      ease: "easeOut",
+                    }}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                  </motion.span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={`block text-sm font-bold ${
+                        current ? "text-primary-dark" : "text-text-heading"
+                      }`}
+                    >
+                      {stage.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-text-muted">
+                      {stage.note}
+                    </span>
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-primary/65">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="-mx-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="relative mx-auto grid min-w-[760px] grid-cols-6 gap-0">
               <span className="absolute left-[8.33%] right-[8.33%] top-2 h-px bg-primary/15" />
               <motion.span
                 className="absolute left-[8.33%] top-2 h-px origin-left bg-primary shadow-[0_0_8px_rgba(16,185,129,0.55)]"
@@ -226,6 +286,7 @@ export default function AIAssistantsSection() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </motion.div>
