@@ -25,7 +25,7 @@ const lostMoments = [
 const pipeline = [
   {
     label: "Capture",
-    note: "Every opportunity",
+    note: "Every visitor and inquiry",
     type: "Trigger",
     Icon: Inbox,
   },
@@ -55,7 +55,7 @@ const pipeline = [
   },
   {
     label: "Convert",
-    note: "Relationship retained",
+    note: "The relationship holds",
     type: "Outcome",
     Icon: BadgeCheck,
   },
