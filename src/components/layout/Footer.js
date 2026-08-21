@@ -131,7 +131,6 @@ export default function Footer() {
                 AI-powered real estate intelligence for buyers, sellers, and
                 professionals across the USA and Canada.
               </p>
-
               <address className="mt-4 grid max-w-md gap-1.5 not-italic">
                 <a
                   href="mailto:ravinnaraveenthiran@nesti.ca"
