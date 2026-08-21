@@ -1,8 +1,7 @@
 import HeroSection from "@/components/sections/HeroSection";
-import NestiStorySection from "@/components/sections/NestiStorySection";
+import FeaturedProfessionalsSection from "@/components/sections/FeaturedProfessionalsSection";
 import AIAssistantsSection from "@/components/sections/AIAssistantsSection";
 import FeaturesSection from "@/components/sections/FeaturesSection";
-import WebsiteBuilderSection from "@/components/sections/WebsiteBuilderSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
 import NoBrainerSection from "@/components/sections/NoBrainerSection";
 import PricingSection from "@/components/sections/PricingSection";
@@ -16,19 +15,17 @@ export default function Home() {
     <div className="relative overflow-hidden bg-gradient-to-br from-white via-primary/[0.08] to-white">
       <HeroSection />
       <CEOFeaturesSection />
-      <FeaturesSection />
-      <NestiStorySection />
-      <NoBrainerSection />
       <AIAssistantsSection />
-      <WebsiteBuilderSection />
+      <FeaturesSection />
       <HowItWorksSection />
+      <NoBrainerSection />
       <PricingSection />
       <TestimonialsSection />
       <OnboardingSection />
       <PageCta
         compact
         transparentSection
-        compactHeading="Your website, CRM, follow-up and network in one platform. Start free."
+        compactHeading="Stop Burning Hours on Admin Work. Start Your Free Trial Today."
       />
     </div>
   );

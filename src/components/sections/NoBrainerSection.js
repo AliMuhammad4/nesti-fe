@@ -1,183 +1,84 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  BadgeCheck,
-  Gauge,
-  Inbox,
-  RefreshCw,
-  SearchCheck,
-  Users,
-} from "lucide-react";
-import HorizontalJourneyTimeline from "./HorizontalJourneyTimeline";
+import { CheckCircle2 } from "lucide-react";
 
-const lostMoments = [
-  "Visit your website",
-  "Browse your services",
-  "Ask questions",
-  "Submit inquiries",
-  "Call after hours",
-  "Stop responding",
-  "Forget to follow up",
-  "Aren’t ready today",
-];
-
-const pipeline = [
+const reasons = [
   {
-    label: "Capture",
-    note: "Every visitor and inquiry",
-    type: "Trigger",
-    Icon: Inbox,
+    title: "Asymmetrical Math",
+    copy:
+      "A yearly Nesti subscription is roughly $1,500. A single closed deal pockets you $5,000 to $20,000+ in commissions or fees. Closing just one extra deal pays for Nesti 10 times over. Everything after that is 100% pure profit.",
   },
   {
-    label: "Qualify",
-    note: "Intent, not noise",
-    type: "AI router",
-    Icon: SearchCheck,
+    title: "24/7 Monopolization",
+    copy:
+      "You are not losing clients because of your sales skills. You are losing them to admin fatigue. Nesti puts your lead operations and cold database on 24/7 autopilot. It qualifies and scores buyers while you sleep, ensuring your competitors never touch them.",
   },
   {
-    label: "Score",
-    note: "Who to call first",
-    type: "Decision",
-    Icon: Gauge,
-  },
-  {
-    label: "Nurture",
-    note: "Until they’re ready",
-    type: "Automation",
-    Icon: RefreshCw,
-  },
-  {
-    label: "Connect",
-    note: "The right professional",
-    type: "Match",
-    Icon: Users,
-  },
-  {
-    label: "Convert",
-    note: "The relationship holds",
-    type: "Outcome",
-    Icon: BadgeCheck,
+    title: "The Bottom Line",
+    copy:
+      "Nesti is not an expense; it is a revenue machine. You either pay a small subscription to dominate your market, or you pay the ultimate price by letting thousands in commissions slide to those who bought the subscription to Nesti.",
   },
 ];
 
 export default function NoBrainerSection() {
   return (
-    <section className="relative bg-transparent py-8 md:py-10">
-      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
+    <section className="relative bg-transparent py-6 md:py-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 md:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "0px" }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[linear-gradient(160deg,#050810_0%,#071018_58%,#06141c_100%)]"
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(160deg,#050810_0%,#071018_100%)] shadow-[0_16px_48px_-20px_rgba(0,0,0,0.5)]"
           suppressHydrationWarning
         >
-          <div className="pointer-events-none absolute -left-24 top-0 h-64 w-64 rounded-full bg-[#20f5c4]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-[#20f5c4]/8 blur-3xl" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#20f5c4]/40 to-transparent" />
 
-          <div className="relative px-6 pt-8 text-center md:px-12 md:pt-10">
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35 }}
-              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#20f5c4]"
-            >
-              The real opportunity
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="mx-auto mt-4 max-w-5xl text-2xl font-black leading-tight text-white [text-wrap:balance] md:text-3xl lg:text-[2rem]"
-            >
-              Your Biggest Opportunity Isn’t More Leads. It’s the Leads You’re Already Losing.
-            </motion.h2>
+          <div className="border-b border-white/[0.06] px-5 py-4 text-center md:px-6 md:py-5">
+            <span className="mb-3 inline-flex items-center rounded-xl border border-primary/20 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary">
+              Market Economics
+            </span>
+            <h2 className="text-2xl font-black leading-tight text-white md:text-3xl lg:text-4xl">
+              The Ultimate Competitive Math
+            </h2>
           </div>
 
-          <div className="relative mt-8 border-t border-white/[0.07] px-6 py-8 md:px-12">
-            <div className="max-w-3xl">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#20f5c4]">
-                  Incoming opportunity signals
-                </p>
-                <h3 className="mt-2 text-xl font-black text-white">
-                  Every day, potential clients
-                </h3>
-              </div>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-                Most businesses lose these opportunities because nobody has time
-                to follow up with every single person.
+          <div className="grid lg:grid-cols-2 lg:items-stretch">
+            <article className="flex flex-col justify-center border-b border-white/[0.06] px-5 py-4 md:px-6 md:py-5 lg:border-b-0 lg:border-r">
+              <h3 className="text-lg font-black leading-tight text-[#20f5c4]">
+                The $144,000 Invisible Leak
+              </h3>
+              <p className="mt-3 text-[15px] leading-[1.7] text-slate-400 md:text-base">
+                The average real estate professional is actively bleeding out{" "}
+                <span className="font-medium text-slate-200">$144,000</span> every single year. This massive financial loss happens silently, simply because your phone and old CRM are stuffed with dead leads that you do not have the time to manually follow up with, text, or qualify. You are not avoiding a software bill by skipping Nesti. You are paying a brutal{" "}
+                <span className="font-medium text-slate-200">$12,000 monthly penalty</span> in lost commissions straight to competitors who bought the subscription to Nesti. Stop the bleeding now.
               </p>
-            </div>
+            </article>
 
-            <ul className="mt-6 grid grid-cols-2 gap-x-8 md:grid-cols-4">
-              {lostMoments.map((item, index) => (
-                <motion.li
-                  key={item}
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.35, delay: 0.08 + index * 0.05 }}
-                  className="group flex items-center gap-3 border-b border-white/[0.07] py-3 text-sm text-slate-200"
-                >
-                  <motion.span
-                    aria-hidden
-                    className="h-2 w-2 shrink-0 rounded-full border border-[#20f5c4]/70 bg-[#20f5c4]/20"
-                    animate={{
-                      boxShadow: [
-                        "0 0 0 rgba(32,245,196,0)",
-                        "0 0 12px rgba(32,245,196,0.55)",
-                        "0 0 0 rgba(32,245,196,0)",
-                      ],
-                    }}
-                    transition={{
-                      duration: 2.4,
-                      delay: index * 0.18,
-                      repeat: Infinity,
-                    }}
-                  />
-                  {item}
-                </motion.li>
-              ))}
-            </ul>
-          </div>
-
-          <article className="relative border-t border-white/[0.07] px-6 py-9 md:px-12">
-            <div className="max-w-3xl">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#20f5c4]">
-                  Automated relationship engine
-                </p>
-                <motion.h3
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.35 }}
-                  className="mt-2 text-xl font-black leading-snug text-white"
-                >
-                  Nesti doesn’t let those relationships disappear.
-                </motion.h3>
+            <article className="px-5 py-4 md:px-6 md:py-5">
+              <h3 className="text-lg font-black leading-tight text-[#20f5c4]">
+                Why Nesti is an Absolute No-Brainer
+              </h3>
+              <div className="mt-3.5 space-y-3.5">
+                {reasons.map(({ title, copy }, index) => (
+                  <div
+                    key={title}
+                    className={`flex gap-3 ${index > 0 ? "border-t border-white/[0.06] pt-3.5" : ""}`}
+                  >
+                    <CheckCircle2
+                      size={16}
+                      className="mt-0.5 shrink-0 text-[#20f5c4]/80"
+                    />
+                    <p className="text-[15px] leading-[1.7] text-slate-400 md:text-base">
+                      <span className="font-black text-slate-100">{title}: </span>
+                      {copy}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, delay: 0.08 }}
-                className="mt-3 max-w-2xl text-sm leading-6 text-slate-400"
-              >
-                Keep every visitor, inquiry and quiet lead moving until they’re
-                ready to take the next step.
-              </motion.p>
-            </div>
-
-            <div className="mt-7 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] px-3 pt-5 backdrop-blur-sm">
-              <HorizontalJourneyTimeline steps={pipeline} advanced />
-            </div>
-          </article>
+            </article>
+          </div>
         </motion.div>
       </div>
     </section>

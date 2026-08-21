@@ -12,7 +12,7 @@ export default function PricingSection() {
 
   return (
     <section id="pricing" className="relative scroll-mt-20 bg-transparent py-10 md:py-12">
-      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
         <div className="mx-auto mb-8 max-w-2xl text-center md:mb-9">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -47,8 +47,8 @@ export default function PricingSection() {
             className="mx-auto max-w-2xl text-sm font-light leading-6 text-text-body md:text-base"
             suppressHydrationWarning
           >
-            Transparent monthly subscriptions for realtors, brokers and lawyers
-            who want website, CRM, AI follow-up and matching in one place.
+            Transparent monthly subscriptions designed for modern real estate
+            professionals, teams, and high-volume businesses.
           </motion.p>
         </div>
 
@@ -57,7 +57,7 @@ export default function PricingSection() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="mx-auto flex w-full flex-col gap-4 md:flex-row md:items-stretch">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-stretch">
             {displayPlans.map((plan) => (
               <motion.div
                 key={`plan-${plan.plan_key}`}

@@ -7,33 +7,33 @@ const steps = [
   {
     step: "01",
     icon: Home,
-    eyebrow: "Presence",
-    title: "Build your professional website",
+    eyebrow: "Profile setup",
+    title: "Share your goals",
     description:
-      "Choose your profession, pick a template, customize your brand, and launch a storefront that turns visitors into inquiries.",
+      "Choose your role and add the core details Nesti needs to understand your market, clients, and priorities.",
   },
   {
     step: "02",
     icon: Brain,
-    eyebrow: "Intelligence",
-    title: "Capture, qualify and score",
+    eyebrow: "AI routing",
+    title: "Prioritize the right opportunities",
     description:
-      "AI asks the right questions, understands intent, and ranks every opportunity from 0 to 100 so you know who to call first.",
+      "Lead intelligence, matching, and scoring help surface the people and next steps that deserve attention first.",
   },
   {
     step: "03",
     icon: TrendingUp,
-    eyebrow: "Growth",
-    title: "Nurture, network and convert",
+    eyebrow: "Growth workflow",
+    title: "Move faster with clarity",
     description:
-      "Automated follow-up, professional referrals and client matching keep every relationship moving until it becomes business.",
+      "Automated follow-ups, recommendations, and performance insights keep the pipeline organized from first touch to conversion.",
   },
 ];
 
 export default function HowItWorksSection() {
   return (
     <section id="how-it-works" className="relative bg-transparent py-10 md:py-12">
-      <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
         <div className="mx-auto mb-8 max-w-2xl text-center md:mb-9">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -55,9 +55,9 @@ export default function HowItWorksSection() {
             className="mb-2.5 text-2xl font-black leading-tight text-text-heading md:text-3xl lg:text-4xl"
             suppressHydrationWarning
           >
-            See how Nesti turns visitors into{" "}
+            A cleaner path from{" "}
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark">
-              clients
+              setup to growth
             </span>
           </motion.h2>
           <motion.p
@@ -68,8 +68,8 @@ export default function HowItWorksSection() {
             className="mx-auto max-w-2xl text-sm font-light leading-6 text-text-body md:text-base"
             suppressHydrationWarning
           >
-            One platform for your website, CRM, AI follow-up, networking and matching.
-            From first visit to closed business.
+            Nesti turns onboarding, lead routing, and follow-up into a guided workflow
+            built for modern real estate teams.
           </motion.p>
         </div>
 

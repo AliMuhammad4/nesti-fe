@@ -19,9 +19,8 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: "Nesti — Professional Growth Platform for Real Estate",
-  description:
-    "Build your website. Generate and capture leads. Qualify prospects with AI. Manage your CRM. Automate follow-ups. Network with professionals. Match with clients.",
+  title: "Nesti AI - AI Intelligence Platform for Real Estate",
+  description: "Transform your real estate business with AI intelligence",
 };
 
 export default function RootLayout({ children }) {

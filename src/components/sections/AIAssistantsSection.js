@@ -1,85 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import {
-  Activity,
-  Magnet,
-  Flame,
-  MessageCircle,
-  RefreshCw,
-  Handshake,
-  LineChart,
+  CheckCircle2,
 } from "lucide-react";
 
 const assistants = [
   {
-    icon: Magnet,
-    title: "Lead Capture AI",
-    description: "Turns visitors into conversations.",
-    mode: "Capture",
+    name: "Buyer Assistant: The Lead Qualifier",
+    role: "Lead Qualification Expert",
+    description:
+      "Stops you from wasting time on window-shoppers. It automatically qualifies buyer budgets, timelines, and pre-approval status before they ever reach your inbox.",
+    gradient: "from-green-500 via-emerald-500 to-teal-500",
+    features: [
+      "Property preference analysis",
+      "Budget & timeline qualification",
+      "Pre-approval status check",
+      "Agent matching & scheduling",
+    ],
   },
   {
-    icon: Flame,
-    title: "Lead Scoring AI",
-    description: "Finds your hottest opportunities instantly.",
-    mode: "Prioritize",
+    name: "Seller Assistant: The Listing Magnet",
+    role: "Property Marketing Specialist",
+    description:
+      "Instantly engages potential sellers. It gathers property data, handles initial valuation discussions, and hooks clients with localized market trends.",
+    gradient: "from-green-500 via-emerald-500 to-teal-500",
+    features: [
+      "Property valuation guidance",
+      "Timeline & motivation analysis",
+      "Agent performance matching",
+      "Free market analysis setup",
+    ],
   },
   {
-    icon: MessageCircle,
-    title: "Conversation AI",
-    description: "Answers questions and qualifies prospects 24/7.",
-    mode: "Converse",
+    name: "Follow-Up Assistant: The Ghost-Buster",
+    role: "Relationship Nurturing Pro",
+    description:
+      "Wakes up your dead database. It continuously nurtures cold leads with personalized SMS and email updates until they are ready to transact.",
+    gradient: "from-green-500 via-emerald-500 to-teal-500",
+    features: [
+      "Automated re-engagement",
+      "Personalized market updates",
+      "Status change detection",
+      "Conversion optimization",
+    ],
   },
-  {
-    icon: RefreshCw,
-    title: "Follow-Up AI",
-    description: "Re-engages leads before they disappear.",
-    mode: "Re-engage",
-  },
-  {
-    icon: Handshake,
-    title: "Matching AI",
-    description: "Connects clients with the right professional.",
-    mode: "Match",
-  },
-  {
-    icon: LineChart,
-    title: "Growth AI",
-    description: "Shows you where your next opportunities are.",
-    mode: "Optimize",
-  },
-];
-
-const pipeline = [
-  { label: "Capture", note: "Visitor engaged" },
-  { label: "Prioritize", note: "Intent scored" },
-  { label: "Converse", note: "Questions answered" },
-  { label: "Re-engage", note: "Follow-up active" },
-  { label: "Match", note: "Best fit found" },
-  { label: "Optimize", note: "Growth surfaced" },
 ];
 
 export default function AIAssistantsSection() {
-  const reduceMotion = useReducedMotion();
-  const [activeAssistant, setActiveAssistant] = useState(0);
-
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-
-    const interval = window.setInterval(() => {
-      setActiveAssistant((current) => (current + 1) % assistants.length);
-    }, 2400);
-
-    return () => window.clearInterval(interval);
-  }, [reduceMotion]);
-
   return (
-    <section className="relative overflow-hidden bg-transparent py-10 md:py-14">
-      <div className="pointer-events-none absolute left-[12%] top-20 h-72 w-72 rounded-full bg-primary/[0.08] blur-[100px]" />
-      <div className="pointer-events-none absolute right-[10%] top-1/3 h-64 w-64 rounded-full bg-cyan-100/25 blur-[100px]" />
-      <div className="relative mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8 2xl:px-10">
-        <div className="mx-auto mb-8 max-w-5xl text-center md:mb-10">
+    <section className="relative bg-transparent py-10 md:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
+        <div className="mx-auto mb-8 max-w-2xl text-center md:mb-9">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -87,9 +60,15 @@ export default function AIAssistantsSection() {
             transition={{ duration: 0.3 }}
             suppressHydrationWarning
           >
-            <span className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-              <Activity size={13} />
-              AI that works in the background
+            <span className="mb-3 inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary">
+              <Image
+                src="/logo/logo.png"
+                alt="Nesti AI logo"
+                width={14}
+                height={14}
+                className="h-[14px] w-[14px] object-contain"
+              />
+              AI-Powered Assistant Network
             </span>
           </motion.div>
           <motion.h2
@@ -97,12 +76,12 @@ export default function AIAssistantsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "0px" }}
             transition={{ duration: 0.3 }}
-            className="mb-3 text-2xl font-black leading-tight text-text-heading md:text-3xl xl:whitespace-nowrap xl:text-4xl"
+            className="mb-2.5 text-2xl font-black leading-tight text-text-heading md:text-3xl lg:text-4xl"
             suppressHydrationWarning
           >
-            Your AI Team Works While You{" "}
-            <span className="bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
-              Work With Clients.
+            Meet Your{" "}
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark">
+              AI Dream Team
             </span>
           </motion.h2>
           <motion.p
@@ -110,125 +89,66 @@ export default function AIAssistantsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "0px" }}
             transition={{ duration: 0.3 }}
-            className="mx-auto max-w-none text-[15px] leading-7 text-text-heading/80 md:text-[17px] xl:whitespace-nowrap"
+            className="mx-auto max-w-2xl text-[15px] font-normal leading-7 text-text-heading/85 md:text-[17px] md:leading-8"
             suppressHydrationWarning
           >
-            Specialized agents capture, score, converse, follow up, match and surface
-            growth, keeping the pipeline moving while you close.
+            Multiple specialized AI agents working 24/7 to qualify leads, match
+            connections, and nurture relationships throughout the entire real
+            estate journey.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {assistants.map((assistant, index) => {
-            const IconComponent = assistant.icon;
-            const isActive = activeAssistant === index;
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {assistants.map((assistant) => {
             return (
               <motion.article
-                key={assistant.title}
+                key={`assistant-${assistant.name}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "0px" }}
-                transition={{ duration: 0.3, delay: index * 0.04 }}
-                whileHover={{ y: -4, transition: { duration: 0.25 } }}
-                className={`group relative h-full overflow-hidden rounded-2xl border bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(244,253,249,0.74))] p-5 backdrop-blur-xl transition-all duration-500 ${
-                  isActive
-                    ? "border-primary/40 shadow-[0_20px_55px_-30px_rgba(16,185,129,0.7)] ring-4 ring-primary/[0.05]"
-                    : "border-white/90 shadow-[0_14px_38px_-30px_rgba(15,23,42,0.3)] hover:border-primary/20"
-                }`}
+                transition={{ duration: 0.3 }}
+                whileHover={{ y: -3, transition: { duration: 0.25 } }}
+                className="group relative h-full rounded-2xl border border-border bg-white p-4 shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md"
                 suppressHydrationWarning
               >
-                <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-primary/[0.08] blur-2xl" />
-                <div className="relative flex items-center gap-3">
-                  <motion.div
-                    className={`grid h-11 w-11 place-items-center rounded-xl border ${
-                      isActive
-                        ? "border-primary bg-primary text-white shadow-[0_8px_24px_-10px_rgba(16,185,129,0.9)]"
-                        : "border-primary/15 bg-primary/[0.07] text-primary"
-                    }`}
-                    animate={
-                      isActive && !reduceMotion
-                        ? { scale: [1, 1.09, 1], rotate: [0, -4, 4, 0] }
-                        : { scale: 1, rotate: 0 }
-                    }
-                    transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <IconComponent size={20} />
-                  </motion.div>
-                  <h3
-                    className={`text-[15px] font-black md:text-base ${
-                      isActive ? "text-primary-dark" : "text-text-heading"
-                    }`}
-                  >
-                    {assistant.title}
-                  </h3>
+                {/* Content */}
+                <div className="space-y-2.5">
+                  <div>
+                    <h3 className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-black text-text-heading md:text-base">
+                      {assistant.name}
+                    </h3>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                      {assistant.role}
+                    </p>
+                  </div>
+
+                  <p className="text-[15px] leading-6 text-text-heading/80">
+                    {assistant.description}
+                  </p>
+
+                  {/* Features list */}
+                  <div className="space-y-2 border-t border-border pt-2.5">
+                    {assistant.features.map((feature) => (
+                      <div
+                        key={`${assistant.name}-${feature}`}
+                        className="flex items-start gap-2.5"
+                      >
+                        <CheckCircle2
+                          size={16}
+                          className="mt-0.5 flex-shrink-0 text-primary"
+                          aria-hidden="true"
+                        />
+                        <span className="text-[14px] leading-6 text-text-heading/80">
+                          {feature}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="relative mt-3 text-sm leading-6 text-text-body">
-                  {assistant.description}
-                </p>
               </motion.article>
             );
           })}
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "0px" }}
-          transition={{ duration: 0.3 }}
-          className="relative mt-8 overflow-hidden rounded-3xl border border-white/90 bg-white/55 p-5 shadow-[0_22px_70px_-45px_rgba(15,23,42,0.35)] ring-1 ring-primary/10 backdrop-blur-xl md:p-6"
-          suppressHydrationWarning
-        >
-          <div className="-mx-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="relative mx-auto grid min-w-[760px] grid-cols-6 gap-0">
-              <span className="absolute left-[8.33%] right-[8.33%] top-2 h-px bg-primary/15" />
-              <motion.span
-                className="absolute left-[8.33%] top-2 h-px origin-left bg-primary shadow-[0_0_8px_rgba(16,185,129,0.55)]"
-                animate={{
-                  width: `${(activeAssistant / Math.max(pipeline.length - 1, 1)) * 83.34}%`,
-                }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              />
-              {pipeline.map((stage, index) => {
-                const reached = index <= activeAssistant;
-                const current = index === activeAssistant;
-                return (
-                  <div
-                    key={stage.label}
-                    className="relative flex flex-col items-center text-center"
-                  >
-                    <motion.span
-                      className={`relative z-10 h-4 w-4 rounded-full border-2 border-white ${
-                        reached
-                          ? "bg-primary shadow-[0_0_0_4px_rgba(16,185,129,0.08)]"
-                          : "bg-slate-300"
-                      }`}
-                      animate={
-                        current && !reduceMotion
-                          ? { scale: [1, 1.3, 1] }
-                          : { scale: 1 }
-                      }
-                      transition={{
-                        duration: 1.8,
-                        repeat: current && !reduceMotion ? Infinity : 0,
-                        ease: "easeInOut",
-                      }}
-                    />
-                    <span
-                      className={`mt-3 text-xs font-bold ${
-                        current ? "text-primary" : "text-text-heading"
-                      }`}
-                    >
-                      {stage.label}
-                    </span>
-                    <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-text-muted">
-                      {stage.note}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   );

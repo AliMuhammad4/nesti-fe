@@ -104,7 +104,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-border bg-gradient-to-b from-white via-background-light/45 to-white">
       <div className="h-0.5 w-full bg-gradient-to-r from-primary/70 via-primary-dark to-primary/60" />
-      <div className="mx-auto w-full max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8 2xl:px-10 md:py-8">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 md:py-8">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] lg:gap-12">
             <div>
               <div className="mb-3 flex items-center gap-3">
@@ -122,14 +122,14 @@ export default function Footer() {
                     Nesti AI
                   </span>
                   <span className="-mt-0.5 block text-[11px] font-bold uppercase leading-tight tracking-[0.2em] text-primary">
-                    Professional Growth Platform
+                    Real Estate Intelligence
                   </span>
                 </div>
               </div>
 
               <p className="max-w-md text-sm leading-5 text-text-body">
-                Website, CRM, AI follow-up, networking and client matching for
-                real estate professionals across the USA and Canada.
+                AI-powered real estate intelligence for buyers, sellers, and
+                professionals across the USA and Canada.
               </p>
 
               <address className="mt-4 grid max-w-md gap-1.5 not-italic">
