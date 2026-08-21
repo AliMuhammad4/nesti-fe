@@ -13,7 +13,7 @@ export function LawyerClassicCta({ profile, actions = {}, block }) {
   const content = blockContent(block);
   const sectionStyle = block?.data?.style || block?.style || {};
   const band = lawyerClassicBandColors(sectionStyle, {
-    emptyBackgrounds: ['', '#d39a52'],
+    emptyBackgrounds: ['', '#202020', '#24211e', '#d39a52'],
     themeBackground: 'var(--storefront-accent, #d39a52)',
     themeText: 'var(--storefront-accent-contrast, #202020)',
     fallbackDark: '#202020',
