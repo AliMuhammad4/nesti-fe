@@ -16,7 +16,6 @@ const lawyerNewcomer = {
       cta_label: 'Ask about my closing',
       eyebrow: 'Newcomer specialist',
     }),
-    block(T.CLOSING_COST_ESTIMATOR, { heading: 'Understand Canadian closing costs', body: 'A transparent estimate before you finalize financing.' }),
     block(T.GUIDANCE, { heading: 'Newcomer closing guide', body: 'ID, funds, insurance, and signing day expectations.' }),
     block(T.PRACTICE_AREAS, { heading: 'Purchase support', body: 'Residential closings for new-to-Canada buyers.' }),
     block(T.TESTIMONIALS, { heading: 'Families we helped settle', body: 'Newcomers who closed with less stress.' }),

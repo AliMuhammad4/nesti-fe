@@ -16,7 +16,6 @@ const lawyerInvestor = {
       cta_label: 'Start investor intake',
       eyebrow: 'Investor legal desk',
     }),
-    block(T.CLOSING_COST_ESTIMATOR, { heading: 'Model closing costs', body: 'Estimate costs across purchase price and province.' }),
     block(T.PRACTICE_AREAS, { heading: 'Investor workstreams', body: 'Acquisitions, refinancing, and entity transfers.' }),
     block(T.CREDENTIALS, { heading: 'Trusted on volume files', body: 'Process discipline for repeat investors.' }),
     block(T.CTA, { heading: 'Send the next deal', body: 'Share APS, entity, and target closing.', cta_label: 'Open file' }),

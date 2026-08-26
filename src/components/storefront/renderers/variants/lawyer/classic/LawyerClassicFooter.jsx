@@ -2,6 +2,10 @@
 
 import Image from 'next/image';
 import { ArrowUpRight, Mail, Phone, ShieldCheck } from 'lucide-react';
+import {
+  hasPublicClientStories,
+  isStorefrontHashTargetAvailable,
+} from '@/components/storefront/storefrontContentVisibility';
 import { LawyerEditableText as EditableText } from '../shared/LawyerEditableText';
 import { ResilientStorefrontImage } from '../shared/ResilientStorefrontImage';
 import {
@@ -13,7 +17,7 @@ import {
 
 function safeFooterTarget(value) {
   const target = String(value || '').trim();
-  if (!target || /[\u0000-\u001f\u007f]/.test(target)) return '';
+  if (!target || /[\u0000-\u001f\u007f\\]/.test(target)) return '';
   if (/^#[a-z][\w:.-]*$/i.test(target)) return target;
   if (/^\/(?!\/)/.test(target)) return target;
   try {
@@ -26,11 +30,13 @@ function safeFooterTarget(value) {
   }
 }
 
-export function LawyerClassicFooter({ profile, block }) {
+export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) {
   const content = blockContent(block);
   const sectionStyle = block?.data?.style || block?.style || {};
   const isPreview = Boolean(profile?.storefront_builder_preview);
-  const showReviews = true;
+  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const profileHref = profile?.slug ? `/p/${encodeURIComponent(profile.slug)}` : '';
+  const showReviews = isLawyerFirstHome || isPreview || hasPublicClientStories(profile);
   const hasPersistedLinks = Object.prototype.hasOwnProperty.call(content, 'items')
     && Array.isArray(content.items);
   const defaultLinks = [
@@ -53,28 +59,40 @@ export function LawyerClassicFooter({ profile, block }) {
     next.splice(aboutIndex >= 0 ? aboutIndex + 1 : 0, 0, { label, target });
     return next;
   };
-  const links = ensureFooterLink(
-    ensureFooterLink(
-      ensureFooterLink(sourceLinks, { label: 'Who we help', target: '#clients' }),
-      { label: 'Documents', target: '#documents' },
-    ),
-    { label: 'Client feedback', target: '#reviews' },
-  )
+  const requiredLinks = isLawyerFirstHome
+    ? sourceLinks
+    : ensureFooterLink(
+      ensureFooterLink(
+        ensureFooterLink(sourceLinks, { label: 'Who we help', target: '#clients' }),
+        { label: 'Documents', target: '#documents' },
+      ),
+      { label: 'Client feedback', target: '#reviews' },
+    );
+  const links = requiredLinks
     .filter((link) => link && typeof link === 'object' && link.label)
     .map((link) => ({
       ...link,
       safeTarget: safeFooterTarget(link.target || link.url),
     }))
+    .map((link) => ({
+      ...link,
+      safeTarget: absoluteHashes && profileHref && link.safeTarget.startsWith('#')
+        ? `${profileHref}${link.safeTarget}`
+        : link.safeTarget,
+    }))
     .filter((link) => link.safeTarget && (
       showReviews || link.safeTarget.toLowerCase() !== '#reviews'
     ))
+    .filter((link) => isStorefrontHashTargetAvailable(profile, link.safeTarget))
     .slice(0, 8);
   const photo = profile?.profile_photo_url
     || profile?.storefront_profile_fallback_url
     || profile?.storefront_essentials?.profile_photo_url
     || '';
   const identity = resolveProfessionalIdentity(profile);
-  const name = content.heading || identity.name;
+  const name = String(content.heading || identity.name || '')
+    .trim()
+    .replace(/[.\s]+$/, '');
   const company = identity.company;
   const email = profile?.email;
   const phone = profile?.professional_profile?.phone;
@@ -230,8 +248,14 @@ export function LawyerClassicFooter({ profile, block }) {
         </div>
       </div>
 
-      <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-current opacity-[0.45] sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-current opacity-[0.45] lg:flex-row lg:items-center lg:justify-between">
         <p suppressHydrationWarning>© {new Date().getFullYear()} {name}. All rights reserved.</p>
+        {!isLawyerFirstHome ? (
+          <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal information">
+            <a href="/privacy" className="transition hover:text-accent">Privacy</a>
+            <a href="/terms" className="transition hover:text-accent">Terms</a>
+          </nav>
+        ) : null}
         <a href="/" className="inline-flex items-center gap-2 font-bold uppercase tracking-[0.12em] text-current transition hover:text-accent">
           <Image src="/logo/logo.png" alt="Nesti AI logo" width={26} height={26} className="rounded-md" />
           <span>Powered by Nesti AI</span>

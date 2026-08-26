@@ -1,0 +1,86 @@
+import { labelForBlock } from '../storefrontBuilderState';
+import ProfileSelectionFields from './selection/ProfileSelectionFields';
+import ElementFieldEditor from './selection/ElementFieldEditor';
+import ItemSelectionFields from './selection/ItemSelectionFields';
+
+export default function InspectorSelectionPanel({
+  block,
+  model,
+  selection,
+  profile,
+  media,
+  brandKit,
+  onChange,
+  onItemChange,
+  onItemAdd,
+  onItemDelete,
+  onMediaUpload,
+  onBrandKitChange,
+}) {
+  const {
+    isProcessCardContext,
+    isFaqCardContext,
+    selectedField,
+    isProfileSelection,
+    isItemSelection,
+    hasEditableCards,
+    isSellerCaseStudy,
+    isLawyerClassicItemCards,
+    isRoleDetails,
+  } = model;
+
+  if (!selection?.kind || selection.kind === 'block') return null;
+
+  const deleteLabel = hasEditableCards
+    ? (isSellerCaseStudy ? 'Delete this story card' : 'Delete this service card')
+    : isLawyerClassicItemCards && selection?.collection === 'items'
+      ? `Delete this ${labelForBlock(block.type).toLowerCase()} card`
+      : isRoleDetails && selection?.collection === 'highlights'
+        ? 'Delete this highlight'
+        : isRoleDetails && selection?.collection === 'proof'
+          ? 'Delete this proof chip'
+          : 'Delete this item';
+
+  return (
+    <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">Selected element</p>
+      <p className="mt-1 text-xs font-semibold text-slate-900">
+        {isProcessCardContext || isFaqCardContext
+          ? `${isProcessCardContext ? 'Process card' : 'FAQ card'} · ${selection.label || selectedField}`
+          : (selection.label || selectedField)}
+      </p>
+      {isProfileSelection ? (
+        <div className="mt-2 space-y-2 text-[11px] leading-4 text-slate-600">
+          <p>This comes from your professional profile and is protected from deletion.</p>
+          <ProfileSelectionFields
+            selectedField={selectedField}
+            media={media}
+            brandKit={brandKit}
+            profile={profile}
+            onMediaUpload={onMediaUpload}
+            onBrandKitChange={onBrandKitChange}
+          />
+        </div>
+      ) : isItemSelection ? (
+        <div className="mt-2 space-y-2">
+          <ItemSelectionFields
+            block={block}
+            model={model}
+            selection={selection}
+            onItemChange={onItemChange}
+            onItemAdd={onItemAdd}
+          />
+          <button
+            type="button"
+            onClick={onItemDelete}
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            {deleteLabel}
+          </button>
+        </div>
+      ) : (
+        <ElementFieldEditor block={block} model={model} onChange={onChange} />
+      )}
+    </div>
+  );
+}

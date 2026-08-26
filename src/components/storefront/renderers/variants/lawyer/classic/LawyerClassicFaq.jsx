@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { LawyerEditableText as EditableText } from '../shared/LawyerEditableText';
-import { blockContent, lawyerClassicGridClass, lawyerClassicResolvedPaddingClass } from '../shared/lawyerSectionUtils';
+import {
+  blockContent,
+  lawyerClassicGridClass,
+  lawyerClassicResolvedPaddingClass,
+  lawyerClassicSectionStyle,
+} from '../shared/lawyerSectionUtils';
 
 const FAQ_FALLBACK = [
   { q: 'Is this legal advice?', a: 'No. This page starts an inquiry so the lawyer can review the matter and follow up appropriately.' },
@@ -29,6 +34,7 @@ export function LawyerClassicFaq({ block, profile }) {
       const q = String(item.q || item.title || '').trim();
       if (!q) return null;
       return {
+        ...item,
         id: item.id || `faq-${index}`,
         q,
         a: item.a || item.text || item.answer || '',
@@ -44,6 +50,9 @@ export function LawyerClassicFaq({ block, profile }) {
     : `mt-10 grid gap-3 ${lawyerClassicGridClass(columns, faqs.length)}`;
   const faqCardBackground = content.faq_card_background || '';
   const faqCardTextColor = content.faq_card_text_color || '';
+  const sectionStyle = lawyerClassicSectionStyle(block);
+  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const hasCustomText = isLawyerFirstHome && Boolean(String(sectionStyle.textColor || '').trim());
   const builderSelection = profile?.storefront_builder_selection;
   const selectedFaqIndex = (() => {
     if (!isPreview || builderSelection?.collection !== 'faqs') return -1;
@@ -62,7 +71,14 @@ export function LawyerClassicFaq({ block, profile }) {
   }, [selectedFaqIndex]);
 
   return (
-    <div id="faq" className={`w-full max-w-none bg-transparent px-5 sm:px-6 lg:px-8 ${lawyerClassicResolvedPaddingClass(padding, 'py-20')}`}>
+    <div
+      id="faq"
+      className={`w-full max-w-none bg-transparent px-5 sm:px-6 lg:px-8 ${lawyerClassicResolvedPaddingClass(padding, 'py-20')}`}
+      style={isLawyerFirstHome ? {
+        ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
+        ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
+      } : undefined}
+    >
       <div className="w-full max-w-none">
         <div className="max-w-3xl" data-storefront-anim-item="true">
           <EditableText
@@ -79,7 +95,7 @@ export function LawyerClassicFaq({ block, profile }) {
             field="content.heading"
             label="FAQ heading"
             source={content.heading ? 'persisted' : 'fallback'}
-            className="mt-3 text-3xl font-semibold uppercase tracking-[-0.02em] text-primary sm:text-4xl"
+            className={`mt-3 text-3xl font-semibold uppercase tracking-[-0.02em] sm:text-4xl ${hasCustomText ? 'text-current' : 'text-primary'}`}
           >
             {content.heading || 'What clients often ask'}
           </EditableText>
@@ -88,7 +104,7 @@ export function LawyerClassicFaq({ block, profile }) {
             field="content.body"
             label="FAQ description"
             source={content.body ? 'persisted' : 'fallback'}
-            className="mt-4 max-w-2xl text-sm leading-7 text-slate-500"
+            className={`mt-4 max-w-2xl text-sm leading-7 ${hasCustomText ? 'text-current opacity-70' : 'text-slate-500'}`}
           >
             {content.body || 'Clear answers to common questions before you start.'}
           </EditableText>
@@ -99,6 +115,8 @@ export function LawyerClassicFaq({ block, profile }) {
           <div className={faqListClass}>
             {faqs.map((item, index) => {
               const expanded = openFaqIndex === index || selectedFaqIndex === index;
+            const cardBackground = item.background || faqCardBackground;
+            const cardTextColor = item.text_color || faqCardTextColor;
               return (
                 <button
                   key={item.id}
@@ -107,8 +125,8 @@ export function LawyerClassicFaq({ block, profile }) {
                   data-storefront-anim-item="true"
                   className="w-full border border-primary/10 bg-white/75 px-5 py-4 text-left shadow-[0_8px_24px_rgba(15,23,42,.035)] transition hover:border-accent/45 hover:bg-white sm:px-6"
                   style={{
-                    background: faqCardBackground || undefined,
-                    color: faqCardTextColor || undefined,
+                    background: cardBackground || undefined,
+                    color: cardTextColor || undefined,
                   }}
                   aria-expanded={expanded}
                 >
@@ -120,7 +138,7 @@ export function LawyerClassicFaq({ block, profile }) {
                     data-storefront-item-index={index}
                     data-storefront-item-field="q"
                     data-storefront-label={`FAQ ${index + 1}`}
-                    className={`flex items-center justify-between gap-4 text-base font-semibold ${faqCardTextColor ? 'text-current' : 'text-primary'}`}
+                    className={`flex items-center justify-between gap-4 text-base font-semibold ${cardTextColor ? 'text-current' : 'text-primary'}`}
                   >
                     {item.q}
                     <ChevronDown
@@ -138,7 +156,7 @@ export function LawyerClassicFaq({ block, profile }) {
                       itemId={item.id}
                       itemIndex={index}
                       itemField="a"
-                      className={`mt-3 block pr-8 text-sm leading-6 ${faqCardTextColor ? 'text-current opacity-70' : 'text-slate-500'}`}
+                      className={`mt-3 block pr-8 text-sm leading-6 ${cardTextColor ? 'text-current opacity-70' : 'text-slate-500'}`}
                     >
                       {item.a}
                     </EditableText>

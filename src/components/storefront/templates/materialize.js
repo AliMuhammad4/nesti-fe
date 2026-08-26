@@ -1,6 +1,7 @@
 import { createBlock, normalizeBlocks } from '../builder/storefrontBuilderState';
 import { buildTemplateContext } from './shared/context';
 import { T } from './shared/blockFactory';
+import { shouldSeedStorefrontContentField } from './shared/contentSemantics';
 import { getStorefrontTemplate } from './registry';
 import { listingCardThemeFromTemplate, visualTreatmentForTemplate } from './visualTreatments';
 
@@ -82,11 +83,12 @@ export function seedBlockContentFromProfile(blocks = [], profile = {}, templateK
     const originalLayout = originalBlock.data?.layout || originalBlock.layout || {};
     const originalStyle = originalBlock.data?.style || originalBlock.style || {};
     const content = { ...block.data.content };
+    const shouldSeed = (key) => shouldSeedStorefrontContentField(content, key, templateKey);
     const visual = visualTreatmentForTemplate(templateKey, block.type, index);
     if (block.type === T.HERO) {
-      if (!content.heading) content.heading = ctx.headline || `Work with ${ctx.name}`;
-      if (!content.body) content.body = ctx.tagline || '';
-      if (!content.cta_label) content.cta_label = 'Book a consultation';
+      if (shouldSeed('heading')) content.heading = ctx.headline || `Work with ${ctx.name}`;
+      if (shouldSeed('body')) content.body = ctx.tagline || '';
+      if (shouldSeed('cta_label')) content.cta_label = 'Book a consultation';
       if (
         templateKey === 'agent-classic'
         && Number(content.classic_cover_layout_version || 0) < 2
@@ -95,12 +97,12 @@ export function seedBlockContentFromProfile(blocks = [], profile = {}, templateK
       }
     }
     if (block.type === T.ABOUT) {
-      if (!content.heading) content.heading = `About ${ctx.name}`;
-      if (!content.body) content.body = ctx.about || '';
+      if (shouldSeed('heading')) content.heading = `About ${ctx.name}`;
+      if (shouldSeed('body')) content.body = ctx.about || '';
     }
     if (block.type === T.CTA) {
-      if (!content.heading) content.heading = 'Ready to talk?';
-      if (!content.cta_label) content.cta_label = 'Start a conversation';
+      if (shouldSeed('heading')) content.heading = 'Ready to talk?';
+      if (shouldSeed('cta_label')) content.cta_label = 'Start a conversation';
     }
     return {
       ...block,

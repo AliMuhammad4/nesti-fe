@@ -98,16 +98,16 @@
   border-radius: 0;
 }
 
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover h3,
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible h3,
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover p,
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible p {
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:hover h3,
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:focus-visible h3,
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:hover p,
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:focus-visible p {
   color: var(--storefront-primary-contrast, #ffffff) !important;
 }
 
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:hover p,
-[data-template-key='lawyer-classic'] [data-lawyer-practice-card='true']:focus-visible p {
-  opacity: 0.78;
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:hover p,
+:is([data-template-key='lawyer-classic'], [data-template-key='lawyer-first-home-closing']) [data-lawyer-practice-card='true']:focus-visible p {
+  opacity: 0.82;
 }
 
 [data-template-key='lawyer-classic'] :where(a, button, input, select):focus-visible {
@@ -115,7 +115,8 @@
   outline-offset: 3px;
 }
 
-[data-template-key='lawyer-classic'] :where(#about, #services, #reviews, #guidance, #contact) {
+[data-template-key='lawyer-classic'] :where(#about, #clients, #expertise, #services, #documents, #fees, #reviews, #guidance, #faq, #start, #contact),
+[data-template-key='lawyer-first-home-closing'] :where(#about, #clients, #practice-snapshot, #buyer-toolkit, #services, #closing-roadmap, #buyer-protection, #documents, #fees, #engagement-scope, #professional-standing, #reviews, #guidance, #faq, #service-access, #start, #contact) {
   scroll-margin-top: 5rem;
 }
 

@@ -1,4 +1,5 @@
 import { STOREFRONT_BLOCK_TYPES, normalizeStorefrontRole } from '../storefrontPresets';
+import { FIRST_HOME_ROADMAP_LIMIT } from '../storefrontLimits';
 
 export const BLOCK_LIBRARY = {
   shared: [
@@ -43,7 +44,6 @@ export const BLOCK_LIBRARY = {
     STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS,
   ],
   lawyer: [
-    STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR,
     STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
     STOREFRONT_BLOCK_TYPES.CREDENTIALS,
     STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
@@ -71,6 +71,35 @@ export const LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER = [
   STOREFRONT_BLOCK_TYPES.FOOTER,
 ];
 
+export const LAWYER_FIRST_HOME_CANONICAL_BLOCK_ORDER = [
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.WHO_WE_HELP,
+  STOREFRONT_BLOCK_TYPES.ABOUT,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_SNAPSHOT,
+  STOREFRONT_BLOCK_TYPES.SERVICES,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+  STOREFRONT_BLOCK_TYPES.EXPERTISE,
+  STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+  STOREFRONT_BLOCK_TYPES.DOCUMENT_CHECKLIST,
+  STOREFRONT_BLOCK_TYPES.FEE_GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.ENGAGEMENT_SCOPE,
+  STOREFRONT_BLOCK_TYPES.GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+  STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+  STOREFRONT_BLOCK_TYPES.FAQ,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_LOGISTICS,
+  STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS,
+  STOREFRONT_BLOCK_TYPES.CTA,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+];
+
+function canonicalBlockOrderForTemplate(templateKey = '') {
+  const key = String(templateKey || '').trim().toLowerCase();
+  if (key === 'lawyer-classic') return LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER;
+  if (key === 'lawyer-first-home-closing') return LAWYER_FIRST_HOME_CANONICAL_BLOCK_ORDER;
+  return null;
+}
+
 const ALWAYS_SINGLETON_BLOCK_TYPES = new Set([
   STOREFRONT_BLOCK_TYPES.HERO,
   STOREFRONT_BLOCK_TYPES.FOOTER,
@@ -82,8 +111,7 @@ const PROTECTED_BLOCK_TYPES = new Set([
 
 export function isSingletonBlockType(type, templateKey = '') {
   if (ALWAYS_SINGLETON_BLOCK_TYPES.has(type)) return true;
-  return String(templateKey || '').trim().toLowerCase() === 'lawyer-classic'
-    && LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type);
+  return Boolean(canonicalBlockOrderForTemplate(templateKey)?.includes(type));
 }
 
 export function isProtectedBlockType(type) {
@@ -92,13 +120,14 @@ export function isProtectedBlockType(type) {
 
 export function insertBlockAtTemplateRank(blocks = [], block, templateKey = '') {
   const next = [...blocks];
-  if (String(templateKey || '').trim().toLowerCase() !== 'lawyer-classic') {
+  const canonicalOrder = canonicalBlockOrderForTemplate(templateKey);
+  if (!canonicalOrder) {
     const footerIndex = next.findIndex((item) => item.type === STOREFRONT_BLOCK_TYPES.FOOTER);
     next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
     return next;
   }
 
-  const rank = new Map(LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.map((type, index) => [type, index]));
+  const rank = new Map(canonicalOrder.map((type, index) => [type, index]));
   const blockRank = rank.get(block?.type);
   if (blockRank == null) {
     const footerIndex = next.findIndex((item) => item.type === STOREFRONT_BLOCK_TYPES.FOOTER);
@@ -125,6 +154,9 @@ export function labelForBlock(type) {
     'who-we-help': 'Who we help',
     'document-checklist': 'Documents',
     'fee-guidance': 'Legal fees',
+    'engagement-scope': 'Scope',
+    'practice-snapshot': 'Snapshot',
+    'practice-logistics': 'Access',
     'consultation-options': 'How to start',
   };
   const key = String(type || 'block').toLowerCase();
@@ -174,6 +206,7 @@ export function coerceCollectionItems(collection, items = []) {
         }
         if (typeof item !== 'object') return null;
         return {
+          ...item,
           id: uniqueId(item.id, 'fallback-step', index),
           title: item.title || '',
           icon: item.icon || '',
@@ -181,7 +214,7 @@ export function coerceCollectionItems(collection, items = []) {
         };
       })
       .filter(Boolean)
-      .slice(0, collection === 'process_steps' ? 4 : 8);
+      .slice(0, collection === 'process_steps' ? FIRST_HOME_ROADMAP_LIMIT : 8);
   }
 
   if (collection === 'faqs') {
@@ -198,6 +231,7 @@ export function coerceCollectionItems(collection, items = []) {
         }
         if (typeof item !== 'object') return null;
         return {
+          ...item,
           id: uniqueId(item.id, 'fallback-faq', index),
           q: item.q || '',
           a: item.a || '',
@@ -432,7 +466,6 @@ const DEFAULT_CONTENT = {
     helper_text: '',
   },
   [STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR]: { heading: 'Affordability calculator', body: 'Estimate purchasing power before you tour homes.' },
-  [STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR]: { heading: 'Closing cost estimator', body: 'Model fees before you commit.' },
   [STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS]: { heading: 'Featured listings', eyebrow: 'Available properties', body: 'Hand-picked opportunities ready for private showings.' },
   [STOREFRONT_BLOCK_TYPES.TOP_LISTINGS]: { heading: 'Top listings', eyebrow: 'Top picks', body: 'Properties drawing the strongest interest right now.' },
   [STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS]: { heading: 'Recently sold', eyebrow: 'Recently sold', body: 'Proof of pricing strategy and market timing.' },
@@ -505,6 +538,32 @@ const DEFAULT_CONTENT = {
       { title: 'Legal fee range', description: 'Professional time for review, correspondence, signing, and registration is quoted for the specific matter.' },
       { title: 'Disbursements', description: 'Title search, registration, courier, and government charges are typically billed in addition to legal fees.' },
       { title: 'Land transfer and tax', description: 'Purchase files may include land transfer tax and related provincial charges. Final amounts depend on the transaction.' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.PRACTICE_SNAPSHOT]: {
+    eyebrow: 'Practice snapshot',
+    heading: 'Where counsel is focused',
+    body: 'A concise view of specializations, markets, and languages available for consultation.',
+  },
+  [STOREFRONT_BLOCK_TYPES.ENGAGEMENT_SCOPE]: {
+    eyebrow: 'Retainer clarity',
+    heading: 'Know what the legal engagement covers',
+    body: 'The final scope is confirmed in writing for your transaction before legal work begins.',
+    items: [
+      { title: 'Standard purchase closing', description: 'Agreement intake, title review, lender coordination, signing, registration, and closing reporting.', icon: 'contract' },
+      { title: 'Quoted separately when needed', description: 'Complex title issues, private financing, assignments, corporate ownership, or unusual negotiations may require added scope.', icon: 'clipboard' },
+      { title: 'Confirmed before work starts', description: 'Your retainer identifies included services, exclusions, expected disbursements, and the next decision required from you.', icon: 'shield' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.PRACTICE_LOGISTICS]: {
+    eyebrow: 'Service and access',
+    heading: 'Practical details before you open a file',
+    body: 'Confirm jurisdiction, appointment format, communication options, and response expectations before sharing confidential information.',
+    items: [
+      { title: 'Jurisdiction and service area', description: 'Confirm that the property and legal matter fall within the lawyer’s licensed service area.', icon: 'landmark' },
+      { title: 'Signing and appointments', description: 'Ask whether signing is available virtually, in person, or through a hybrid process for your transaction.', icon: 'calendar' },
+      { title: 'Languages and accessibility', description: 'Review available languages, accommodation options, and the best way to receive explanations and documents.', icon: 'message' },
+      { title: 'Response expectations', description: 'Use the inquiry form for routine matters and call the office when a deadline or closing issue is time-sensitive.', icon: 'clock' },
     ],
   },
   [STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS]: {
@@ -734,7 +793,14 @@ export function createBlock(type) {
 
 export function normalizeBlock(block, index = 0) {
   const data = block?.data || {};
-  const rawLayout = data.layout || {};
+  const rawLayout = {
+    ...(block?.layout || {}),
+    ...(data.layout || {}),
+  };
+  const rawStyle = {
+    ...(block?.style || {}),
+    ...(data.style || {}),
+  };
   const animationDefaults = defaultAnimationLayoutForType(block?.type);
   const rawContent = data.content || block?.content || {};
   const content = block?.type === STOREFRONT_BLOCK_TYPES.GUIDANCE
@@ -786,24 +852,25 @@ export function normalizeBlock(block, index = 0) {
         animationIntensity: rawLayout.animationIntensity || animationDefaults.animationIntensity,
       },
       style: {
-        background: normalizeSurfaceColor(data.style?.background),
-        textColor: normalizeSurfaceColor(data.style?.textColor),
-        radius: data.style?.radius || 'default',
-        shadow: data.style?.shadow || 'none',
+        background: normalizeSurfaceColor(rawStyle.background),
+        textColor: normalizeSurfaceColor(rawStyle.textColor),
+        radius: rawStyle.radius || 'default',
+        shadow: rawStyle.shadow || 'none',
       },
     },
   };
 }
 
 export function normalizeBlocks(blocks = []) {
-  const deprecatedListingTypes = new Set([
+  const deprecatedBlockTypes = new Set([
     STOREFRONT_BLOCK_TYPES.PROPERTIES,
     STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
     STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
     'home-valuation',
+    'closing-cost-estimator',
   ]);
   let normalized = blocks
-    .filter((block) => !deprecatedListingTypes.has(block?.type))
+    .filter((block) => !deprecatedBlockTypes.has(block?.type))
     .map(normalizeBlock);
 
   // Prevent duplicate listing sections in agent pages:
@@ -831,9 +898,8 @@ export function normalizeBlocks(blocks = []) {
 export function availableBlocksForRole(role, templateKey = '') {
   const normalized = normalizeStorefrontRole(role);
   const normalizedTemplateKey = String(templateKey || '').trim().toLowerCase();
-  if (normalizedTemplateKey === 'lawyer-classic') {
-    return [...LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER];
-  }
+  const canonicalOrder = canonicalBlockOrderForTemplate(normalizedTemplateKey);
+  if (canonicalOrder) return [...canonicalOrder];
   const types = [
     ...BLOCK_LIBRARY.shared,
     ...(BLOCK_LIBRARY[normalized] || []),

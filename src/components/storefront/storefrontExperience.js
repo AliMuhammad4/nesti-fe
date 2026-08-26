@@ -89,6 +89,29 @@ export function getStorefrontExperienceCss() {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
+  [data-template-key='lawyer-first-home-closing'] {
+    font-family: var(--font-first-home-body, "Source Sans 3"), Inter, ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.005em;
+  }
+
+  [data-template-key='lawyer-first-home-closing'] h1,
+  [data-template-key='lawyer-first-home-closing'] h2,
+  [data-template-key='lawyer-first-home-closing'] h3,
+  [data-template-key='lawyer-first-home-closing'] h4,
+  [data-template-key='lawyer-first-home-closing'] h5,
+  [data-template-key='lawyer-first-home-closing'] h6,
+  [data-template-key='lawyer-first-home-closing'] .font-serif {
+    font-family: var(--font-first-home-heading, "Cormorant Garamond"), "Palatino Linotype", Palatino, Georgia, serif;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  [data-template-key='lawyer-first-home-closing'] > .storefront-public-band > .storefront-anim-body {
+    width: 100%;
+    max-width: none !important;
+    margin-inline: 0 !important;
+  }
+
   [data-template-key='agent-seller-expert'] [data-storefront-block='about'] .storefront-anim-body {
     width: 100%;
     max-width: none !important;

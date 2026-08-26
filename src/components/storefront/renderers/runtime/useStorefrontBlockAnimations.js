@@ -67,7 +67,7 @@ export function useStorefrontBlockAnimations({
   useLayoutEffect(() => {
     if (!isHydrated || !blocks.length) return;
     markAnimatedChildren(canvasRef.current, blocks);
-  }, [isHydrated, animationConfigSignature, animatedVisibleById]);
+  }, [isHydrated, blocks, animationConfigSignature, animatedVisibleById]);
 
   useEffect(() => {
     if (!isHydrated || !blocks.length) return undefined;

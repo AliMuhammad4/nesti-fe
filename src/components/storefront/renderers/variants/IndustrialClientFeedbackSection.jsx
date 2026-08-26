@@ -71,6 +71,7 @@ function RatingStars({ value, size = 14, variant = 'default' }) {
 export default function IndustrialClientFeedbackSection({
   profile,
   testimonials = [],
+  testimonialSource = 'persisted',
   copy = {},
   showReviews = true,
   sectionId = 'reviews',
@@ -98,6 +99,13 @@ export default function IndustrialClientFeedbackSection({
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const isLuxuryVariant = variant === 'luxury';
   const isLawyerVariant = variant === 'lawyer';
+  const sourceForReview = (item) => (
+    testimonialSource === 'persisted'
+    && Array.isArray(testimonials)
+    && testimonials.some((testimonial) => feedbackKey(testimonial) === feedbackKey(item))
+      ? 'persisted'
+      : 'profile'
+  );
 
   // Builder layout/style controls. Defaults reproduce the previous hard-coded
   // values so Classic and Industrial storefronts render unchanged; they only
@@ -350,7 +358,7 @@ export default function IndustrialClientFeedbackSection({
               key={`${item.client_name}-${index}`}
               data-storefront-anim-item="true"
               data-storefront-field="content.items"
-              data-storefront-source={Array.isArray(testimonials) && testimonials.some((testimonial) => feedbackKey(testimonial) === feedbackKey(item)) ? 'persisted' : 'profile'}
+              data-storefront-source={sourceForReview(item)}
               data-storefront-collection="items"
               data-storefront-item-id={item.id || item._id || `testimonial-${index}`}
               data-storefront-item-index={index}
@@ -364,7 +372,7 @@ export default function IndustrialClientFeedbackSection({
               </div>
               <p
                 data-storefront-field="content.items"
-                data-storefront-source={Array.isArray(testimonials) && testimonials.some((testimonial) => feedbackKey(testimonial) === feedbackKey(item)) ? 'persisted' : 'profile'}
+                data-storefront-source={sourceForReview(item)}
                 data-storefront-collection="items"
                 data-storefront-item-id={item.id || item._id || `testimonial-${index}`}
                 data-storefront-item-index={index}
@@ -385,7 +393,7 @@ export default function IndustrialClientFeedbackSection({
                 <div className="min-w-0">
                   <p
                     data-storefront-field="content.items"
-                    data-storefront-source={Array.isArray(testimonials) && testimonials.some((testimonial) => feedbackKey(testimonial) === feedbackKey(item)) ? 'persisted' : 'profile'}
+                    data-storefront-source={sourceForReview(item)}
                     data-storefront-collection="items"
                     data-storefront-item-id={item.id || item._id || `testimonial-${index}`}
                     data-storefront-item-index={index}

@@ -54,6 +54,7 @@ export default function usePublicProfileBuilder() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({});
   const publishInFlightRef = useRef(null);
+  const savePendingRef = useRef(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -111,6 +112,7 @@ export default function usePublicProfileBuilder() {
     uploadMedia,
     queryClient,
   });
+  savePendingRef.current = saveStorefrontMutation.isPending;
 
   const derived = useMemo(() => {
     const profile = profileData?.profile;
@@ -301,8 +303,14 @@ export default function usePublicProfileBuilder() {
     };
     const publishTask = (async () => {
       try {
+        while (savePendingRef.current) {
+          await new Promise((resolve) => window.setTimeout(resolve, 50));
+        }
+        if (currentDraft) {
+          await saveStorefrontMutation.mutateAsync(currentDraft);
+          editor.markDraftSaved(currentDraft);
+        }
         await publishStorefrontMutation.mutateAsync(currentDraft);
-        if (currentDraft) editor.markDraftSaved(currentDraft);
         finishPublish();
         return true;
       } catch {

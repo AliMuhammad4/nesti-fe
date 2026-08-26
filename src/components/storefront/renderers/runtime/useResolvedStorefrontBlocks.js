@@ -14,15 +14,7 @@ export function useResolvedStorefrontBlocks({ profile, blocks, templateKey }) {
         templateRef,
       ).map((block, index) => normalizeBlock(block, index))
       : []),
-    [
-      blocks,
-      profile?.professional_type,
-      profile?.storefront_template_key,
-      profile?.professional_name,
-      profile?.about,
-      profile?.storefront_blocks,
-      templateRef,
-    ],
+    [blocks, profile, templateRef],
   );
   return { templateRef, resolvedBlocks };
 }

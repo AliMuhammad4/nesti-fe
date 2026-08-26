@@ -15,13 +15,15 @@ export const STOREFRONT_BLOCK_TYPES = {
   WHO_WE_HELP: 'who-we-help',
   DOCUMENT_CHECKLIST: 'document-checklist',
   FEE_GUIDANCE: 'fee-guidance',
+  ENGAGEMENT_SCOPE: 'engagement-scope',
+  PRACTICE_SNAPSHOT: 'practice-snapshot',
+  PRACTICE_LOGISTICS: 'practice-logistics',
   CONSULTATION_OPTIONS: 'consultation-options',
   SELLER_PERFORMANCE: 'seller-performance',
   SELLER_SOLD_RESULTS: 'seller-sold-results',
   SELLER_CASE_STUDY: 'seller-case-study',
   SELLER_CREDENTIALS: 'seller-credentials',
   MORTGAGE_CALCULATOR: 'mortgage-calculator',
-  CLOSING_COST_ESTIMATOR: 'closing-cost-estimator',
   GUIDANCE: 'guidance',
   FAQ: 'faq',
   CTA: 'cta',
@@ -59,7 +61,6 @@ export const STOREFRONT_TEMPLATE_PRESETS = {
   ],
   lawyer: [
     ...sharedBlocks.slice(0, 4),
-    { type: STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR },
     sharedBlocks[4],
     { type: STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS, when: 'practice_areas' },
     sharedBlocks[5],
@@ -94,7 +95,7 @@ export function refreshLawyerClassicBlockCopy(block) {
 
   if (
     block?.type === STOREFRONT_BLOCK_TYPES.HERO
-    && ['', 'community expert', 'real estate expert'].includes(normalized(content.eyebrow))
+    && ['community expert', 'real estate expert'].includes(normalized(content.eyebrow))
   ) {
     updates.eyebrow = 'Property law · Closing counsel';
   }
@@ -158,6 +159,7 @@ export function resolveStorefrontBlocks(
       STOREFRONT_BLOCK_TYPES.TOP_LISTINGS,
       STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS,
       'home-valuation',
+      'closing-cost-estimator',
     ].includes(block.type))
     .filter((block) => {
       if (isInvestorSpecialistTemplate(resolvedTemplateKey) && block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS) {
@@ -509,11 +511,6 @@ export function resolveStorefrontBlocks(
   // by the editor migration. Marked v2 data is already user-owned and must render
   // in its saved order with its saved layout and style.
   if (resolvedTemplateKey === 'lawyer-classic') {
-    for (let index = visibleBlocks.length - 1; index >= 0; index -= 1) {
-      if (visibleBlocks[index].type === STOREFRONT_BLOCK_TYPES.CLOSING_COST_ESTIMATOR) {
-        visibleBlocks.splice(index, 1);
-      }
-    }
     const legacyGuidance = visibleBlocks.find(
       (block) => block.type === STOREFRONT_BLOCK_TYPES.GUIDANCE,
     );
@@ -1155,7 +1152,7 @@ export function resolveStorefrontBlocks(
             ...(hero.data || {}),
             content: {
               ...migratedHeroContent,
-              ...(['', 'community expert', 'real estate expert'].includes(legacyEyebrow)
+              ...(['community expert', 'real estate expert'].includes(legacyEyebrow)
                 ? { eyebrow: 'Property law · Closing counsel' }
                 : {}),
               lawyer_classic_design_version: 2,

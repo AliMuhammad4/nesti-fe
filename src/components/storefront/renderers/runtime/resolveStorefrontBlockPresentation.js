@@ -93,8 +93,13 @@ export function resolveStorefrontBlockPresentation({
   ) {
     storedBackground = visualTreatmentForTemplate(templateKey, block.type, index).bg || storedBackground;
   }
+  const preserveExplicitFirstHomeBand = templateKey === 'lawyer-first-home-closing'
+    && Boolean(storedBackground);
   const useTemplateBand = !storedBackground
-    || TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase());
+    || (
+      !preserveExplicitFirstHomeBand
+      && TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase())
+    );
   const sectionBackground = resolveSectionBandBackground({
     isHero,
     styleBackground: useTemplateBand ? '' : storedBackground,

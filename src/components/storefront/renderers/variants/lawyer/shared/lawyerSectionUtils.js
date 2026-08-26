@@ -2,6 +2,7 @@ import {
   getServiceIconComponent,
   resolveServiceIconKey,
 } from '@/components/storefront/builder/storefrontServiceIcons';
+export { lawyerContentSource, lawyerContentValue } from './lawyerContentSemantics';
 
 export function blockContent(block) {
   return block?.data?.content || block?.content || {};
@@ -47,15 +48,18 @@ export function lawyerClassicBandColors(sectionStyle = {}, {
 }
 
 export function resolveProfessionalIdentity(profile) {
+  const brandBusinessName = profile?.storefront_brand_kit?.business_name
+    || profile?.brand_kit?.business_name
+    || '';
+  const profileCompany = profile?.professional_profile?.company_name || '';
   return {
     name: profile?.professional_profile?.full_name
       || profile?.professional_name
       || 'Legal professional',
     role: profile?.professional_profile?.role_title || 'Real Estate Lawyer',
-    company: profile?.professional_profile?.company_name
-      || profile?.storefront_brand_kit?.business_name
-      || profile?.brand_kit?.business_name
-      || '',
+    company: profile?.storefront_template_key === 'lawyer-first-home-closing'
+      ? (brandBusinessName || profileCompany)
+      : (profileCompany || brandBusinessName),
   };
 }
 
@@ -157,7 +161,11 @@ export function resolveLawyerClassicItems(content, fallback = [], limit = 6) {
         action: item.action || 'inquiry',
         background: item.background || '',
         text_color: item.text_color || '',
+        icon_background: item.icon_background || '',
+        icon_color: item.icon_color || '',
         icon: item.icon || '',
+        source: item.source || '',
+        url: item.url || item.href || '',
       };
     })
     .filter(Boolean)
@@ -169,6 +177,8 @@ export const LAWYER_CLASSIC_ICON_DEFAULTS = {
   'who-we-help': ['home', 'building', 'landmark', 'briefcase', 'users', 'scale'],
   'practice-areas': ['building', 'home', 'contract', 'landmark', 'gavel', 'briefcase'],
   'fee-guidance': ['scale', 'dollar', 'clipboard', 'landmark'],
+  'engagement-scope': ['contract', 'clipboard', 'shield', 'scale'],
+  'practice-logistics': ['landmark', 'calendar', 'message', 'home'],
   'consultation-options': ['message', 'calendar', 'contract', 'handshake'],
   guidance: ['notebook', 'contract', 'shield', 'scale', 'landmark', 'gavel'],
 };

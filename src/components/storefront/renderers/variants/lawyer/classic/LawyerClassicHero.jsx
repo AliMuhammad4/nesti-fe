@@ -5,10 +5,21 @@ import PublicStorefrontHeader from '@/components/public-profile/PublicStorefront
 import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
 import { LawyerEditableText as EditableText } from '../shared/LawyerEditableText';
 import { ResilientStorefrontImage } from '../shared/ResilientStorefrontImage';
-import { blockContent, resolveProfessionalIdentity } from '../shared/lawyerSectionUtils';
+import {
+  blockContent,
+  lawyerContentSource,
+  lawyerContentValue,
+  resolveProfessionalIdentity,
+} from '../shared/lawyerSectionUtils';
 
 export function LawyerClassicHero({ profile, actions = {}, block }) {
   const content = blockContent(block);
+  const eyebrow = lawyerContentValue(content, 'eyebrow', 'Property law · Closing counsel');
+  const heading = lawyerContentValue(content, 'heading', 'Tell us about your matter.');
+  const body = lawyerContentValue(content, 'body', 'Clear legal guidance for contracts, title matters, purchases, sales, and closing day.');
+  const primaryCtaLabel = lawyerContentValue(content, 'primary_cta_label', 'Submit inquiry');
+  const ctaLabel = lawyerContentValue(content, 'cta_label', 'Make an appointment');
+  const joinLabel = lawyerContentValue(content, 'join_label', 'Join Nesti');
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const layout = block?.data?.layout || block?.layout || {};
   const style = block?.data?.style || block?.style || {};
@@ -95,29 +106,29 @@ export function LawyerClassicHero({ profile, actions = {}, block }) {
           <EditableText
             field="content.eyebrow"
             label="Hero eyebrow"
-            source={content.eyebrow ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'eyebrow')}
             className="lawyer-classic-hero-kicker text-[11px] font-bold uppercase tracking-[0.28em] text-accent"
             animated
           >
-            {content.eyebrow || 'Property law · Closing counsel'}
+            {eyebrow}
           </EditableText>
           <EditableText
             as="h1"
             field="content.heading"
             label="Hero heading"
-            source={content.heading ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'heading')}
             className={`lawyer-classic-hero-heading mt-6 max-w-2xl text-3xl font-bold uppercase leading-[1.1] tracking-[-0.02em] sm:text-4xl lg:text-5xl ${
               heroTextColor ? 'text-current' : 'text-primary'
             }`}
             animated
           >
-            {content.heading || 'Tell us about your matter.'}
+            {heading}
           </EditableText>
           <EditableText
             as="p"
             field="content.body"
             label="Hero description"
-            source={content.body ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'body')}
             className="lawyer-classic-hero-description mt-5 max-w-xl leading-7"
             style={{
               color: heroTextColor || 'color-mix(in srgb, var(--storefront-primary) 78%, var(--storefront-canvas))',
@@ -125,7 +136,7 @@ export function LawyerClassicHero({ profile, actions = {}, block }) {
             }}
             animated
           >
-            {content.body || 'Clear legal guidance for contracts, title matters, purchases, sales, and closing day.'}
+            {body}
           </EditableText>
           <div className="lawyer-classic-hero-actions mt-8 flex flex-wrap gap-3">
             <button
@@ -133,32 +144,32 @@ export function LawyerClassicHero({ profile, actions = {}, block }) {
               onClick={actions.onDirectLeadClick}
               data-storefront-anim-item="true"
               data-storefront-field="content.primary_cta_label"
-              data-storefront-source={content.primary_cta_label ? 'persisted' : 'fallback'}
+              data-storefront-source={lawyerContentSource(content, 'primary_cta_label')}
               data-storefront-label="Primary hero button"
-              className="lawyer-classic-hero-action storefront-btn inline-flex min-h-12 items-center justify-center gap-2 border border-accent bg-accent px-6 text-xs font-bold uppercase tracking-[0.11em] text-accent-contrast transition hover:-translate-y-0.5 hover:brightness-105"
+              className={`${primaryCtaLabel ? 'inline-flex' : 'hidden'} lawyer-classic-hero-action storefront-btn min-h-12 items-center justify-center gap-2 border border-accent bg-accent px-6 text-xs font-bold uppercase tracking-[0.11em] text-accent-contrast transition hover:-translate-y-0.5 hover:brightness-105`}
               style={{
                 ...(primaryButtonBackground ? { backgroundColor: primaryButtonBackground, borderColor: primaryButtonBackground } : {}),
                 ...(primaryButtonText ? { color: primaryButtonText } : {}),
               }}
             >
               <MessageSquareText size={16} />
-              {content.primary_cta_label || 'Submit inquiry'}
+              {primaryCtaLabel}
             </button>
             <button
               type="button"
               onClick={openConsultation}
               data-storefront-anim-item="true"
               data-storefront-field="content.cta_label"
-              data-storefront-source={content.cta_label ? 'persisted' : 'fallback'}
+              data-storefront-source={lawyerContentSource(content, 'cta_label')}
               data-storefront-label="Appointment button"
-              className="lawyer-classic-hero-action storefront-btn inline-flex min-h-12 items-center justify-center gap-2 border border-primary/40 bg-white/70 px-6 text-xs font-bold uppercase tracking-[0.11em] text-primary transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent hover:text-accent-contrast"
+              className={`${ctaLabel ? 'inline-flex' : 'hidden'} lawyer-classic-hero-action storefront-btn min-h-12 items-center justify-center gap-2 border border-primary/40 bg-white/70 px-6 text-xs font-bold uppercase tracking-[0.11em] text-primary transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent hover:text-accent-contrast`}
               style={{
                 ...(secondaryButtonBackground ? { backgroundColor: secondaryButtonBackground, borderColor: secondaryButtonBackground } : {}),
                 ...(secondaryButtonText ? { color: secondaryButtonText } : {}),
               }}
             >
               <CalendarDays size={16} />
-              {content.cta_label || 'Make an appointment'}
+              {ctaLabel}
             </button>
             {inviteShareUrl ? (
               <a
@@ -167,16 +178,16 @@ export function LawyerClassicHero({ profile, actions = {}, block }) {
                 rel="noopener noreferrer"
                 data-storefront-anim-item="true"
                 data-storefront-field="content.join_label"
-                data-storefront-source={content.join_label ? 'persisted' : 'fallback'}
+                data-storefront-source={lawyerContentSource(content, 'join_label')}
                 data-storefront-label="Join Nesti button"
-                className="lawyer-classic-hero-action storefront-btn inline-flex min-h-12 items-center justify-center gap-2 border border-primary/30 bg-white/70 px-6 text-xs font-bold uppercase tracking-[0.11em] text-primary transition hover:-translate-y-0.5 hover:border-accent hover:text-accent"
+                className={`${joinLabel ? 'inline-flex' : 'hidden'} lawyer-classic-hero-action storefront-btn min-h-12 items-center justify-center gap-2 border border-primary/30 bg-white/70 px-6 text-xs font-bold uppercase tracking-[0.11em] text-primary transition hover:-translate-y-0.5 hover:border-accent hover:text-accent`}
                 style={{
                   ...(secondaryButtonBackground ? { backgroundColor: secondaryButtonBackground, borderColor: secondaryButtonBackground } : {}),
                   ...(secondaryButtonText ? { color: secondaryButtonText } : {}),
                 }}
               >
                 <UserPlus size={16} />
-                {content.join_label || 'Join Nesti'}
+                {joinLabel}
               </a>
             ) : null}
           </div>

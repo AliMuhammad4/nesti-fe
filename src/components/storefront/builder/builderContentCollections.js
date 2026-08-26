@@ -1,4 +1,5 @@
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
+import { PRACTICE_AREA_LIMIT } from '../storefrontLimits';
 
 function createCollectionItemId() {
   const randomId = globalThis.crypto?.randomUUID?.()
@@ -97,7 +98,7 @@ const CONTENT_COLLECTIONS = {
           return { title, description };
         })
         .filter((item) => item.title)
-        .slice(0, 3),
+        .slice(0, PRACTICE_AREA_LIMIT),
       existingItems,
       ['title'],
     ),
@@ -110,7 +111,7 @@ const CONTENT_COLLECTIONS = {
       .filter(Boolean)
       .join('\n'),
     hint: 'One per line: Title | Description (maximum 6)',
-    maxItems: 6,
+    maxItems: PRACTICE_AREA_LIMIT,
   },
   [STOREFRONT_BLOCK_TYPES.WHO_WE_HELP]: {
     label: 'Who we help cards',
@@ -176,6 +177,50 @@ const CONTENT_COLLECTIONS = {
       .filter(Boolean)
       .join('\n'),
     hint: 'One per line: Title | Description (maximum 6)',
+    maxItems: 6,
+  },
+  [STOREFRONT_BLOCK_TYPES.ENGAGEMENT_SCOPE]: {
+    label: 'Engagement scope cards',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', description = ''] = line.split('|').map((part) => part.trim());
+          return { title, description };
+        })
+        .filter((item) => item.title)
+        .slice(0, 6),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.description || item?.text]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Scope | Explanation (maximum 6)',
+    maxItems: 6,
+  },
+  [STOREFRONT_BLOCK_TYPES.PRACTICE_LOGISTICS]: {
+    label: 'Service detail cards',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', description = ''] = line.split('|').map((part) => part.trim());
+          return { title, description };
+        })
+        .filter((item) => item.title)
+        .slice(0, 6),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.description || item?.text]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Service detail | Explanation (maximum 6)',
     maxItems: 6,
   },
   [STOREFRONT_BLOCK_TYPES.CONSULTATION_OPTIONS]: {

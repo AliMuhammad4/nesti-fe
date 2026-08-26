@@ -10,7 +10,7 @@ export function visualTreatmentForTemplate(templateId, type, index) {
     T.SOLD_LISTINGS,
     T.SELLER_SOLD_RESULTS,
   ].includes(type);
-  const isTool = [T.MORTGAGE_CALCULATOR, T.CLOSING_COST_ESTIMATOR].includes(type);
+  const isTool = type === T.MORTGAGE_CALCULATOR;
   const palette = {
     'agent-classic': {
       bg: index % 2 === 0 ? '#f7fcfa' : '#eef7f4',
@@ -163,16 +163,24 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: isTool ? 'large' : 'none',
     },
     'lawyer-first-home-closing': {
-      bg: index % 2 === 0 ? '#eff6ff' : '#ffffff',
-      align: isHero || isTool ? 'center' : 'left',
+      bg: '',
+      align: 'left',
       padding: isHero || isTool ? 'large' : 'medium',
-      radius: 'large',
-      variant: isHero ? 'editorial' : isTool ? 'lead-magnet' : 'standard',
-      cardStyle: 'glass',
-      columns: '2',
+      radius: 'none',
+      variant: isHero ? 'premium' : isTool ? 'lead-magnet' : 'editorial',
+      cardStyle: isTool ? 'elevated' : 'bordered',
+      columns: type === T.PRACTICE_AREAS || type === T.WHO_WE_HELP
+        ? '3'
+        : type === T.DOCUMENT_CHECKLIST || type === T.FAQ
+          ? '2'
+          : type === T.FEE_GUIDANCE || type === T.CONSULTATION_OPTIONS
+            ? '3'
+            : type === T.CREDENTIALS
+              ? '4'
+              : '3',
       mediaPosition: isHero ? 'background' : 'none',
-      width: isTool ? 'narrow' : 'contained',
-      shadow: 'medium',
+      width: isTool ? 'narrow' : 'full',
+      shadow: isTool ? 'large' : 'none',
     },
     'lawyer-commercial': {
       bg: index % 2 === 0 ? '#f8fafc' : '#fef3c7',

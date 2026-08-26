@@ -129,6 +129,7 @@ export default function PublicContactPage({ profile }) {
   const isLuxury = templateKey === 'agent-luxury-advisor';
   const isFirstHome = templateKey === 'agent-first-home';
   const isLawyerClassic = templateKey === 'lawyer-classic';
+  const isLayeredLawyer = isLawyerClassic || templateKey === 'lawyer-first-home-closing';
   const isLawyer = profile?.professional_type === 'lawyer';
   const isInvestor = isInvestorSpecialistTemplate(templateKey);
   const experience = resolveTemplateExperience(templateKey);
@@ -449,7 +450,7 @@ export default function PublicContactPage({ profile }) {
                       className={`mt-5 inline-flex w-full items-center justify-center gap-2 px-6 py-3 text-[9px] font-bold uppercase tracking-[0.17em] transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
                         isLuxury
                           ? 'bg-[var(--storefront-accent)] text-[#15110d] shadow-[0_10px_24px_color-mix(in_srgb,var(--storefront-accent)_12%,transparent)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_30px_color-mix(in_srgb,var(--storefront-accent)_18%,transparent)]'
-                          : isLawyerClassic
+                          : isLayeredLawyer
                             ? 'bg-accent text-accent-contrast hover:-translate-y-0.5 hover:brightness-105'
                             : 'rounded-full bg-primary text-white hover:brightness-95'
                       }`}
@@ -457,6 +458,15 @@ export default function PublicContactPage({ profile }) {
                       <Send size={14} />
                       {submitting ? 'Sending request…' : 'Send private request'}
                     </button>
+                    <p className={`mt-3 text-[10px] leading-5 ${isLayeredLawyer || isLuxury ? 'text-current opacity-55' : 'text-slate-500'}`}>
+                      By submitting, you agree to Nesti&apos;s{' '}
+                      <Link href="/privacy" className="underline underline-offset-2 hover:text-accent">Privacy Policy</Link>
+                      {' '}and{' '}
+                      <Link href="/terms" className="underline underline-offset-2 hover:text-accent">Terms</Link>.
+                      {isLawyer ? (
+                        <> An inquiry does not create a lawyer-client relationship.</>
+                      ) : null}
+                    </p>
                     {errorMessage ? (
                       <p
                         role="alert"
@@ -475,8 +485,8 @@ export default function PublicContactPage({ profile }) {
         </main>
 
         <div data-storefront-block={STOREFRONT_BLOCK_TYPES.FOOTER}>
-          {isLawyerClassic ? (
-            <LawyerClassicFooter profile={profile} block={footerBlock} />
+          {isLayeredLawyer ? (
+            <LawyerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : (
             <PublicStorefrontFooter profile={profile} content={footerContent} sectionStyle={footerBlockStyle} />
           )}

@@ -49,7 +49,7 @@ export default function StorefrontBlockRenderer({
 }) {
   const { templateRef, resolvedBlocks } = useResolvedStorefrontBlocks({
     profile,
-    blocks,
+        blocks,
     templateKey,
   });
   const { canvasRef, isHydrated, animatedVisibleById } = useStorefrontBlockAnimations({
@@ -63,7 +63,11 @@ export default function StorefrontBlockRenderer({
   // Profiles can store aliases such as realtor/real_estate_agent; renderer
   // overrides are registered under canonical storefront roles (agent, etc.).
   const role = normalizeStorefrontRole(profile.professional_type) || 'agent';
-  const blockRegistry = createStorefrontRendererRegistry({ role, experience });
+  const blockRegistry = createStorefrontRendererRegistry({
+    role,
+    experience,
+    templateKey: templateRef,
+  });
   const expertiseBlock = resolvedBlocks.find(
     (block) => block.type === STOREFRONT_BLOCK_TYPES.EXPERTISE,
   );
@@ -72,11 +76,16 @@ export default function StorefrontBlockRenderer({
     || [];
   const experienceClass = experienceCanvasClass(experience);
   const templateBrand = getStorefrontTemplate(templateRef)?.brand || {};
+  const templateThemeVersion = profile?.storefront_essentials?.lawyer_first_home_brand_version
+    ?? profile?.storefront_brand_kit?.essentials?.lawyer_first_home_brand_version
+    ?? profile?.brand_kit?.essentials?.lawyer_first_home_brand_version
+    ?? 0;
   const resolvedTheme = resolveStorefrontRendererTheme({
     templateKey: templateRef,
     explicitTheme: theme,
     profileTheme: profile.storefront_theme,
     templateBrand,
+    templateThemeVersion,
   });
   const selectedElementCss = buildSelectedElementCss({ preview, selectedElement });
   const featuredListingDesign = resolvedBlocks.find(
@@ -84,7 +93,10 @@ export default function StorefrontBlockRenderer({
   ) || null;
 
   return (
-    <StorefrontTheme theme={resolvedTheme} className={className}>
+    <StorefrontTheme
+      theme={resolvedTheme}
+      className={className}
+    >
       {/* Injected via createElement so Turbopack does not rewrite these as styled-jsx. */}
       <StorefrontInlineStyle css={getStorefrontExperienceCss()} />
       {isHydrated ? <StorefrontInlineStyle css={RESPONSIVE_POLISH_CSS} /> : null}

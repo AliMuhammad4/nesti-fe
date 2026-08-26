@@ -7,7 +7,9 @@ import {
   lawyerClassicGridClass,
   lawyerClassicItemSurface,
   lawyerClassicResolvedPaddingClass,
+  lawyerClassicSectionStyle,
   lawyerClassicToneClass,
+  isLightHexColor,
   resolveLawyerClassicIcon,
 } from '../shared/lawyerSectionUtils';
 
@@ -39,6 +41,9 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const columns = block?.data?.layout?.columns || block?.layout?.columns || '3';
   const padding = block?.data?.layout?.padding || block?.layout?.padding || 'medium';
+  const sectionStyle = lawyerClassicSectionStyle(block);
+  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const hasCustomText = isLawyerFirstHome && Boolean(String(sectionStyle.textColor || '').trim());
   const descriptionRefs = useRef({});
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [expandableDescriptions, setExpandableDescriptions] = useState({});
@@ -71,7 +76,14 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
   }, [descriptionSignature]);
 
   return (
-    <div id="services" className={`w-full max-w-none bg-transparent px-5 sm:px-8 lg:px-12 xl:px-16 ${lawyerClassicResolvedPaddingClass(padding, 'py-16')}`}>
+    <div
+      id="services"
+      className={`w-full max-w-none bg-transparent px-5 sm:px-8 lg:px-12 xl:px-16 ${lawyerClassicResolvedPaddingClass(padding, 'py-16')}`}
+      style={isLawyerFirstHome ? {
+        ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
+        ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
+      } : undefined}
+    >
       <div className="w-full max-w-none">
         <div className="max-w-3xl" data-storefront-anim-item="true">
           <EditableText
@@ -88,7 +100,7 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
             field="content.heading"
             label="Practice areas heading"
             source={content.heading ? 'persisted' : 'fallback'}
-            className="mt-3 text-3xl font-semibold uppercase tracking-tight text-primary sm:text-4xl"
+            className={`mt-3 text-3xl font-semibold uppercase tracking-tight sm:text-4xl ${hasCustomText ? 'text-current' : 'text-primary'}`}
           >
             {content.heading || 'Our practice areas'}
           </EditableText>
@@ -98,7 +110,7 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
             field="content.body"
             label="Practice areas description"
             source={content.body ? 'persisted' : 'fallback'}
-            className="mt-5 max-w-2xl text-sm leading-6 text-slate-500"
+            className={`mt-5 max-w-2xl text-sm leading-6 ${hasCustomText ? 'text-current opacity-70' : 'text-slate-500'}`}
           >
             {content.body || 'Focused legal support for real estate decisions, documents, ownership, financing, and closing.'}
           </EditableText>
@@ -113,7 +125,10 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
             const isExpanded = Boolean(expandedDescriptions[itemId]);
             const canExpand = Boolean(expandableDescriptions[itemId]);
             const cardSurface = lawyerClassicItemSurface(item);
-            const cardText = item.text_color;
+            const cardText = item.text_color
+              || (cardSurface.background
+                ? (isLightHexColor(cardSurface.background) ? '#1f2839' : '#ffffff')
+                : '');
             return (
               <article
                 key={itemId}
@@ -121,7 +136,10 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
                 data-storefront-anim-item="true"
                 data-storefront-anim-hover="lift"
                 className={`group flex h-56 flex-col p-6 transition ${cardSurface.background ? '' : 'bg-white hover:bg-primary'}`}
-                style={cardSurface}
+                style={{
+                  ...cardSurface,
+                  ...(cardText ? { color: cardText } : {}),
+                }}
               >
                 <div className="flex items-center gap-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center text-accent transition group-hover:scale-110">
@@ -136,7 +154,7 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
                     itemId={item.id}
                     itemIndex={index}
                     itemField="title"
-                    className={`text-lg font-semibold leading-tight transition ${
+                    className={`min-w-0 flex-1 text-lg font-semibold leading-tight transition ${
                       lawyerClassicToneClass(cardText, 'text-primary group-hover:text-primary-contrast')
                     }`}
                   >

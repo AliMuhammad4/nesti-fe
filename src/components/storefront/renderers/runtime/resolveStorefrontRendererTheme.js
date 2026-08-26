@@ -3,6 +3,7 @@ export function resolveStorefrontRendererTheme({
   explicitTheme,
   profileTheme,
   templateBrand = {},
+  templateThemeVersion = 0,
 } = {}) {
   const definedThemeValues = Object.fromEntries(
     Object.entries(explicitTheme || profileTheme || {}).filter(([, value]) => value !== undefined && value !== null && value !== ''),
@@ -73,6 +74,56 @@ export function resolveStorefrontRendererTheme({
   ) {
     definedThemeValues.canvas = templateBrand.page_background || '#f5f7fa';
   }
+  const shouldMigrateLawyerFirstHomeTheme = templateKey === 'lawyer-first-home-closing'
+    && Number(templateThemeVersion || 0) < 4;
+  if (
+    templateKey === 'lawyer-first-home-closing'
+    && ['playfair display', 'open sans'].includes(
+      String(definedThemeValues.fontFamily || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.fontFamily = templateBrand.font || 'Cormorant Garamond';
+  }
+  if (
+    shouldMigrateLawyerFirstHomeTheme
+    && ['#1e3a8a', '#101a2b', '#34c759'].includes(
+      String(definedThemeValues.primary || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.primary = templateBrand.primary_color || '#1f2839';
+  }
+  if (
+    shouldMigrateLawyerFirstHomeTheme
+    && ['#60a5fa', '#c8a878', '#f59e0b'].includes(
+      String(definedThemeValues.accent || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.accent = templateBrand.accent_color || '#b69d74';
+  }
+  if (
+    shouldMigrateLawyerFirstHomeTheme
+    && ['#ffffff', '#eff6ff', '#f7f4ee'].includes(
+      String(definedThemeValues.canvas || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.canvas = templateBrand.page_background || '#f6f3ed';
+  }
+  if (
+    shouldMigrateLawyerFirstHomeTheme
+    && ['dm sans', 'inter', 'playfair display', 'open sans'].includes(
+      String(definedThemeValues.fontFamily || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.fontFamily = templateBrand.font || 'Cormorant Garamond';
+  }
+  if (
+    shouldMigrateLawyerFirstHomeTheme
+    && ['999px', '0.75rem', '1rem'].includes(
+      String(definedThemeValues.radius || '').trim().toLowerCase(),
+    )
+  ) {
+    definedThemeValues.radius = '2px';
+  }
   if (
     templateKey === 'lawyer-classic'
     && ['#172554', '#1e3a8a', '#0f766e', '#34c759'].includes(
@@ -121,6 +172,7 @@ export function resolveStorefrontRendererTheme({
   const resolvedTheme = {
     primary: templateBrand.primary_color,
     accent: templateBrand.accent_color,
+    canvas: templateBrand.page_background,
     fontFamily: templateBrand.font,
     radius: templateBrand.button_shape === 'pill'
       ? '999px'

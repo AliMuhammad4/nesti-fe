@@ -2,11 +2,26 @@
 
 import { LawyerEditableText as EditableText } from '../shared/LawyerEditableText';
 import { ResilientStorefrontImage } from '../shared/ResilientStorefrontImage';
-import { blockContent, lawyerClassicResolvedPaddingClass, resolveProfessionalIdentity } from '../shared/lawyerSectionUtils';
+import {
+  blockContent,
+  lawyerClassicResolvedPaddingClass,
+  lawyerContentSource,
+  lawyerContentValue,
+  resolveProfessionalIdentity,
+} from '../shared/lawyerSectionUtils';
 
 export function LawyerClassicAbout({ profile, block }) {
   const content = blockContent(block);
   const identity = resolveProfessionalIdentity(profile);
+  const eyebrow = lawyerContentValue(content, 'eyebrow', 'About the practice');
+  const heading = lawyerContentValue(content, 'heading', `About ${identity.name}`);
+  const body = lawyerContentValue(
+    content,
+    'body',
+    profile?.about || 'Practical legal counsel focused on protecting your transaction, documents, title, and closing timeline.',
+  );
+  const imageName = lawyerContentValue(content, 'image_name', identity.name);
+  const imageRole = lawyerContentValue(content, 'image_role', identity.role);
   const profilePhoto = profile?.profile_photo_url
     || profile?.storefront_profile_fallback_url
     || profile?.storefront_essentials?.profile_photo_url
@@ -22,29 +37,29 @@ export function LawyerClassicAbout({ profile, block }) {
             as="p"
             field="content.eyebrow"
             label="About eyebrow"
-            source={content.eyebrow ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'eyebrow')}
             className="text-[11px] font-bold uppercase tracking-[0.26em] text-accent"
           >
-            {content.eyebrow || 'About the practice'}
+            {eyebrow}
           </EditableText>
           <EditableText
             as="h2"
             field="content.heading"
             label="About heading"
-            source={content.heading ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'heading')}
             className="mt-4 text-3xl font-semibold tracking-tight text-primary sm:text-4xl"
           >
-            {content.heading || `About ${identity.name}`}
+            {heading}
           </EditableText>
           <div className="mt-5 h-0.5 w-14 bg-accent" />
           <EditableText
             as="p"
             field="content.body"
             label="About description"
-            source={content.body ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'body')}
             className="mt-6 text-[15px] leading-7 text-slate-600"
           >
-            {content.body || profile?.about || 'Practical legal counsel focused on protecting your transaction, documents, title, and closing timeline.'}
+            {body}
           </EditableText>
           </div>
         </div>
@@ -77,18 +92,18 @@ export function LawyerClassicAbout({ profile, block }) {
             <EditableText
               field="content.image_name"
               label="About image name"
-              source={content.image_name ? 'persisted' : 'fallback'}
+              source={lawyerContentSource(content, 'image_name')}
               className="text-xl font-semibold"
             >
-              {content.image_name || identity.name}
+              {imageName}
             </EditableText>
             <EditableText
               field="content.image_role"
               label="About image role"
-              source={content.image_role ? 'persisted' : 'fallback'}
+              source={lawyerContentSource(content, 'image_role')}
               className="mt-1 text-xs uppercase tracking-[0.2em] text-white/[0.65]"
             >
-              {content.image_role || identity.role}
+              {imageRole}
             </EditableText>
           </div>
         </div>

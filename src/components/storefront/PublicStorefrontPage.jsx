@@ -9,6 +9,7 @@ import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontBlockRenderer from './StorefrontBlockRenderer';
 import { materializeTemplate } from './templates';
+import { migrateLawyerFirstHomeBlocks } from './templates/lawyer/firstHomeMigration';
 
 const PROOF_TEMPLATE_KEYS = new Set([
   'agent-luxury-advisor',
@@ -61,6 +62,14 @@ export default function PublicStorefrontPage({ profile }) {
   const [prefillInquiryProperty, setPrefillInquiryProperty] = useState(null);
   const publicBlocks = useMemo(() => {
     const savedBlocks = Array.isArray(profile.storefront_blocks) ? profile.storefront_blocks : [];
+    if (profile.storefront_template_key === 'lawyer-first-home-closing') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateLawyerFirstHomeBlocks(savedBlocks, defaults);
+    }
     if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
     const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
       ? migrateCommunityPublishedBlocks(savedBlocks)

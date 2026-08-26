@@ -131,6 +131,10 @@ export function storefrontThemeVariables(theme) {
     '--storefront-radius': resolved.radius,
     '--storefront-font': resolved.fontFamily === 'Playfair Display'
       ? '"Playfair Display", Georgia, "Times New Roman", serif'
+      : resolved.fontFamily === 'Cormorant Garamond'
+        ? 'var(--font-first-home-heading, "Cormorant Garamond"), "Palatino Linotype", Palatino, Georgia, serif'
+        : resolved.fontFamily === 'Source Sans 3'
+          ? 'var(--font-first-home-body, "Source Sans 3"), Inter, ui-sans-serif, system-ui, sans-serif'
       : resolved.fontFamily === 'DM Sans'
         ? '"DM Sans", Inter, ui-sans-serif, system-ui, sans-serif'
         : resolved.fontFamily === 'Inter'

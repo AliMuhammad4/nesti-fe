@@ -7,10 +7,17 @@ import {
   blockContent,
   lawyerClassicBandColors,
   lawyerClassicResolvedPaddingClass,
+  lawyerContentSource,
+  lawyerContentValue,
 } from '../shared/lawyerSectionUtils';
 
 export function LawyerClassicCta({ profile, actions = {}, block }) {
   const content = blockContent(block);
+  const eyebrow = lawyerContentValue(content, 'eyebrow', 'Consultation request');
+  const heading = lawyerContentValue(content, 'heading', 'If you need legal guidance, we are available.');
+  const body = lawyerContentValue(content, 'body', 'Book a consultation or send the transaction details for a focused response.');
+  const ctaLabel = lawyerContentValue(content, 'cta_label', 'Get consultation');
+  const secondaryCtaLabel = lawyerContentValue(content, 'secondary_cta_label', 'Send inquiry');
   const sectionStyle = block?.data?.style || block?.style || {};
   const band = lawyerClassicBandColors(sectionStyle, {
     emptyBackgrounds: ['', '#202020', '#24211e', '#d39a52'],
@@ -51,28 +58,28 @@ export function LawyerClassicCta({ profile, actions = {}, block }) {
             as="p"
             field="content.eyebrow"
             label="CTA eyebrow"
-            source={content.eyebrow ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'eyebrow')}
             className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] opacity-70"
           >
-            {content.eyebrow || 'Consultation request'}
+            {eyebrow}
           </EditableText>
           <EditableText
             as="h2"
             field="content.heading"
             label="Contact heading"
-            source={content.heading ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'heading')}
             className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl"
           >
-            {content.heading || 'If you need legal guidance, we are available.'}
+            {heading}
           </EditableText>
           <EditableText
             as="p"
             field="content.body"
             label="Contact description"
-            source={content.body ? 'persisted' : 'fallback'}
+            source={lawyerContentSource(content, 'body')}
             className="mt-3 max-w-xl text-sm leading-6 opacity-75"
           >
-            {content.body || 'Book a consultation or send the transaction details for a focused response.'}
+            {body}
           </EditableText>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row" data-storefront-anim-item="true">
@@ -80,23 +87,23 @@ export function LawyerClassicCta({ profile, actions = {}, block }) {
             type="button"
             onClick={connect}
             data-storefront-field="content.cta_label"
-            data-storefront-source={content.cta_label ? 'persisted' : 'fallback'}
+            data-storefront-source={lawyerContentSource(content, 'cta_label')}
             data-storefront-label="Consultation button"
-            className="storefront-btn inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-7 text-[11px] font-bold uppercase tracking-[0.14em] text-primary-contrast shadow-[0_12px_28px_rgba(32,32,32,.16)] transition hover:-translate-y-0.5"
+            className={`${ctaLabel ? 'inline-flex' : 'hidden'} storefront-btn min-h-12 items-center justify-center gap-2 bg-primary px-7 text-[11px] font-bold uppercase tracking-[0.14em] text-primary-contrast shadow-[0_12px_28px_rgba(32,32,32,.16)] transition hover:-translate-y-0.5`}
           >
             <CalendarDays size={16} />
-            {content.cta_label || 'Get consultation'}
+            {ctaLabel}
           </button>
           <button
             type="button"
             onClick={actions.onDirectLeadClick}
             data-storefront-field="content.secondary_cta_label"
-            data-storefront-source={content.secondary_cta_label ? 'persisted' : 'fallback'}
+            data-storefront-source={lawyerContentSource(content, 'secondary_cta_label')}
             data-storefront-label="Inquiry button"
-            className="storefront-btn inline-flex min-h-12 items-center justify-center gap-2 border border-current bg-transparent px-7 text-[11px] font-bold uppercase tracking-[0.14em] text-current transition hover:-translate-y-0.5 hover:bg-white/20"
+            className={`${secondaryCtaLabel ? 'inline-flex' : 'hidden'} storefront-btn min-h-12 items-center justify-center gap-2 border border-current bg-transparent px-7 text-[11px] font-bold uppercase tracking-[0.14em] text-current transition hover:-translate-y-0.5 hover:bg-white/20`}
           >
             <MessageSquareText size={16} />
-            {content.secondary_cta_label || 'Send inquiry'}
+            {secondaryCtaLabel}
           </button>
         </div>
         {content.helper_text ? (

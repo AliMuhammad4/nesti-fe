@@ -123,6 +123,7 @@ function TemplateBrandControls({
 }) {
   const defaults = getTemplateBrandDefaults(templateKey);
   const isLuxuryTemplate = String(templateKey || '').toLowerCase().includes('luxury');
+  const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
   const primaryCustom = defaults
     && normalizeHex(brandKit.primary_color, defaults.primary_color) !== normalizeHex(defaults.primary_color);
   const accentCustom = defaults
@@ -229,7 +230,7 @@ function TemplateBrandControls({
               ariaLabel="Button style"
             />
           </Field>
-          {isLuxuryTemplate ? (
+          {isLuxuryTemplate || isLawyerFirstHome ? (
             <div className="mt-2">
               <Field label="Logo visibility (dark header)">
                 <BuilderSelect
@@ -242,6 +243,34 @@ function TemplateBrandControls({
                   ]}
                   onChange={(value) => onChange({ essentials: { ...(brandKit?.essentials || {}), logo_chip_mode: value } })}
                   ariaLabel="Logo visibility mode"
+                />
+              </Field>
+            </div>
+          ) : null}
+          {isLawyerFirstHome ? (
+            <div className="mt-2 space-y-2">
+              <Field label="Image treatment">
+                <BuilderSelect
+                  value={brandKit.image_style || defaults?.image_style || 'editorial'}
+                  options={[
+                    { value: 'editorial', label: 'Editorial' },
+                    { value: 'warm', label: 'Warm' },
+                    { value: 'minimal', label: 'Minimal' },
+                    { value: 'bold', label: 'Bold' },
+                  ]}
+                  onChange={(image_style) => onChange({ image_style })}
+                  ariaLabel="First Home image treatment"
+                />
+              </Field>
+              <Field label={`Logo size (${Number(brandKit.logo_size) || 40}px)`}>
+                <input
+                  type="range"
+                  min="24"
+                  max="72"
+                  step="1"
+                  value={Number(brandKit.logo_size) || 40}
+                  onChange={(event) => onChange({ logo_size: Number(event.target.value) })}
+                  className="w-full accent-primary"
                 />
               </Field>
             </div>

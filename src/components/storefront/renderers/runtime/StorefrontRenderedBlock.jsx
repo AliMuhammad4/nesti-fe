@@ -34,7 +34,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && templateKey !== 'lawyer-classic'
+    && !['lawyer-classic', 'lawyer-first-home-closing'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -80,6 +80,9 @@ export default function StorefrontRenderedBlock({
     animationBlur,
     sectionTextOverrideClass,
   } = presentation;
+  const sectionLayout = templateKey === 'lawyer-first-home-closing'
+    ? { ...bandLayout, width: 'full' }
+    : bandLayout;
   const editingHandlers = createInlineEditingHandlers({
     preview,
     block,
@@ -146,7 +149,7 @@ export default function StorefrontRenderedBlock({
         </span>
       ) : null}
       <div
-        className={`storefront-anim-body ${sectionInnerClass(bandLayout)} ${
+        className={`storefront-anim-body ${sectionInnerClass(sectionLayout)} ${
           templateKey !== 'lawyer-classic' && variant === 'split' && !isHero && !isListing ? 'storefront-split-layout' : ''
         } ${templateKey !== 'lawyer-classic' && !isHero && variant === 'editorial' ? 'storefront-section--editorial' : ''} ${
           templateKey !== 'lawyer-classic' && !isHero && variant === 'premium' ? 'storefront-section--premium' : ''

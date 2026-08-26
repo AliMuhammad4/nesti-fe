@@ -76,6 +76,61 @@ export const RESPONSIVE_POLISH_CSS = `
   min-height: 2.6rem;
 }
 
+.storefront-canvas.storefront-preview-mobile [data-first-home-grid] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas.storefront-preview-tablet :where(
+  [data-first-home-grid="about-shell"],
+  [data-first-home-grid="engagement-shell"],
+  [data-first-home-grid="roadmap-shell"],
+  [data-first-home-grid="protection-shell"]
+) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas.storefront-preview-tablet :where(
+  [data-first-home-grid="about-details"],
+  [data-first-home-grid="resources"],
+  [data-first-home-grid="engagement-cards"],
+  [data-first-home-grid="logistics-cards"],
+  [data-first-home-grid="roadmap-steps"],
+  [data-first-home-grid="protection-cards"],
+  [data-first-home-grid="credentials"]
+) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.storefront-canvas.storefront-preview-tablet [data-first-home-grid="hero-proof"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.storefront-canvas.storefront-preview-mobile [data-first-home-stack],
+.storefront-canvas.storefront-preview-tablet [data-first-home-stack="compact"] {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.storefront-canvas.storefront-preview-mobile [data-first-home-hero] {
+  min-height: 0 !important;
+}
+
+.storefront-canvas.storefront-preview-mobile [data-first-home-hero-content] {
+  min-height: 0 !important;
+  align-items: flex-start !important;
+  padding-top: 5rem !important;
+  padding-bottom: 3rem !important;
+}
+
+.storefront-canvas.storefront-preview-mobile [data-first-home-hero-proof] {
+  position: relative !important;
+  inset: auto !important;
+}
+
+.storefront-canvas.storefront-preview-mobile [data-first-home-about-media] {
+  min-height: 28rem !important;
+}
+
 @media (max-width: 767px) {
   .storefront-canvas {
     font-size: 93%;

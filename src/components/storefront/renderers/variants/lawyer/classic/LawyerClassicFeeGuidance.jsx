@@ -60,13 +60,6 @@ export function LawyerClassicFeeGuidance({ profile, block }) {
                 <article
                   key={item.id}
                   data-storefront-anim-item="true"
-                  data-storefront-field="content.items"
-                  data-storefront-source={hasPersistedItems ? 'persisted' : 'fallback'}
-                  data-storefront-collection="items"
-                  data-storefront-item-id={item.id}
-                  data-storefront-item-index={index}
-                  data-storefront-item-field="title"
-                  data-storefront-label={`Fee card ${index + 1}`}
                   className="bg-white/[0.055] p-6 transition-colors hover:bg-white/[0.09]"
                   style={lawyerClassicItemSurface(item)}
                 >
@@ -74,7 +67,9 @@ export function LawyerClassicFeeGuidance({ profile, block }) {
                     <span className="grid h-10 w-10 shrink-0 place-items-center bg-white/[0.06] text-accent">
                       <Icon size={18} />
                     </span>
-                    <h3 className={`text-lg font-semibold leading-tight ${lawyerClassicToneClass(item.text_color || band.requestedTextColor, 'text-primary-contrast')}`}>{item.title}</h3>
+                    <EditableText as="h3" field="content.items" label={`Fee card ${index + 1} title`} source={hasPersistedItems ? 'persisted' : 'fallback'} collection="items" itemId={item.id} itemIndex={index} itemField="title" className={`text-lg font-semibold leading-tight ${lawyerClassicToneClass(item.text_color || band.requestedTextColor, 'text-primary-contrast')}`}>
+                      {item.title}
+                    </EditableText>
                   </div>
                   {item.description ? (
                     <EditableText as="p" field="content.items" label={`Fee card ${index + 1} description`} source={hasPersistedItems ? 'persisted' : 'fallback'} collection="items" itemId={item.id} itemIndex={index} itemField="description" className={`mt-5 text-sm leading-6 ${lawyerClassicToneClass(item.text_color || band.requestedTextColor, 'text-primary-contrast/70')}`}>

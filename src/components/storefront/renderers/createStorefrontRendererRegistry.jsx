@@ -12,10 +12,7 @@ import AgentPropertiesSection from '@/components/public-profile/agent/AgentPrope
 import LawyerCredentialsSection from '@/components/public-profile/lawyer/LawyerCredentialsSection';
 import LawyerPracticeAreasSection from '@/components/public-profile/lawyer/LawyerPracticeAreasSection';
 import BrokerProgramsSection from '@/components/public-profile/mortgage-broker/BrokerProgramsSection';
-import {
-  ClosingCostEstimator,
-  MortgageAffordabilityCalculator,
-} from '../SmartToolsBlocks';
+import { MortgageAffordabilityCalculator } from '../SmartToolsBlocks';
 import { STOREFRONT_BLOCK_TYPES as T } from '../storefrontPresets';
 import {
   ClassicServicesSection,
@@ -105,6 +102,17 @@ import {
   LawyerClassicTestimonials,
   LawyerClassicWhoWeHelp,
 } from './variants/LawyerClassicSections';
+import {
+  LawyerFirstHomeAbout,
+  LawyerFirstHomeCredentials,
+  LawyerFirstHomeEngagementScope,
+  LawyerFirstHomeHero,
+  LawyerFirstHomePracticeLogistics,
+  LawyerFirstHomePracticeSnapshot,
+  LawyerFirstHomeProtection,
+  LawyerFirstHomeRoadmap,
+  LawyerFirstHomeResources,
+} from './variants/lawyer/firstHome';
 
 function listingBlockProps(block, profile = {}) {
   return {
@@ -320,9 +328,6 @@ const roleRegistry = {
     ),
   },
   lawyer: {
-    [T.CLOSING_COST_ESTIMATOR]: ({ block }) => (
-      <ClosingCostEstimator content={block?.data?.content || {}} />
-    ),
     [T.PRACTICE_AREAS]: ({ profile, actions, block }) => (
       <LawyerPracticeAreasSection
         practiceAreas={profile.practice_areas}
@@ -354,7 +359,6 @@ const experienceOverrides = {
       [T.EXPERTISE]: ({ profile, block }) => <LawyerClassicExpertise profile={profile} block={block} />,
       [T.PRACTICE_AREAS]: ({ profile, actions, block }) => <LawyerClassicPracticeAreas profile={profile} actions={actions} block={block} />,
       [T.DOCUMENT_CHECKLIST]: ({ profile, block }) => <LawyerClassicDocumentChecklist profile={profile} block={block} />,
-      [T.CLOSING_COST_ESTIMATOR]: () => null,
       [T.FEE_GUIDANCE]: ({ profile, block }) => <LawyerClassicFeeGuidance profile={profile} block={block} />,
       [T.ROLE_DETAILS]: ({ profile, actions, block }) => <LawyerClassicStatement profile={profile} actions={actions} block={block} />,
       [T.CONSULTATION_OPTIONS]: ({ profile, actions, block }) => <LawyerClassicConsultationOptions profile={profile} actions={actions} block={block} />,
@@ -668,11 +672,46 @@ const experienceOverrides = {
   },
 };
 
-export function createStorefrontRendererRegistry({ role = '', experience = 'classic-balanced' } = {}) {
+const templateOverrides = {
+  'lawyer-first-home-closing': {
+    [T.HERO]: ({ profile, actions, block }) => <LawyerFirstHomeHero profile={profile} actions={actions} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <LawyerFirstHomeAbout profile={profile} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <LawyerFirstHomePracticeSnapshot profile={profile} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <LawyerFirstHomeResources profile={profile} block={block} />,
+    [T.ROLE_DETAILS]: ({ actions, block }) => <LawyerFirstHomeProtection actions={actions} block={block} />,
+    [T.WHO_WE_HELP]: ({ profile, block }) => <LawyerClassicWhoWeHelp profile={profile} block={block} />,
+    [T.EXPERTISE]: ({ block }) => <LawyerFirstHomeRoadmap block={block} />,
+    [T.PRACTICE_AREAS]: ({ profile, actions, block }) => <LawyerClassicPracticeAreas profile={profile} actions={actions} block={block} />,
+    [T.DOCUMENT_CHECKLIST]: ({ profile, block }) => <LawyerClassicDocumentChecklist profile={profile} block={block} />,
+    [T.FEE_GUIDANCE]: ({ profile, block }) => <LawyerClassicFeeGuidance profile={profile} block={block} />,
+    [T.ENGAGEMENT_SCOPE]: ({ block }) => <LawyerFirstHomeEngagementScope block={block} />,
+    [T.PRACTICE_LOGISTICS]: ({ block }) => <LawyerFirstHomePracticeLogistics block={block} />,
+    [T.CONSULTATION_OPTIONS]: ({ profile, actions, block }) => <LawyerClassicConsultationOptions profile={profile} actions={actions} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => (
+      <LawyerClassicTestimonials
+        profile={profile}
+        testimonials={block?.data?.content?.items || profile.testimonials}
+        block={block}
+      />
+    ),
+    [T.CREDENTIALS]: ({ profile, block }) => <LawyerFirstHomeCredentials profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <LawyerClassicGuidance profile={profile} block={block} />,
+    [T.FAQ]: ({ profile, block }) => <LawyerClassicFaq profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <LawyerClassicCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, block }) => <LawyerClassicFooter profile={profile} block={block} />,
+  },
+};
+
+export function createStorefrontRendererRegistry({
+  role = '',
+  experience = 'classic-balanced',
+  templateKey = '',
+} = {}) {
   return {
     ...sharedRegistry,
     ...(roleRegistry[role] || {}),
     ...(experienceOverrides[experience]?.[role] || {}),
+    ...(templateOverrides[templateKey] || {}),
   };
 }
 

@@ -28,22 +28,31 @@ export function LawyerClassicDocumentChecklist({ profile, block }) {
   const padding = block?.data?.layout?.padding || block?.layout?.padding || 'medium';
   const sectionStyle = lawyerClassicSectionStyle(block);
   const customSectionBackground = lawyerClassicHasColor(sectionStyle.background);
+  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const hasCustomText = isLawyerFirstHome && lawyerClassicHasColor(sectionStyle.textColor);
 
   return (
-    <div id="documents" className={`w-full max-w-none border-y border-primary/10 px-5 sm:px-8 lg:px-12 xl:px-16 ${customSectionBackground ? 'bg-transparent' : 'bg-[color-mix(in_srgb,var(--storefront-canvas,#f2f1ef)_92%,#ffffff)]'} ${lawyerClassicPaddingClass(padding)}`}>
+    <div
+      id="documents"
+      className={`w-full max-w-none border-y border-primary/10 px-5 sm:px-8 lg:px-12 xl:px-16 ${customSectionBackground ? 'bg-transparent' : 'bg-[color-mix(in_srgb,var(--storefront-canvas,#f2f1ef)_92%,#ffffff)]'} ${lawyerClassicPaddingClass(padding)}`}
+      style={isLawyerFirstHome ? {
+        ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
+        ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
+      } : undefined}
+    >
       <div className="grid gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.2fr)] lg:items-start">
         <div data-storefront-anim-item="true">
           <EditableText as="p" field="content.eyebrow" label="Documents eyebrow" source={content.eyebrow ? 'persisted' : 'fallback'} className="text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
             {content.eyebrow || 'File preparation'}
           </EditableText>
-          <EditableText as="h2" field="content.heading" label="Documents heading" source={content.heading ? 'persisted' : 'fallback'} className="mt-3 text-3xl font-semibold uppercase tracking-[-0.02em] text-primary sm:text-4xl">
+          <EditableText as="h2" field="content.heading" label="Documents heading" source={content.heading ? 'persisted' : 'fallback'} className={`mt-3 text-3xl font-semibold uppercase tracking-[-0.02em] sm:text-4xl ${hasCustomText ? 'text-current' : 'text-primary'}`}>
             {content.heading || 'What to send before we speak'}
           </EditableText>
-          <EditableText as="p" field="content.body" label="Documents description" source={content.body ? 'persisted' : 'fallback'} className="mt-4 text-sm leading-7 text-slate-500">
+          <EditableText as="p" field="content.body" label="Documents description" source={content.body ? 'persisted' : 'fallback'} className={`mt-4 text-sm leading-7 ${hasCustomText ? 'text-current opacity-70' : 'text-slate-500'}`}>
             {content.body || 'A complete file helps the lawyer understand the matter without asking you to repeat the basics.'}
           </EditableText>
           <div className="mt-5 h-0.5 w-16 bg-accent" />
-          <EditableText as="p" field="content.helper_text" label="Documents helper text" source={content.helper_text ? 'persisted' : 'fallback'} className="mt-6 border-l-2 border-accent pl-4 text-sm leading-6 text-slate-600">
+          <EditableText as="p" field="content.helper_text" label="Documents helper text" source={content.helper_text ? 'persisted' : 'fallback'} className={`mt-6 border-l-2 border-accent pl-4 text-sm leading-6 ${hasCustomText ? 'text-current opacity-80' : 'text-slate-600'}`}>
             {content.helper_text || 'Send copies, not originals, until representation is confirmed.'}
           </EditableText>
         </div>
@@ -53,13 +62,6 @@ export function LawyerClassicDocumentChecklist({ profile, block }) {
               <article
                 key={item.id}
                 data-storefront-anim-item="true"
-                data-storefront-field="content.items"
-                data-storefront-source={hasPersistedItems ? 'persisted' : 'fallback'}
-                data-storefront-collection="items"
-                data-storefront-item-id={item.id}
-                data-storefront-item-index={index}
-                data-storefront-item-field="title"
-                data-storefront-label={`Document ${index + 1}`}
                 className="flex gap-4 border border-primary/15 bg-white/80 p-5"
                 style={lawyerClassicItemSurface(item)}
               >
@@ -67,7 +69,9 @@ export function LawyerClassicDocumentChecklist({ profile, block }) {
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <span>
-                  <h3 className={`text-base font-semibold ${lawyerClassicToneClass(item.text_color, 'text-primary')}`}>{item.title}</h3>
+                  <EditableText as="h3" field="content.items" label={`Document ${index + 1} title`} source={hasPersistedItems ? 'persisted' : 'fallback'} collection="items" itemId={item.id} itemIndex={index} itemField="title" className={`text-base font-semibold ${lawyerClassicToneClass(item.text_color, 'text-primary')}`}>
+                    {item.title}
+                  </EditableText>
                   {item.description ? (
                     <EditableText as="p" field="content.items" label={`Document ${index + 1} description`} source={hasPersistedItems ? 'persisted' : 'fallback'} collection="items" itemId={item.id} itemIndex={index} itemField="description" className={`mt-2 text-sm leading-6 ${lawyerClassicToneClass(item.text_color, 'text-slate-500')}`}>
                       {item.description}

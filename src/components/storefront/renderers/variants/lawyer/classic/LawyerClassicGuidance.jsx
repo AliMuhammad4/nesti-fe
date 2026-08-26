@@ -5,6 +5,7 @@ import {
   blockContent,
   lawyerClassicGridClass,
   lawyerClassicResolvedPaddingClass,
+  lawyerClassicSectionStyle,
   resolveLawyerClassicIcon,
 } from '../shared/lawyerSectionUtils';
 
@@ -29,9 +30,19 @@ export function LawyerClassicGuidance({ block, profile }) {
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const columns = block?.data?.layout?.columns || block?.layout?.columns || '3';
   const padding = block?.data?.layout?.padding || block?.layout?.padding || 'medium';
+  const sectionStyle = lawyerClassicSectionStyle(block);
+  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const hasCustomText = isLawyerFirstHome && Boolean(String(sectionStyle.textColor || '').trim());
 
   return (
-    <div id="guidance" className={`w-full max-w-none bg-transparent px-5 sm:px-6 lg:px-8 ${lawyerClassicResolvedPaddingClass(padding, 'py-20')}`}>
+    <div
+      id="guidance"
+      className={`w-full max-w-none bg-transparent px-5 sm:px-6 lg:px-8 ${lawyerClassicResolvedPaddingClass(padding, 'py-20')}`}
+      style={isLawyerFirstHome ? {
+        ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
+        ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
+      } : undefined}
+    >
       <div className="w-full max-w-none">
         <div className="pb-9" data-storefront-anim-item="true">
           <div className="max-w-3xl">
@@ -49,7 +60,7 @@ export function LawyerClassicGuidance({ block, profile }) {
               field="content.heading"
               label="Guidance heading"
               source={content.heading ? 'persisted' : 'fallback'}
-              className="mt-3 text-2xl font-semibold uppercase tracking-[-0.02em] text-primary sm:text-3xl"
+              className={`mt-3 text-2xl font-semibold uppercase tracking-[-0.02em] sm:text-3xl ${hasCustomText ? 'text-current' : 'text-primary'}`}
             >
               {content.heading || 'Your closing guide'}
             </EditableText>
@@ -58,7 +69,7 @@ export function LawyerClassicGuidance({ block, profile }) {
               field="content.body"
               label="Guidance description"
               source={content.body ? 'persisted' : 'fallback'}
-              className="mt-4 max-w-2xl text-sm leading-7 text-slate-500"
+              className={`mt-4 max-w-2xl text-sm leading-7 ${hasCustomText ? 'text-current opacity-70' : 'text-slate-500'}`}
             >
               {content.body || 'A practical path from accepted offer to final registration and keys.'}
             </EditableText>

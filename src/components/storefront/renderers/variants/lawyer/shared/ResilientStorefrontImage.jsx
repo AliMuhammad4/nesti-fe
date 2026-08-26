@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import { firstHomeImageFilter } from './firstHomeImageStyle';
 
 function profileImageStyle(profile, kind = 'profile') {
   const position = kind === 'cover'
@@ -19,10 +20,12 @@ function profileImageStyle(profile, kind = 'profile') {
     3,
     1,
   );
+  const imageFilter = firstHomeImageFilter(profile);
   return {
     objectPosition: `${x}% ${y}%`,
     transform: `scale(${zoom})`,
     transformOrigin: `${x}% ${y}%`,
+    ...(imageFilter ? { filter: imageFilter } : {}),
   };
 }
 

@@ -125,11 +125,21 @@ export function createInlineEditingHandlers({
       target.spellcheck = false;
       target.classList.remove('storefront-inline-editing');
       delete target.dataset.storefrontOriginalValue;
-      const originalHtml = target.dataset.storefrontOriginalHtml || '';
       delete target.dataset.storefrontOriginalHtml;
       if (!value.trim()) {
-        target.innerHTML = originalHtml;
         onInlineContentInput?.(null);
+        onInlineContentChange?.({
+          blockId: block.id,
+          field: target.dataset.storefrontField,
+          collection: target.dataset.storefrontCollection || undefined,
+          itemId: target.dataset.storefrontItemId || undefined,
+          itemIndex: target.dataset.storefrontItemIndex === undefined
+            ? undefined
+            : Number(target.dataset.storefrontItemIndex),
+          itemField: target.dataset.storefrontItemField || undefined,
+          instance: target.dataset.storefrontInstance || undefined,
+          value: '',
+        });
         return;
       }
       if (value === originalValue) {
