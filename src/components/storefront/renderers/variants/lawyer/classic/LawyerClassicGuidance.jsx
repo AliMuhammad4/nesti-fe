@@ -31,14 +31,17 @@ export function LawyerClassicGuidance({ block, profile }) {
   const columns = block?.data?.layout?.columns || block?.layout?.columns || '3';
   const padding = block?.data?.layout?.padding || block?.layout?.padding || 'medium';
   const sectionStyle = lawyerClassicSectionStyle(block);
-  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
-  const hasCustomText = isLawyerFirstHome && Boolean(String(sectionStyle.textColor || '').trim());
+  const usesLayeredSectionStyle = [
+    'lawyer-first-home-closing',
+    'lawyer-investor',
+  ].includes(profile?.storefront_template_key);
+  const hasCustomText = usesLayeredSectionStyle && Boolean(String(sectionStyle.textColor || '').trim());
 
   return (
     <div
       id="guidance"
       className={`w-full max-w-none bg-transparent px-5 sm:px-6 lg:px-8 ${lawyerClassicResolvedPaddingClass(padding, 'py-20')}`}
-      style={isLawyerFirstHome ? {
+      style={usesLayeredSectionStyle ? {
         ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
         ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
       } : undefined}

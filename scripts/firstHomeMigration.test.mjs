@@ -34,7 +34,9 @@ const defaults = [
   }),
   block('about', { heading: 'Default about' }),
   block('credentials', {
-    items: [{ title: 'Law society and licence', source: 'license' }],
+    eyebrow: 'Professional standing',
+    heading: 'Your lawyer',
+    body: 'Current practice activity and experience at a glance.',
   }),
   block('footer'),
 ];
@@ -96,5 +98,36 @@ test('version upgrades preserve deleted blocks and explicitly empty credentials'
   assert.deepEqual(migrated.map((entry) => entry.type), ['hero', 'credentials', 'footer']);
   assert.deepEqual(migrated[1].data.content.items, []);
   assert.equal(migrated[0].data.content.first_home_design_version, FIRST_HOME_DESIGN_VERSION);
+});
+
+test('legacy professional details normalize to the Classic KPI copy at the current version', () => {
+  const legacyItems = [
+    { title: 'Law society and licence', source: 'license' },
+    { title: 'Jurisdiction served', source: 'jurisdiction' },
+  ];
+  [
+    'Review licensing, jurisdiction, and practice information before deciding who should handle your closing.',
+    'Review licensing, jurisdiction, language, and practice information before deciding who should handle your closing.',
+  ].forEach((body) => {
+    const current = [
+      block('hero', { first_home_design_version: FIRST_HOME_DESIGN_VERSION }),
+      block('credentials', {
+        eyebrow: 'Professional standing',
+        heading: 'Professional details you can verify',
+        body,
+        items: legacyItems,
+      }),
+      block('footer'),
+    ];
+
+    const migrated = migrateLawyerFirstHomeBlocks(current, defaults);
+    assert.equal(migrated[1].data.content.heading, 'Your lawyer');
+    assert.equal(
+      migrated[1].data.content.body,
+      'Current practice activity and experience at a glance.',
+    );
+    assert.deepEqual(migrated[1].data.content.items, legacyItems);
+    assert.equal(migrated[0].data.content.first_home_design_version, FIRST_HOME_DESIGN_VERSION);
+  });
 });
 

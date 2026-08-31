@@ -65,6 +65,7 @@ export default function ItemSelectionFields({
     return (
       <TestimonialItemFields
         selection={selection}
+        itemCount={model.testimonialItemCount}
         onItemChange={onItemChange}
         onItemAdd={onItemAdd}
       />

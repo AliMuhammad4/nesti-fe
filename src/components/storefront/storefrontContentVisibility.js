@@ -13,6 +13,7 @@ const HASH_TARGET_BLOCK_TYPES = {
   about: ['about'],
   clients: ['who-we-help'],
   services: ['services', 'practice-areas'],
+  'practice-areas': ['practice-areas'],
   documents: ['document-checklist'],
   fees: ['fee-guidance'],
   reviews: ['testimonials'],

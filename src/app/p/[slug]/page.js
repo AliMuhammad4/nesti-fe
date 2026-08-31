@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation';
 import { getPublicProfile, getPublishedStorefront, getSellerProperties } from '@/lib/publicProfileClient';
 import PublicStorefrontPageClient from '@/components/storefront/PublicStorefrontPageClient';
+import {
+  canonicalPublishedStorefrontBlocks,
+  resolvePublishedStorefrontBrandKit,
+} from '@/lib/publishedStorefront';
 
 function normalizePublishedListing(property = {}) {
   return {
@@ -18,76 +22,66 @@ function isSoldListing(property = {}) {
   return ['sold', 'closed'].includes(String(property.status || '').toLowerCase());
 }
 
-function resolvePublishedBrandKit(templateKey, brandKit = {}) {
-  if (templateKey !== 'agent-community-expert') return brandKit;
-  const next = { ...brandKit };
-  const primary = String(next.primary_color || '').trim().toLowerCase();
-  const accent = String(next.accent_color || '').trim().toLowerCase();
-  const canvas = String(next.page_background || '').trim().toLowerCase();
-  const usesLegacyPalette = [
-    '#166534|#f97316',
-    '#172b42|#42b7f5',
-    '#0f172a|#06b6d4',
-    '#1e3a8a|#f59e0b',
-  ].includes(`${primary}|${accent}`);
-  const usesIndigoAccent = ['#8b5cf6', '#7c3aed', '#6366f1', '#a78bfa'].includes(accent);
-  if (!usesLegacyPalette && !usesIndigoAccent) return next;
-  if (usesLegacyPalette) next.primary_color = '#17152b';
-  next.accent_color = '#1f6fbf';
-  if (['#ffffff', '#eaf8ef', '#f7fbf6', '#f6f7f9', '#f8fafc', '#f5f7ff', '#f8f7fc'].includes(canvas)) {
-    next.page_background = '#f5f7fa';
-  }
-  if (next.image_style === 'warm') next.image_style = 'editorial';
-  return next;
-}
-
-function normalizePublishedBlocks(blocks = []) {
-  return (Array.isArray(blocks) ? blocks : []).map((block, index) => {
-    const data = block?.data || {};
-    const type = block?.type || data.type || `block-${index + 1}`;
-    const content = data.content || block?.content || {};
-    const layout = data.layout || block?.layout || {};
-    const style = data.style || block?.style || {};
-    return {
-      ...block,
-      id: block?.id || `${type}-${index + 1}`,
-      type,
-      enabled: data.enabled ?? block?.enabled ?? true,
-      content,
-      layout,
-      style,
-      data: {
-        ...data,
-        enabled: data.enabled ?? block?.enabled ?? true,
-        content,
-        layout,
-        style,
-      },
-    };
-  });
-}
-
 export async function generateMetadata({ params }) {
   try {
-    const data = await getPublicProfile(params.slug);
+    const [data, storefrontResponse] = await Promise.all([
+      getPublicProfile(params.slug),
+      getPublishedStorefront(params.slug).catch(() => null),
+    ]);
     const profile = data.profile;
+    const published = storefrontResponse?.storefront?.published || null;
+    if (!published) {
+      return {
+        title: 'Profile Not Found',
+        description: 'This professional profile is not currently published.',
+        robots: { index: false, follow: false },
+      };
+    }
+    const templateKey = published?.template?.id || profile.storefront_template_key || '';
+    const publishedBrandKit = resolvePublishedStorefrontBrandKit(
+      templateKey,
+      published?.brandKit || {},
+    );
+    const publishedBlocks = canonicalPublishedStorefrontBlocks({
+      templateKey,
+      blocks: published?.blocks || [],
+      profile,
+      brandKit: publishedBrandKit,
+    });
+    const publishedHero = publishedBlocks.find((block) => block.type === 'hero' && block.enabled !== false);
+    const heroContent = publishedHero?.data?.content || {};
+    const heroMediaMode = publishedHero?.data?.layout?.mediaPosition || '';
+    const heroImage = heroMediaMode === 'none'
+      ? ''
+      : heroMediaMode === 'portrait'
+      ? (publishedBrandKit.profile_photo_url || profile.profile_photo_url || '')
+      : (publishedBrandKit.cover_url || profile.cover_photo_url || '');
+    const publishedSeo = published?.seo || published?.seoMeta || {};
 
-    const title = profile.seo_meta?.title || 
-      `${profile.professional_name} - ${profile.professional_type === 'agent' ? 'Real Estate Agent' : profile.professional_type === 'mortgage_broker' ? 'Mortgage Broker' : 'Real Estate Lawyer'}`;
+    const title = publishedSeo.title
+      || profile.seo_meta?.title
+      || heroContent.heading
+      || `${profile.professional_name} - ${profile.professional_type === 'agent' ? 'Real Estate Agent' : profile.professional_type === 'mortgage_broker' ? 'Mortgage Broker' : 'Real Estate Lawyer'}`;
     
-    const description = profile.seo_meta?.description || 
-      profile.tagline || 
-      profile.about?.substring(0, 160) || 
-      `Connect with ${profile.professional_name}, a trusted ${profile.professional_type} professional.`;
+    const description = publishedSeo.description
+      || profile.seo_meta?.description
+      || heroContent.body
+      || profile.tagline
+      || profile.about?.substring(0, 160)
+      || `Connect with ${profile.professional_name}, a trusted ${profile.professional_type} professional.`;
 
     return {
       title,
       description,
-      keywords: profile.seo_meta?.keywords || [],
+      keywords: publishedSeo.keywords || profile.seo_meta?.keywords || [],
+      alternates: {
+        canonical: `/p/${params.slug}`,
+      },
       openGraph: {
         title,
         description,
-        images: profile.cover_photo_url ? [profile.cover_photo_url] : [],
+        url: `/p/${params.slug}`,
+        images: heroImage ? [heroImage] : [],
       },
     };
   } catch (error) {
@@ -119,8 +113,11 @@ export default async function PublicProfilePage({ params }) {
     notFound();
   }
   const published = storefrontResponse?.storefront?.published || null;
+  if (!published) {
+    notFound();
+  }
   const publishedTemplateKey = published?.template?.id || profile.storefront_template_key || '';
-  const publishedBrandKit = resolvePublishedBrandKit(publishedTemplateKey, published?.brandKit || {});
+  const publishedBrandKit = resolvePublishedStorefrontBrandKit(publishedTemplateKey, published?.brandKit || {});
   const resolvedCoverPhoto = publishedBrandKit.cover_url || profile.cover_photo_url || '';
   const resolvedProfilePhoto = publishedBrandKit.profile_photo_url || profile.profile_photo_url || '';
 
@@ -157,7 +154,12 @@ export default async function PublicProfilePage({ params }) {
         featured_listings: publishedFeaturedListings,
         sold_listings: publishedSoldListings,
         recent_closed_seller_leads: publishedSoldListings,
-        storefront_blocks: normalizePublishedBlocks(published.blocks),
+        storefront_blocks: canonicalPublishedStorefrontBlocks({
+          templateKey: publishedTemplateKey,
+          blocks: published.blocks,
+          profile,
+          brandKit: publishedBrandKit,
+        }),
         storefront_theme: {
           primary: publishedBrandKit.primary_color || undefined,
           accent: publishedBrandKit.accent_color || undefined,

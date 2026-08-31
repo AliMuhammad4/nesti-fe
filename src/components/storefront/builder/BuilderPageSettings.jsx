@@ -74,10 +74,6 @@ const TEMPLATE_GALLERY_COPY = {
     title: 'Newcomer',
     tagline: 'Warm guidance for new-to-market buyers',
   },
-  'lawyer-commercial': {
-    title: 'Commercial',
-    tagline: 'Counsel for commercial real estate deals',
-  },
 };
 
 function galleryCopyForTemplate(template) {
@@ -107,6 +103,16 @@ function normalizeHex(value, fallback) {
     return `#${r}${r}${g}${g}${b}${b}`;
   }
   return /^#[0-9a-f]{6}$/.test(withHash) ? withHash : String(fallback || '').trim().toLowerCase();
+}
+
+function isLegacyLawyerInvestorPalette(primaryColor, accentColor) {
+  const primary = normalizeHex(primaryColor, '');
+  const accent = normalizeHex(accentColor, '');
+  return (
+    (primary === '#312e81' && accent === '#a78bfa')
+    || (primary === '#1d2740' && accent === '#b9915e')
+    || (primary === '#183c34' && accent === '#d07a45')
+  );
 }
 
 function TemplateBrandControls({
@@ -345,6 +351,29 @@ export default function PageSettings({
   useEffect(() => {
     setExpandedTemplateId(null);
   }, [templateKey]);
+
+  useEffect(() => {
+    if (
+      templateKey !== 'lawyer-investor'
+      || !isLegacyLawyerInvestorPalette(brandKit.primary_color, brandKit.accent_color)
+    ) return;
+    const currentCanvas = normalizeHex(brandKit.page_background, '');
+    onChange({
+      primary_color: '#20252b',
+      accent_color: '#00a7c4',
+      ...(['', '#ffffff', '#f5f3ee', '#f4f0e8'].includes(currentCanvas)
+        ? { page_background: '#f3f6f7' }
+        : {}),
+      ...(brandKit.button_shape === 'rounded' ? { button_shape: 'square' } : {}),
+    });
+  }, [
+    brandKit.accent_color,
+    brandKit.button_shape,
+    brandKit.page_background,
+    brandKit.primary_color,
+    onChange,
+    templateKey,
+  ]);
 
   useEffect(() => {
     if (!expandedTemplateId) return undefined;

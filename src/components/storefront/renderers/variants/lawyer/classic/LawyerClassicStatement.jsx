@@ -53,6 +53,7 @@ export function LawyerClassicStatement({ profile, block, actions = {} }) {
     .slice(0, 6);
   return (
     <div
+      id="buyer-protection"
       className={`lawyer-classic-statement relative w-full max-w-none overflow-hidden px-5 sm:px-8 lg:px-12 xl:px-16 ${lawyerClassicResolvedPaddingClass(padding, 'py-16 sm:py-20')}`}
       style={{
         backgroundColor: statementBackground,

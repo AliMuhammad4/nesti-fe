@@ -99,7 +99,7 @@ export default function StorefrontBlockRenderer({
     >
       {/* Injected via createElement so Turbopack does not rewrite these as styled-jsx. */}
       <StorefrontInlineStyle css={getStorefrontExperienceCss()} />
-      {isHydrated ? <StorefrontInlineStyle css={RESPONSIVE_POLISH_CSS} /> : null}
+      <StorefrontInlineStyle css={RESPONSIVE_POLISH_CSS} />
       {isHydrated && selectedElementCss ? <StorefrontInlineStyle css={selectedElementCss} /> : null}
       <div
         ref={canvasRef}
@@ -114,6 +114,10 @@ export default function StorefrontBlockRenderer({
             key={block.id}
             block={block}
             index={index}
+            blockOccurrence={resolvedBlocks
+              .slice(0, index)
+              .filter((candidate) => candidate.type === block.type)
+              .length}
             Block={blockRegistry[block.type]}
             profile={profile}
             actions={actions}

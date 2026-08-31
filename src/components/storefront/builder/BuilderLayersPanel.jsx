@@ -66,22 +66,28 @@ function LibraryBlock({ type, onClick, status = 'available' }) {
   );
 }
 
-function SortableLayer({ block, index, selected, onSelect, onToggle, onDelete }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id, data: { type: block.type } });
+function SortableLayer({ block, index, selected, pinned = false, onSelect, onToggle, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+    data: { type: block.type },
+    disabled: pinned,
+  });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className={`relative flex w-full cursor-grab items-center gap-1.5 rounded-xl border px-1.5 py-1.5 transition active:cursor-grabbing ${
+      className={`relative flex w-full items-center gap-1.5 rounded-xl border px-1.5 py-1.5 transition ${
+        pinned ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+      } ${
         selected
           ? 'border-emerald-200 bg-emerald-50/70 text-slate-900 shadow-sm ring-1 ring-emerald-100'
           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
       } ${isDragging ? 'opacity-40' : ''}`}
     >
       {selected ? <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-emerald-500" /> : null}
-      <span className="p-1 text-slate-400" aria-hidden>
+      <span className={`p-1 ${pinned ? 'text-slate-200' : 'text-slate-400'}`} aria-hidden>
         <GripVertical size={14} />
       </span>
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold">

@@ -25,7 +25,8 @@ function cachedPublicRequest(key, ttlMs, requestFn) {
 
 export async function getPublicProfile(slug) {
   const res = await fetch(`${API_BASE_URL}/api/public/professionals/${slug}`, {
-    next: { revalidate: 10 },
+    // Deletions and visibility changes must invalidate the public page immediately.
+    cache: 'no-store',
   });
 
   if (!res.ok) {
@@ -220,6 +221,7 @@ export async function generatePublicProfileCopy(token) {
 export async function getStorefrontDraft(token) {
   const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/draft`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to fetch storefront draft' }));
@@ -240,29 +242,51 @@ export async function getOwnStorefrontProperties(token) {
   return res.json();
 }
 
-export async function saveStorefrontDraft(token, draft) {
+export async function saveStorefrontDraft(token, draft, expectedRevision = null) {
   const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/draft`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ draft }),
+    body: JSON.stringify({
+      draft,
+      ...(expectedRevision?.id ? { expected_revision_id: expectedRevision.id } : {}),
+      ...(Number.isSafeInteger(expectedRevision?.version)
+        ? { expected_revision_version: expectedRevision.version }
+        : {}),
+    }),
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to save storefront draft' }));
     const details = Array.isArray(error.details) ? error.details.filter(Boolean).join(', ') : '';
-    throw new Error(details || error.message || 'Failed to save storefront draft');
+    const requestError = new Error(details || error.message || 'Failed to save storefront draft');
+    requestError.status = res.status;
+    requestError.code = error.code;
+    requestError.currentRevision = error.current_revision || null;
+    throw requestError;
   }
   return res.json();
 }
 
-export async function publishStorefront(token, draft = null) {
+export async function publishStorefront(token, draft = null, expectedRevision = null) {
   const res = await fetch(`${API_BASE_URL}/api/professional-dashboard/profile/storefront/publish`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: draft ? JSON.stringify({ draft }) : undefined,
+    body: draft || expectedRevision
+      ? JSON.stringify({
+          ...(draft ? { draft } : {}),
+          ...(expectedRevision?.id ? { expected_revision_id: expectedRevision.id } : {}),
+          ...(Number.isSafeInteger(expectedRevision?.version)
+            ? { expected_revision_version: expectedRevision.version }
+            : {}),
+        })
+      : undefined,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to publish storefront' }));
-    throw new Error(error.message || 'Failed to publish storefront');
+    const requestError = new Error(error.message || 'Failed to publish storefront');
+    requestError.status = res.status;
+    requestError.code = error.code;
+    requestError.currentRevision = error.current_revision || null;
+    throw requestError;
   }
   return res.json();
 }
@@ -275,7 +299,11 @@ export async function generateStorefrontDraft(token, payload = {}) {
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Failed to generate storefront draft' }));
-    throw new Error(error.message || 'Failed to generate storefront draft');
+    const requestError = new Error(error.message || 'Failed to generate storefront draft');
+    requestError.status = res.status;
+    requestError.code = error.code;
+    requestError.currentRevision = error.current_revision || null;
+    throw requestError;
   }
   return res.json();
 }

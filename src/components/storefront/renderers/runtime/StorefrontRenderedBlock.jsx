@@ -10,6 +10,7 @@ import { createInlineEditingHandlers } from './storefrontInlineEditing';
 export default function StorefrontRenderedBlock({
   block,
   index,
+  blockOccurrence = 0,
   Block,
   profile,
   actions = {},
@@ -34,7 +35,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && !['lawyer-classic', 'lawyer-first-home-closing'].includes(templateKey)
+    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -129,7 +130,7 @@ export default function StorefrontRenderedBlock({
         border: 'none',
         borderRadius: 0,
         boxShadow: 'none',
-        backgroundImage: 'none',
+        ...(templateKey === 'lawyer-newcomer' ? {} : { backgroundImage: 'none' }),
         overflow: 'visible',
         backgroundColor: sectionBackground,
         ...(style.textColor && !isHero ? { color: style.textColor } : {}),
@@ -154,9 +155,22 @@ export default function StorefrontRenderedBlock({
         } ${templateKey !== 'lawyer-classic' && !isHero && variant === 'editorial' ? 'storefront-section--editorial' : ''} ${
           templateKey !== 'lawyer-classic' && !isHero && variant === 'premium' ? 'storefront-section--premium' : ''
         } ${templateKey !== 'lawyer-classic' && !isHero && variant === 'lead-magnet' ? 'storefront-section--lead-magnet' : ''}`.trim()}
-        style={{ '--storefront-section-columns': columns }}
+        style={{
+          '--storefront-section-columns': columns,
+          ...(templateKey === 'lawyer-newcomer' && isHero ? { isolation: 'auto' } : {}),
+        }}
       >
-        <Block profile={blockProfile} actions={actions} block={block} />
+        <Block
+          profile={blockProfile}
+          actions={actions}
+          block={{
+            ...block,
+            runtime: {
+              ...(block.runtime || {}),
+              typeOccurrence: blockOccurrence,
+            },
+          }}
+        />
       </div>
     </section>
   );

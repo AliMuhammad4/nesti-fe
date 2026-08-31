@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { FEATURES } from '@/constants/features';
@@ -29,6 +29,8 @@ function profileSeedFromData(profileData) {
       professional.full_name
       || [user.first_name, user.last_name].filter(Boolean).join(' '),
     professional_profile: professional,
+    email: profileData?.profile?.email || user.email || professional.email || '',
+    user,
   };
 }
 
@@ -40,6 +42,16 @@ function roleLabelFromProfile(profileData) {
     mortgage_broker: 'Mortgage Broker',
     lawyer: 'Real Estate Lawyer',
   }[professionalProfile.professional_type || profileData?.professional_type || profile?.professional_type] || 'Professional';
+}
+
+function storefrontRevisionToken(payload = {}) {
+  const revision = payload?.draft || payload;
+  const id = revision?.revision_id || null;
+  const version = Number(revision?.revision_version);
+  const templateKey = String(revision?.template?.id || '').trim();
+  return id
+    ? { id, version: Number.isSafeInteger(version) ? version : null, templateKey }
+    : null;
 }
 
 export default function usePublicProfileBuilder() {
@@ -55,6 +67,12 @@ export default function usePublicProfileBuilder() {
   const [formData, setFormData] = useState({});
   const publishInFlightRef = useRef(null);
   const savePendingRef = useRef(false);
+  const draftRevisionsRef = useRef({});
+  const rememberRevision = useCallback((revision) => {
+    const next = storefrontRevisionToken(revision);
+    if (!next?.templateKey) return;
+    draftRevisionsRef.current[next.templateKey] = next;
+  }, []);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -66,12 +84,26 @@ export default function usePublicProfileBuilder() {
     enabled: !!token && canEditPublicProfile,
   });
 
-  const { data: storefrontDraftData, error: storefrontDraftError } = useQuery({
+  const {
+    data: storefrontDraftData,
+    error: storefrontDraftError,
+    isFetching: storefrontDraftFetching,
+  } = useQuery({
     queryKey: ['own-storefront-draft'],
     queryFn: () => getStorefrontDraft(token),
     enabled: !!token && canEditPublicProfile,
     retry: 1,
   });
+  useEffect(() => {
+    const nextRevisions = {};
+    const collectRevision = (revision) => {
+      const next = storefrontRevisionToken(revision);
+      if (next?.templateKey) nextRevisions[next.templateKey] = next;
+    };
+    (storefrontDraftData?.drafts || []).forEach(collectRevision);
+    collectRevision(storefrontDraftData?.draft);
+    draftRevisionsRef.current = nextRevisions;
+  }, [storefrontDraftData]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => updatePublicProfile(token, data),
@@ -80,8 +112,13 @@ export default function usePublicProfileBuilder() {
   });
 
   const saveStorefrontMutation = useMutation({
-    mutationFn: (draft) => saveStorefrontDraft(token, draft),
+    mutationFn: (draft) => saveStorefrontDraft(
+      token,
+      draft,
+      draftRevisionsRef.current[draft?.template?.id] || null,
+    ),
     onSuccess: (data) => {
+      rememberRevision(data?.draft);
       queryClient.setQueryData(['own-storefront-draft'], (current) => ({
         ...(current || {}),
         success: true,
@@ -92,22 +129,50 @@ export default function usePublicProfileBuilder() {
         published_at: current?.published_at || null,
       }));
     },
-    onError: (error) => toast.error(error.message || 'Failed to save storefront draft'),
+    onError: (error) => {
+      if (error?.status === 409) {
+        rememberRevision(error.currentRevision);
+        queryClient.invalidateQueries(['own-storefront-draft']);
+        toast.error(
+          'This storefront changed in another session. Refresh before saving again.',
+          { toastId: 'storefront-revision-conflict' },
+        );
+        return;
+      }
+      toast.error(error.message || 'Failed to save storefront draft');
+    },
   });
 
   const publishStorefrontMutation = useMutation({
-    mutationFn: (draft) => publishStorefront(token, draft),
-    onSuccess: () => {
+    mutationFn: (draft) => publishStorefront(
+      token,
+      draft,
+      draftRevisionsRef.current[draft?.template?.id] || null,
+    ),
+    onSuccess: (data) => {
+      rememberRevision(data?.published);
       queryClient.invalidateQueries(['own-storefront-draft']);
       queryClient.invalidateQueries(['own-public-profile']);
     },
-    onError: (error) => toast.error(error.message || 'Failed to publish storefront'),
+    onError: (error) => {
+      if (error?.status === 409) {
+        rememberRevision(error.currentRevision);
+        queryClient.invalidateQueries(['own-storefront-draft']);
+        toast.error(
+          'This storefront changed in another session. Refresh before publishing.',
+          { toastId: 'storefront-publish-conflict' },
+        );
+        return;
+      }
+      toast.error(error.message || 'Failed to publish storefront');
+    },
   });
 
   const editor = useStorefrontEditorState({
     profileData,
     storefrontDraftData,
     storefrontDraftError,
+    storefrontDraftFetching,
     saveStorefrontMutation,
     uploadMedia,
     queryClient,
@@ -191,16 +256,25 @@ export default function usePublicProfileBuilder() {
       const role = normalizeRole(
         profileData?.professional_profile?.professional_type || profileData?.professional_type,
       );
+      const templateKey = editor.editorData?.template_key || defaultStorefrontTemplateKey(role);
+      const expectedRevision = draftRevisionsRef.current[templateKey];
       return generateStorefrontDraft(token, {
-        template_key: editor.editorData?.template_key || defaultStorefrontTemplateKey(role),
+        template_key: templateKey,
         brand_kit: sanitizeAiGenerationBrandKit(editor.editorData?.brand_kit || {
           business_name: profileData?.professional_profile?.company_name || '',
         }),
         onboarding: editor.editorData?.brand_kit?.essentials || {},
+        ...(expectedRevision?.id
+          ? { expected_revision_id: expectedRevision.id }
+          : {}),
+        ...(Number.isSafeInteger(expectedRevision?.version)
+          ? { expected_revision_version: expectedRevision.version }
+          : {}),
       });
     },
     onSuccess: (data) => {
       const generated = data?.generated || {};
+      rememberRevision(data?.draft);
       const role = normalizeRole(
         profileData?.professional_profile?.professional_type || profileData?.professional_type,
       );
@@ -234,12 +308,24 @@ export default function usePublicProfileBuilder() {
       }
       toast.success(data?.message || 'AI landing page copy generated. Click Save to apply.');
     },
-    onError: (error) => toast.error(error.message || 'Failed to generate AI copy'),
+    onError: (error) => {
+      if (error?.status === 409) {
+        rememberRevision(error.currentRevision);
+        queryClient.invalidateQueries(['own-storefront-draft']);
+        toast.error(
+          'This storefront changed in another session. Refresh before generating new copy.',
+          { toastId: 'storefront-generate-conflict' },
+        );
+        return;
+      }
+      toast.error(error.message || 'Failed to generate AI copy');
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deletePublicProfile(token),
     onSuccess: (data) => {
+      draftRevisionsRef.current = {};
       queryClient.setQueryData(['own-public-profile'], (current) => (
         current ? { ...current, profile: null } : current
       ));

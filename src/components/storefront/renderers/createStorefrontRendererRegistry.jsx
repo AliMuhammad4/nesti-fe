@@ -104,7 +104,6 @@ import {
 } from './variants/LawyerClassicSections';
 import {
   LawyerFirstHomeAbout,
-  LawyerFirstHomeCredentials,
   LawyerFirstHomeEngagementScope,
   LawyerFirstHomeHero,
   LawyerFirstHomePracticeLogistics,
@@ -113,6 +112,28 @@ import {
   LawyerFirstHomeRoadmap,
   LawyerFirstHomeResources,
 } from './variants/lawyer/firstHome';
+import {
+  LawyerInvestorAbout,
+  LawyerInvestorCredentials,
+  LawyerInvestorCta,
+  LawyerInvestorFooter,
+  LawyerInvestorGuidance,
+  LawyerInvestorHero,
+  LawyerInvestorPracticeSnapshot,
+  LawyerInvestorPracticeAreas,
+  LawyerInvestorRoleDetails,
+  LawyerInvestorServices,
+} from './variants/lawyer/investor';
+import {
+  LawyerNewcomerAbout,
+  LawyerNewcomerCredentials,
+  LawyerNewcomerCta,
+  LawyerNewcomerFooter,
+  LawyerNewcomerGuidance,
+  LawyerNewcomerPracticeAreas,
+  LawyerNewcomerServices,
+  LawyerNewcomerTestimonials,
+} from './variants/lawyer/newcomer';
 
 function listingBlockProps(block, profile = {}) {
   return {
@@ -673,6 +694,28 @@ const experienceOverrides = {
 };
 
 const templateOverrides = {
+  'lawyer-newcomer': {
+    [T.ABOUT]: ({ profile, block }) => <LawyerNewcomerAbout profile={profile} block={block} />,
+    [T.PRACTICE_AREAS]: ({ profile, block }) => <LawyerNewcomerPracticeAreas profile={profile} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <LawyerNewcomerServices profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <LawyerNewcomerGuidance profile={profile} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <LawyerNewcomerCredentials profile={profile} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => <LawyerNewcomerTestimonials profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <LawyerNewcomerCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <LawyerNewcomerFooter profile={profile} actions={actions} block={block} />,
+  },
+  'lawyer-investor': {
+    [T.HERO]: ({ profile, actions, block }) => <LawyerInvestorHero profile={profile} actions={actions} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <LawyerInvestorAbout profile={profile} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <LawyerInvestorPracticeSnapshot profile={profile} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <LawyerInvestorServices profile={profile} block={block} />,
+    [T.ROLE_DETAILS]: ({ profile, actions, block }) => <LawyerInvestorRoleDetails profile={profile} actions={actions} block={block} />,
+    [T.PRACTICE_AREAS]: ({ profile, block }) => <LawyerInvestorPracticeAreas profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <LawyerInvestorGuidance profile={profile} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <LawyerInvestorCredentials profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <LawyerInvestorCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <LawyerInvestorFooter profile={profile} actions={actions} block={block} />,
+  },
   'lawyer-first-home-closing': {
     [T.HERO]: ({ profile, actions, block }) => <LawyerFirstHomeHero profile={profile} actions={actions} block={block} />,
     [T.ABOUT]: ({ profile, block }) => <LawyerFirstHomeAbout profile={profile} block={block} />,
@@ -694,7 +737,7 @@ const templateOverrides = {
         block={block}
       />
     ),
-    [T.CREDENTIALS]: ({ profile, block }) => <LawyerFirstHomeCredentials profile={profile} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <LawyerClassicCredentials profile={profile} block={block} />,
     [T.GUIDANCE]: ({ profile, block }) => <LawyerClassicGuidance profile={profile} block={block} />,
     [T.FAQ]: ({ profile, block }) => <LawyerClassicFaq profile={profile} block={block} />,
     [T.CTA]: ({ profile, actions, block }) => <LawyerClassicCta profile={profile} actions={actions} block={block} />,

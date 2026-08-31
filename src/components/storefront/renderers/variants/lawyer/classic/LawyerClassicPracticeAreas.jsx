@@ -42,8 +42,11 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
   const columns = block?.data?.layout?.columns || block?.layout?.columns || '3';
   const padding = block?.data?.layout?.padding || block?.layout?.padding || 'medium';
   const sectionStyle = lawyerClassicSectionStyle(block);
-  const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
-  const hasCustomText = isLawyerFirstHome && Boolean(String(sectionStyle.textColor || '').trim());
+  const usesLayeredSectionStyle = [
+    'lawyer-first-home-closing',
+    'lawyer-investor',
+  ].includes(profile?.storefront_template_key);
+  const hasCustomText = usesLayeredSectionStyle && Boolean(String(sectionStyle.textColor || '').trim());
   const descriptionRefs = useRef({});
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [expandableDescriptions, setExpandableDescriptions] = useState({});
@@ -79,7 +82,7 @@ export function LawyerClassicPracticeAreas({ profile, block }) {
     <div
       id="services"
       className={`w-full max-w-none bg-transparent px-5 sm:px-8 lg:px-12 xl:px-16 ${lawyerClassicResolvedPaddingClass(padding, 'py-16')}`}
-      style={isLawyerFirstHome ? {
+      style={usesLayeredSectionStyle ? {
         ...(sectionStyle.background ? { backgroundColor: sectionStyle.background } : {}),
         ...(sectionStyle.textColor ? { color: sectionStyle.textColor } : {}),
       } : undefined}

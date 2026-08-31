@@ -4,6 +4,7 @@ import { BuilderSelect, ColorField, Field } from '../builderUiPrimitives';
 import {
   RolePanelControls,
   ServicesIconControls,
+  ProcessCardControls,
 } from './InspectorAppearanceControls';
 
 export default function InspectorStyleTab({ block, model, onChange }) {
@@ -26,7 +27,16 @@ export default function InspectorStyleTab({ block, model, onChange }) {
     templateSectionBackground,
     templateSectionTextColor,
     sellerSupportsRadiusShadow,
+    isLawyerInvestor,
+    isLawyerNewcomer,
+    isCredentials,
+    isCta,
+    investorCapabilities,
+    newcomerCapabilities,
   } = model;
+  const investorStyle = investorCapabilities?.style || {};
+  const newcomerStyle = newcomerCapabilities?.style || {};
+  const templateStyle = isLawyerInvestor ? investorStyle : newcomerStyle;
 
   if (isHero) {
     return (
@@ -142,6 +152,12 @@ export default function InspectorStyleTab({ block, model, onChange }) {
         Brand colors live in <span className="font-semibold text-slate-700">Design</span>.
         Here you only override this section’s background and text when needed.
       </p>
+      {isLawyerNewcomer ? (
+        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-4 text-slate-500">
+          Primary controls the legal ink and footer, Accent controls highlights and the CTA,
+          and Page background controls the overall canvas. Section colors below override them.
+        </p>
+      ) : null}
       <ColorField
         label="Section background"
         value={style.background || ''}
@@ -179,6 +195,15 @@ export default function InspectorStyleTab({ block, model, onChange }) {
           </p>
         </div>
       ) : null}
+      {(isLawyerInvestor || isLawyerNewcomer) && templateStyle.iconColors && !hasEditableCards ? (
+        <ServicesIconControls
+          content={content}
+          onChange={onChange}
+          blockId={block.id}
+          onReset={model.clearServicesIconStyles}
+          isSellerCaseStudy={false}
+        />
+      ) : null}
       {isRoleDetails && !isLawyerClassic ? (
         <div className="space-y-3">
           <RolePanelControls
@@ -192,6 +217,39 @@ export default function InspectorStyleTab({ block, model, onChange }) {
               ? 'Brand colors come from Design. Click highlight cards to set per-item colors.'
               : 'Brand colors come from Design. Click highlight cards or proof chips to set per-item colors.'}
           </p>
+          {isLawyerInvestor ? (
+            <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Section CTA</p>
+              <ColorField label="Button background" value={content.cta_background || ''} onChange={(cta_background) => onChange(block.id, { content: { cta_background } })} />
+              <ColorField label="Button text" value={content.cta_text_color || ''} onChange={(cta_text_color) => onChange(block.id, { content: { cta_text_color } })} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {(isLawyerInvestor || isLawyerNewcomer) && templateStyle.processColors && isGuidance ? (
+        <ProcessCardControls
+          content={content}
+          onChange={onChange}
+          blockId={block.id}
+          onReset={() => onChange(block.id, {
+            content: { process_card_background: '', process_card_text_color: '' },
+          })}
+        />
+      ) : null}
+      {(isLawyerInvestor || isLawyerNewcomer) && templateStyle.itemColors && isCredentials ? (
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Metric cards</p>
+          <ColorField label="Card background" value={content.card_background || ''} onChange={(card_background) => onChange(block.id, { content: { card_background } })} />
+          <ColorField label="Card text" value={content.card_text_color || ''} onChange={(card_text_color) => onChange(block.id, { content: { card_text_color } })} />
+        </div>
+      ) : null}
+      {(isLawyerInvestor || isLawyerNewcomer) && templateStyle.buttonColors && isCta ? (
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">CTA buttons</p>
+          <ColorField label={isLawyerNewcomer ? 'Appointment background' : 'Primary inquiry background'} value={content.primary_button_background || ''} onChange={(primary_button_background) => onChange(block.id, { content: { primary_button_background } })} />
+          <ColorField label={isLawyerNewcomer ? 'Appointment text' : 'Primary inquiry text'} value={content.primary_button_text_color || ''} onChange={(primary_button_text_color) => onChange(block.id, { content: { primary_button_text_color } })} />
+          <ColorField label={isLawyerNewcomer ? 'Inquiry background' : 'Appointment background'} value={content.secondary_button_background || ''} onChange={(secondary_button_background) => onChange(block.id, { content: { secondary_button_background } })} />
+          <ColorField label={isLawyerNewcomer ? 'Inquiry text' : 'Appointment text'} value={content.secondary_button_text_color || ''} onChange={(secondary_button_text_color) => onChange(block.id, { content: { secondary_button_text_color } })} />
         </div>
       ) : null}
       {block.type === T.ABOUT ? (

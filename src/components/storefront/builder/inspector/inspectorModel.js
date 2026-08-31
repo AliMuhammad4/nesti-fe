@@ -33,6 +33,9 @@ import {
   SERVICES_CARD_STYLE_FIELDS,
   SUPPLEMENTAL_SERVICE,
 } from './inspectorConstants';
+import { lawyerInvestorCapabilities } from './investorCapabilities';
+import { lawyerNewcomerCapabilities } from './newcomerCapabilities';
+import { readContentPath } from '../contentPath';
 
 function mapProfileServiceCards(profile) {
   return (profile?.services || [])
@@ -94,13 +97,23 @@ export function buildInspectorModel({
   const isItemSelection = selection?.kind === 'item';
   const isProfileSelection = selectedSource === 'profile';
   const isHero = block?.type === T.HERO;
+  const isCta = block?.type === T.CTA;
   const isLawyerClassic = templateKey === 'lawyer-classic';
   const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
-  const isLayeredLawyerTemplate = isLawyerClassic || isLawyerFirstHome;
-  const lawyerClassicItemCardTypes = [
-    ...LAWYER_CLASSIC_ITEM_CARD_TYPES,
-    ...(isLawyerFirstHome ? [T.CREDENTIALS] : []),
-  ];
+  const isLawyerInvestor = templateKey === 'lawyer-investor';
+  const isLawyerNewcomer = templateKey === 'lawyer-newcomer';
+  const investorCapabilities = isLawyerInvestor
+    ? lawyerInvestorCapabilities(block?.type)
+    : null;
+  const newcomerCapabilities = isLawyerNewcomer
+    ? lawyerNewcomerCapabilities(block?.type)
+    : null;
+  // Keep the story-warm Newcomer Hero on its established generic control path.
+  const isLayeredLawyerTemplate = isLawyerClassic
+    || isLawyerFirstHome
+    || isLawyerInvestor
+    || (isLawyerNewcomer && !isHero);
+  const lawyerClassicItemCardTypes = [...LAWYER_CLASSIC_ITEM_CARD_TYPES];
   const isLawyerClassicItemCards = isLayeredLawyerTemplate && lawyerClassicItemCardTypes.includes(block?.type);
   const lawyerClassicUsesCardIcons = isLawyerClassicItemCards
     && block.type !== T.DOCUMENT_CHECKLIST;
@@ -130,16 +143,18 @@ export function buildInspectorModel({
     ? ['layout', 'style']
     : ['content', 'layout', 'style'];
   const showSectionDesignTabs = !isItemSelection;
-  const supportsColumns = [
-    ...COLUMN_SUPPORT_BASE_TYPES,
-    ...(isCommunityTemplate || isLayeredLawyerTemplate
-      ? COLUMN_SUPPORT_LAWYER_OR_COMMUNITY_TYPES
-      : [T.EXPERTISE]),
-    ...COLUMN_SUPPORT_TAIL_TYPES,
-  ].includes(block.type) && !(
-    isSellerExpertTemplate
-    && block.type === T.ROLE_DETAILS
-  ) && (!isLayeredLawyerTemplate || isLawyerClassicItemCards || LAYERED_LAWYER_COLUMN_EXCEPTIONS.includes(block.type));
+  const supportsColumns = isLawyerInvestor || (isLawyerNewcomer && !isHero)
+    ? (investorCapabilities || newcomerCapabilities)?.layout?.columns === true
+    : [
+        ...COLUMN_SUPPORT_BASE_TYPES,
+        ...(isCommunityTemplate || isLayeredLawyerTemplate
+          ? COLUMN_SUPPORT_LAWYER_OR_COMMUNITY_TYPES
+          : [T.EXPERTISE]),
+        ...COLUMN_SUPPORT_TAIL_TYPES,
+      ].includes(block.type) && !(
+        isSellerExpertTemplate
+        && block.type === T.ROLE_DETAILS
+      ) && (!isLayeredLawyerTemplate || isLawyerClassicItemCards || LAYERED_LAWYER_COLUMN_EXCEPTIONS.includes(block.type));
   const collection = isHero
     || (isSellerExpertTemplate && block.type === T.TESTIMONIALS)
     ? null
@@ -153,6 +168,7 @@ export function buildInspectorModel({
   const isGuidance = block.type === T.GUIDANCE || isFaq;
   const isRoleDetails = block.type === T.ROLE_DETAILS;
   const isCredentials = block.type === T.CREDENTIALS;
+  const isTestimonials = block.type === T.TESTIMONIALS;
   const isFooter = block.type === T.FOOTER;
   const lawyerCredentialsVerified = profile?.credentials_verified === true
     || profile?.professional_profile?.credentials_verified === true;
@@ -231,6 +247,7 @@ export function buildInspectorModel({
       : profileServiceCards;
   const cardSource = resolveCardSource(rawCardSource, { isCommunityTemplate, isServices });
   const serviceCards = cardSource.slice(0, SERVICE_CARD_LIMIT).map((item, index) => ({
+    ...item,
     id: item?.id || `fallback-card-${index}`,
     title: item?.title || '',
     description: item?.description || item?.text || '',
@@ -242,8 +259,20 @@ export function buildInspectorModel({
     url: item?.url || item?.href || '',
     link_disabled: item?.link_disabled === true,
   }));
+  const testimonialItemCount = isTestimonials
+    ? (
+        Object.prototype.hasOwnProperty.call(content, 'items') && Array.isArray(content.items)
+          ? content.items
+          : (Array.isArray(profile?.testimonials) ? profile.testimonials : [])
+      ).filter((item) => (
+        item
+        && String(item.client_name || item.name || '').trim()
+        && String(item.text || item.review || '').trim()
+      )).slice(0, 8).length
+    : 0;
   const commitServiceCards = (next) => {
     const normalized = next.slice(0, SERVICE_CARD_LIMIT).map((item) => ({
+      ...item,
       id: item?.id || createContentItemId(),
       title: item?.title || '',
       description: item?.description || '',
@@ -264,6 +293,7 @@ export function buildInspectorModel({
     onChange(block.id, {
       content: {
         items: next.slice(0, lawyerClassicCardLimit).map((item) => ({
+          ...item,
           id: item?.id || createContentItemId(),
           title: item?.title || '',
           description: item?.description || item?.text || '',
@@ -335,6 +365,7 @@ export function buildInspectorModel({
     onChange(block.id, {
       content: {
         process_steps: next.slice(0, expertiseProcessLimit).map((item) => ({
+          ...item,
           id: item?.id || createContentItemId(),
           title: item?.title || '',
           text: item?.text ?? item?.description ?? '',
@@ -363,6 +394,7 @@ export function buildInspectorModel({
     onChange(block.id, {
       content: {
         highlights: next.slice(0, ROLE_HIGHLIGHT_LIMIT).map((item) => ({
+          ...item,
           id: item?.id || createContentItemId(),
           title: item?.title || '',
           text: item?.text || '',
@@ -377,6 +409,7 @@ export function buildInspectorModel({
     onChange(block.id, {
       content: {
         proof: next.slice(0, ROLE_PROOF_LIMIT).map((item) => ({
+          ...item,
           id: item?.id || createContentItemId(),
           text: item?.text || item?.title || '',
           background: item?.background || '',
@@ -395,8 +428,9 @@ export function buildInspectorModel({
     ) {
       return String(selection.inlineValue);
     }
-    if (Object.prototype.hasOwnProperty.call(content, key) && content[key] != null) {
-      return String(content[key]);
+    const nestedValue = readContentPath(content, key);
+    if (nestedValue != null) {
+      return String(nestedValue);
     }
     if (key === 'heading' && content.title != null) return String(content.title);
     if (key === 'body' && content.description != null) return String(content.description);
@@ -429,8 +463,13 @@ export function buildInspectorModel({
     isItemSelection,
     isProfileSelection,
     isHero,
+    isCta,
     isLawyerClassic,
     isLawyerFirstHome,
+    isLawyerInvestor,
+    isLawyerNewcomer,
+    investorCapabilities,
+    newcomerCapabilities,
     isLayeredLawyerTemplate,
     isLawyerClassicItemCards,
     lawyerClassicUsesCardIcons,
@@ -454,6 +493,7 @@ export function buildInspectorModel({
     isGuidance,
     isRoleDetails,
     isCredentials,
+    isTestimonials,
     isFooter,
     lawyerCredentialsVerified,
     isLawyerClassicStatement,
@@ -477,6 +517,7 @@ export function buildInspectorModel({
     clearServicesIconStyles,
     clearRolePanelStyles,
     serviceCards,
+    testimonialItemCount,
     commitServiceCards,
     lawyerClassicCards,
     commitLawyerClassicCards,

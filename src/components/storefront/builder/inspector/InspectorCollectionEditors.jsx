@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Trash2 } from 'lucide-react';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { createContentItemId, labelForBlock } from '../storefrontBuilderState';
 import { lawyerClassicIconDefault } from '../../renderers/variants/lawyer/shared/lawyerSectionUtils';
@@ -18,9 +18,31 @@ import {
   CompactCollectionRow,
   DashedAddButton,
   InspectorHint,
+  InspectorInput,
   NestedCollectionRow,
   StackedCollectionRow,
 } from './inspectorUi';
+
+function moveCollectionItem(items, index, offset) {
+  const target = index + offset;
+  if (target < 0 || target >= items.length) return items;
+  const next = [...items];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+function duplicateCollectionItem(items, index, limit) {
+  if (items.length >= limit) return items;
+  const source = items[index] || {};
+  const next = [...items];
+  next.splice(index + 1, 0, {
+    ...source,
+    id: createContentItemId(),
+    title: source.title ? `${source.title} copy` : source.title,
+    label: source.label ? `${source.label} copy` : source.label,
+  });
+  return next;
+}
 
 export function ServiceCardsEditor({ block, model }) {
   const { serviceCards, commitServiceCards, isSellerCaseStudy } = model;
@@ -42,6 +64,22 @@ export function ServiceCardsEditor({ block, model }) {
                 <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
                   {item?.title || 'Untitled service'}
                 </span>
+                {[
+                  [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move card up'],
+                  [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move card down'],
+                  [Copy, serviceCards.length < SERVICE_CARD_LIMIT, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, SERVICE_CARD_LIMIT)), 'Duplicate card'],
+                ].map(([Icon, enabled, handler, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={handler}
+                    className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-primary disabled:opacity-25"
+                    aria-label={label}
+                  >
+                    <Icon size={12} />
+                  </button>
+                ))}
                 <button
                   type="button"
                   onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
@@ -56,27 +94,11 @@ export function ServiceCardsEditor({ block, model }) {
                 onChange={(icon) => {
                   const next = serviceCards.map((card, cardIndex) => (
                     cardIndex === index
-                      ? {
-                          id: card?.id || createContentItemId(),
-                          title: card?.title || '',
-                          description: card?.description || '',
-                          icon,
-                          background: card?.background || '',
-                          text_color: card?.text_color || '',
-                          icon_background: card?.icon_background || '',
-                          icon_color: card?.icon_color || '',
-                          url: card?.url || '',
-                        }
+                      ? { ...card, id: card?.id || createContentItemId(), icon }
                       : {
+                          ...card,
                           id: card?.id || createContentItemId(),
-                          title: card?.title || '',
-                          description: card?.description || '',
                           icon: resolveServiceIconKey(card?.icon, cardIndex),
-                          background: card?.background || '',
-                          text_color: card?.text_color || '',
-                          icon_background: card?.icon_background || '',
-                          icon_color: card?.icon_color || '',
-                          url: card?.url || '',
                         }
                   ));
                   commitServiceCards(next);
@@ -124,6 +146,9 @@ export function ExpertiseProcessEditor({ block, model }) {
             fallback="Untitled step"
             onDelete={() => commitExpertiseProcessSteps(expertiseProcessSteps.filter((_, itemIndex) => itemIndex !== index))}
             deleteLabel={`Delete process step ${index + 1}`}
+            onMoveUp={index > 0 ? () => commitExpertiseProcessSteps(moveCollectionItem(expertiseProcessSteps, index, -1)) : null}
+            onMoveDown={index < expertiseProcessSteps.length - 1 ? () => commitExpertiseProcessSteps(moveCollectionItem(expertiseProcessSteps, index, 1)) : null}
+            onDuplicate={expertiseProcessSteps.length < expertiseProcessLimit ? () => commitExpertiseProcessSteps(duplicateCollectionItem(expertiseProcessSteps, index, expertiseProcessLimit)) : null}
           />
         ))}
         <DashedAddButton
@@ -170,6 +195,9 @@ export function RoleHighlightsEditor({ block, model }) {
               fallback="Untitled highlight"
               onDelete={() => commitRoleHighlights(roleHighlights.filter((_, itemIndex) => itemIndex !== index))}
               deleteLabel={`Delete highlight ${index + 1}`}
+              onMoveUp={index > 0 ? () => commitRoleHighlights(moveCollectionItem(roleHighlights, index, -1)) : null}
+              onMoveDown={index < roleHighlights.length - 1 ? () => commitRoleHighlights(moveCollectionItem(roleHighlights, index, 1)) : null}
+              onDuplicate={roleHighlights.length < ROLE_HIGHLIGHT_LIMIT ? () => commitRoleHighlights(duplicateCollectionItem(roleHighlights, index, ROLE_HIGHLIGHT_LIMIT)) : null}
             >
               {showIconPicker ? (
                 <ServiceIconDropdown
@@ -270,6 +298,9 @@ export function LawyerClassicCardsEditor({ block, model }) {
               fallback="Untitled card"
               onDelete={() => commitLawyerClassicCards(lawyerClassicCards.filter((_, itemIndex) => itemIndex !== index))}
               deleteLabel={`Delete card ${index + 1}`}
+              onMoveUp={index > 0 ? () => commitLawyerClassicCards(moveCollectionItem(lawyerClassicCards, index, -1)) : null}
+              onMoveDown={index < lawyerClassicCards.length - 1 ? () => commitLawyerClassicCards(moveCollectionItem(lawyerClassicCards, index, 1)) : null}
+              onDuplicate={lawyerClassicCards.length < lawyerClassicCardLimit ? () => commitLawyerClassicCards(duplicateCollectionItem(lawyerClassicCards, index, lawyerClassicCardLimit)) : null}
             >
               {lawyerClassicUsesCardIcons ? (
                 <ServiceIconDropdown
@@ -337,6 +368,9 @@ export function GuidanceStepsEditor({ block, model }) {
               fallback="Untitled step"
               onDelete={() => commitGuidanceSteps(guidanceSteps.filter((_, itemIndex) => itemIndex !== index))}
               deleteLabel={`Delete step ${index + 1}`}
+              onMoveUp={index > 0 ? () => commitGuidanceSteps(moveCollectionItem(guidanceSteps, index, -1)) : null}
+              onMoveDown={index < guidanceSteps.length - 1 ? () => commitGuidanceSteps(moveCollectionItem(guidanceSteps, index, 1)) : null}
+              onDuplicate={guidanceSteps.length < guidanceStepLimit ? () => commitGuidanceSteps(duplicateCollectionItem(guidanceSteps, index, guidanceStepLimit)) : null}
             >
               {isLawyerClassicGuidance ? (
                 <ServiceIconDropdown
@@ -374,6 +408,58 @@ export function GuidanceStepsEditor({ block, model }) {
           ? 'Choose an icon here, or click any step in the preview to edit its title and description.'
           : 'Click any step in the preview to edit its title and description.'}
       </InspectorHint>
+    </Field>
+  );
+}
+
+export function InvestorFooterLinksEditor({ block, onChange }) {
+  const items = Array.isArray(block?.data?.content?.items) ? block.data.content.items : [];
+  const commit = (next) => onChange(block.id, { content: { items: next } });
+  return (
+    <Field label={`Footer links (${items.length}/8)`}>
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <StackedCollectionRow
+            key={item?.id || `${block.id}-footer-link-${index}`}
+            index={index}
+            title={item?.label || item?.title}
+            fallback="Untitled link"
+            onDelete={() => commit(items.filter((_, itemIndex) => itemIndex !== index))}
+            deleteLabel={`Delete footer link ${index + 1}`}
+            onMoveUp={index > 0 ? () => commit(moveCollectionItem(items, index, -1)) : null}
+            onMoveDown={index < items.length - 1 ? () => commit(moveCollectionItem(items, index, 1)) : null}
+            onDuplicate={items.length < 8 ? () => commit(duplicateCollectionItem(items, index, 8)) : null}
+          >
+            <InspectorInput
+              label="Link label"
+              value={item?.label || item?.title || ''}
+              onChange={(label) => commit(items.map((entry, itemIndex) => (
+                itemIndex === index ? { ...entry, id: entry.id || createContentItemId(), label } : entry
+              )))}
+              placeholder="Explore"
+            />
+            <InspectorInput
+              label="Link target"
+              value={item?.target || item?.url || ''}
+              onChange={(target) => commit(items.map((entry, itemIndex) => (
+                itemIndex === index ? { ...entry, id: entry.id || createContentItemId(), target } : entry
+              )))}
+              placeholder="#services, /contact, or https://example.com"
+            />
+          </StackedCollectionRow>
+        ))}
+        <DashedAddButton
+          disabled={items.length >= 8}
+          onClick={() => commit([...items, {
+            id: createContentItemId(),
+            label: 'New link',
+            target: '#about',
+          }])}
+        >
+          {items.length >= 8 ? 'Max 8 links reached' : 'Add footer link'}
+        </DashedAddButton>
+      </div>
+      <InspectorHint>Hash, relative, mail, phone, and secure external links are supported.</InspectorHint>
     </Field>
   );
 }

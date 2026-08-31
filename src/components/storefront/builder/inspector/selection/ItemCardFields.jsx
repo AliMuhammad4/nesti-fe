@@ -179,7 +179,12 @@ export function ServiceCardItemFields({ model, selection, onItemChange, onItemAd
   );
 }
 
-export function TestimonialItemFields({ selection, onItemChange, onItemAdd }) {
+export function TestimonialItemFields({
+  selection,
+  itemCount = 0,
+  onItemChange,
+  onItemAdd,
+}) {
   const rating = Math.min(5, Math.max(1, Number(selection.item?.rating) || 5));
   return (
     <>
@@ -214,6 +219,7 @@ export function TestimonialItemFields({ selection, onItemChange, onItemAdd }) {
       </Field>
       <DashedAddButton
         variant="selection"
+        disabled={itemCount >= 8}
         onClick={() => onItemAdd?.({
           client_name: 'New client',
           role: 'Verified client',
@@ -221,7 +227,7 @@ export function TestimonialItemFields({ selection, onItemChange, onItemAdd }) {
           rating: 5,
         })}
       >
-        Add testimonial
+        {itemCount >= 8 ? 'Max 8 testimonials reached' : 'Add testimonial'}
       </DashedAddButton>
     </>
   );

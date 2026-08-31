@@ -32,7 +32,10 @@ export default function PublicProfileLayout({ profile, children }) {
     trackView();
   }, [profile.slug]);
 
-  const hasStorefrontFooter = profile.storefront_blocks?.some((block) => block.type === 'footer');
+  const hasStorefrontFooter = profile.storefront_blocks?.some((block) => (
+    block.type === 'footer'
+    && (block?.data?.enabled ?? block?.enabled ?? true)
+  ));
 
   return (
     <div

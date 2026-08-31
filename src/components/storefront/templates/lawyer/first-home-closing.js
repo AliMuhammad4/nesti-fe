@@ -253,23 +253,18 @@ const lawyerFirstHomeClosing = {
     }),
     block(T.CREDENTIALS, {
       eyebrow: 'Professional standing',
-      heading: 'Professional details you can verify',
-      body: 'Review licensing, jurisdiction, and practice information before deciding who should handle your closing.',
+      heading: 'Your lawyer',
+      body: 'Current practice activity and experience at a glance.',
       verification_label: 'Verified legal profile',
-      items: [
-        { title: 'Law society and licence', description: 'Current licensing details appear when they are available on the verified professional profile.', icon: 'shield', source: 'license' },
-        { title: 'Jurisdiction served', description: 'Confirm the province and service area covered by the lawyer before opening a file.', icon: 'landmark', source: 'jurisdiction' },
-        { title: 'Practice affiliation', description: 'See the firm or practice connected to this professional profile.', icon: 'contract', source: 'company' },
-      ],
     }, {
       animationType: 'fade',
       animationDuration: 'slow',
       animationIntensity: 'subtle',
-      bg: '',
+      bg: '#202020',
       color: '#ffffff',
       width: 'full',
       padding: 'small',
-      columns: 3,
+      columns: 4,
     }),
     block(T.TESTIMONIALS, {
       eyebrow: 'First-home client stories',

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { STOREFRONT_BLOCK_TYPES } from '../../storefrontPresets';
 
 function markAnimatedChildren(root, blocks) {
   if (!root) return;
@@ -44,7 +43,13 @@ export function useStorefrontBlockAnimations({
   previewMode,
 }) {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [animatedVisibleById, setAnimatedVisibleById] = useState({});
+  const [animatedVisibleById, setAnimatedVisibleById] = useState(() => Object.fromEntries(
+    blocks.map((block) => {
+      const layout = block?.data?.layout || block?.layout || {};
+      const animationType = String(layout.animationType || 'none');
+      return [block.id, animationType === 'none' || animationType === ''];
+    }),
+  ));
   const canvasRef = useRef(null);
   useEffect(() => setIsHydrated(true), []);
   const animationConfigSignature = useMemo(
@@ -78,7 +83,7 @@ export function useStorefrontBlockAnimations({
     const loadIds = [];
     const scrollIds = [];
 
-    blocks.forEach((block, index) => {
+    blocks.forEach((block) => {
       const layout = block?.data?.layout || block?.layout || {};
       const animationType = layout.animationType || 'none';
       if (animationType === 'none') {
@@ -86,8 +91,7 @@ export function useStorefrontBlockAnimations({
         return;
       }
       const trigger = layout.animationTrigger || 'load';
-      const isHero = block.type === STOREFRONT_BLOCK_TYPES.HERO;
-      const revealOnScroll = trigger === 'scroll' || (!isHero && trigger === 'load' && index > 0);
+      const revealOnScroll = trigger === 'scroll';
       if (revealOnScroll) {
         scrollIds.push(block.id);
       } else {

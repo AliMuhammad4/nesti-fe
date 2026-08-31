@@ -1,5 +1,6 @@
 import { normalizeBlocks } from '@/components/storefront/builder/storefrontBuilderState';
 import { getStorefrontTemplate } from '@/components/storefront/templates';
+import { NEWCOMER_DESIGN_VERSION } from '@/components/storefront/templates/lawyer/newcomerMigration';
 
 export function blockLayoutStyleSignature(blocks = []) {
   return JSON.stringify(
@@ -32,7 +33,9 @@ export function buildStorefrontDraft(editorData) {
     template: {
       id: editorData.template_key,
       name: templateMeta?.label || editorData.template_key,
-      version: '2',
+      version: editorData.template_key === 'lawyer-newcomer'
+        ? String(NEWCOMER_DESIGN_VERSION)
+        : '2',
     },
     brandKit: {
       logo_url: editorData.brand_kit.logo_url || null,

@@ -21,6 +21,10 @@ import {
   seedBlockContentFromProfile,
   visualTreatmentForTemplate,
 } from '@/components/storefront/templates';
+import {
+  migrateLawyerNewcomerBlocks,
+  migrateLawyerNewcomerBrandKit,
+} from '@/components/storefront/templates/lawyer/newcomerMigration';
 import { normalizeRole } from './editorConstants';
 import {
   blockLayoutStyleSignature,
@@ -818,10 +822,26 @@ function migrateLawyerClassicBlocks(templateKey, blocks = [], profileSeed = {}) 
   ];
 }
 
+function migrateNewcomerBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'lawyer-newcomer') return blocks;
+  const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+  return migrateLawyerNewcomerBlocks(blocks, defaults);
+}
+
+function needsLawyerNewcomerMigration(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'lawyer-newcomer') return false;
+  const source = normalizeBlocks(blocks);
+  const migrated = normalizeBlocks(migrateNewcomerBlocks(templateKey, blocks, profileSeed));
+  return JSON.stringify(source) !== JSON.stringify(migrated);
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
-  return migrateCommunityHubBrandKit(
+  return migrateLawyerNewcomerBrandKit(
     templateKey,
-    migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+    migrateCommunityHubBrandKit(
+      templateKey,
+      migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+    ),
   );
 }
 
@@ -842,7 +862,11 @@ function applyTemplateBlocksMigrations(templateKey, blocks = [], profileSeed = {
     ),
     profileSeed,
   );
-  return migrateLawyerClassicBlocks(templateKey, migrated, profileSeed);
+  return migrateNewcomerBlocks(
+    templateKey,
+    migrateLawyerClassicBlocks(templateKey, migrated, profileSeed),
+    profileSeed,
+  );
 }
 
 function hydrateTemplateBlocks(templateKey, blocks = [], profileSeed = {}, migrationApplied = false) {
@@ -861,12 +885,20 @@ function editorDataFromDraft(
   sharedMediaBrandKit = {},
 ) {
   const templateKey = draft?.template?.id || fallbackTemplateKey;
+  const migratedDraftBrandKit = applyTemplateBrandKitMigrations(
+    templateKey,
+    draft?.brandKit || {},
+  );
+  const brandMigrationApplied = JSON.stringify(draft?.brandKit || {})
+    !== JSON.stringify(migratedDraftBrandKit);
   const savedBrandKit = mergeStorefrontMedia(
-    applyTemplateBrandKitMigrations(templateKey, draft?.brandKit || {}),
+    migratedDraftBrandKit,
     sharedMediaBrandKit,
   );
   if (Array.isArray(draft?.blocks) && draft.blocks.length) {
-    const migrationApplied = needsLawyerClassicV2Migration(templateKey, draft.blocks);
+    const migrationApplied = brandMigrationApplied
+      || needsLawyerClassicV2Migration(templateKey, draft.blocks)
+      || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed);
     return {
       migrationApplied,
       editorData: {
@@ -943,6 +975,7 @@ export default function useStorefrontEditorState({
   profileData,
   storefrontDraftData,
   storefrontDraftError,
+  storefrontDraftFetching,
   saveStorefrontMutation,
   uploadMedia,
   queryClient,
@@ -960,6 +993,7 @@ export default function useStorefrontEditorState({
   const templateDraftsRef = useRef({});
   const latestEditorDataRef = useRef(null);
   const queuedDraftRef = useRef(null);
+  const revisionConflictRef = useRef(false);
 
   useEffect(() => {
     if (!profileData || editorHydrated.current) return;
@@ -1041,6 +1075,10 @@ export default function useStorefrontEditorState({
           recoveredMigrationApplied = needsLawyerClassicV2Migration(
             recoveredDraft.template_key,
             recoveredDraft.blocks,
+          ) || needsLawyerNewcomerMigration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
           );
           recoveredDraft.blocks = hydrateTemplateBlocks(
             recoveredDraft.template_key,
@@ -1110,6 +1148,8 @@ export default function useStorefrontEditorState({
 
   useEffect(() => {
     if (!editorData || !editorDirty) return undefined;
+    if (storefrontDraftFetching) return undefined;
+    if (revisionConflictRef.current) return undefined;
     const draft = buildStorefrontDraft(editorData);
     const signature = draftSignature(draft);
     if (saveStorefrontMutation.isPending) {
@@ -1130,6 +1170,7 @@ export default function useStorefrontEditorState({
     const timer = window.setTimeout(() => {
       saveStorefrontMutation.mutate(draft, {
         onSuccess: () => {
+          revisionConflictRef.current = false;
           lastSavedDraftSignatureRef.current = signature;
           lastFailedDraftSignatureRef.current = '';
           setAutosaveRetryNonce(0);
@@ -1141,22 +1182,36 @@ export default function useStorefrontEditorState({
           // Draft saved != live updated. Keep Update live enabled until publish.
           setHasUnpublishedChanges(signature !== lastPublishedDraftSignatureRef.current);
         },
-        onError: () => {
+        onError: (error) => {
           lastFailedDraftSignatureRef.current = signature;
+          if (error?.status === 409) {
+            revisionConflictRef.current = true;
+            queuedDraftRef.current = null;
+            return;
+          }
           setAutosaveRetryNonce((current) => current + 1);
         },
       });
     }, retryDelay);
     return () => window.clearTimeout(timer);
-  }, [autosaveRetryNonce, editorData, editorDirty, profileData, saveStorefrontMutation]);
+  }, [
+    autosaveRetryNonce,
+    editorData,
+    editorDirty,
+    profileData,
+    saveStorefrontMutation,
+    storefrontDraftFetching,
+  ]);
 
   useEffect(() => {
+    if (storefrontDraftFetching) return;
     if (saveStorefrontMutation.isPending || !queuedDraftRef.current) return;
     const queued = queuedDraftRef.current;
     queuedDraftRef.current = null;
     if (queued.signature === lastSavedDraftSignatureRef.current) return;
     saveStorefrontMutation.mutate(queued.draft, {
       onSuccess: () => {
+        revisionConflictRef.current = false;
         lastSavedDraftSignatureRef.current = queued.signature;
         lastFailedDraftSignatureRef.current = '';
         setAutosaveRetryNonce(0);
@@ -1166,13 +1221,24 @@ export default function useStorefrontEditorState({
         if (latestSignature === queued.signature) setEditorDirty(false);
         setHasUnpublishedChanges(queued.signature !== lastPublishedDraftSignatureRef.current);
       },
-      onError: () => {
+      onError: (error) => {
         lastFailedDraftSignatureRef.current = queued.signature;
         setEditorDirty(true);
+        if (error?.status === 409) {
+          revisionConflictRef.current = true;
+          queuedDraftRef.current = null;
+          return;
+        }
         setAutosaveRetryNonce((current) => current + 1);
       },
     });
-  }, [editorData, editorDirty, saveStorefrontMutation.isPending, saveStorefrontMutation]);
+  }, [
+    editorData,
+    editorDirty,
+    saveStorefrontMutation.isPending,
+    saveStorefrontMutation,
+    storefrontDraftFetching,
+  ]);
 
   const updateEditor = (updates) => {
     setEditorData((current) => ({ ...current, ...updates }));
@@ -1184,6 +1250,7 @@ export default function useStorefrontEditorState({
     if (editorData?.template_key === templateKey) return false;
     const template = getStorefrontTemplate(templateKey);
     if (!template) return false;
+    revisionConflictRef.current = false;
 
     if (editorData?.template_key) {
       templateDraftsRef.current[editorData.template_key] = cloneEditorData(editorData);
@@ -1397,6 +1464,7 @@ export default function useStorefrontEditorState({
     templateDraftsRef.current = {};
     latestEditorDataRef.current = null;
     queuedDraftRef.current = null;
+    revisionConflictRef.current = false;
     lastSavedDraftSignatureRef.current = '';
     lastFailedDraftSignatureRef.current = '';
     lastPublishedDraftSignatureRef.current = '';

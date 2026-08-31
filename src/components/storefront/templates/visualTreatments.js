@@ -182,32 +182,24 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       width: isTool ? 'narrow' : 'full',
       shadow: isTool ? 'large' : 'none',
     },
-    'lawyer-commercial': {
-      bg: index % 2 === 0 ? '#f8fafc' : '#fef3c7',
+    'lawyer-investor': {
+      bg: [T.HERO, T.FOOTER].includes(type)
+        ? '#20252b'
+        : (type === T.CTA ? '#007f95' : ''),
       align: 'left',
       padding: 'large',
       radius: 'none',
-      variant: 'minimal',
+      variant: isHero ? 'editorial' : 'minimal',
       cardStyle: 'bordered',
-      columns: '2',
-      mediaPosition: 'none',
+      columns: [T.PRACTICE_AREAS, T.ROLE_DETAILS].includes(type)
+        ? '3'
+        : ([T.GUIDANCE, T.CREDENTIALS].includes(type) ? '4' : '2'),
+      mediaPosition: isHero ? 'portrait' : 'none',
       width: 'full',
       shadow: 'none',
     },
-    'lawyer-investor': {
-      bg: index % 2 === 0 ? '#f5f3ff' : '#ffffff',
-      align: 'left',
-      padding: isHero ? 'large' : 'medium',
-      radius: 'none',
-      variant: isTool ? 'lead-magnet' : 'minimal',
-      cardStyle: 'bordered',
-      columns: '2',
-      mediaPosition: 'none',
-      width: isTool ? 'narrow' : 'full',
-      shadow: 'none',
-    },
     'lawyer-newcomer': {
-      bg: index % 2 === 0 ? '#f0fdf4' : '#fff7ed',
+      bg: '',
       align: isHero || isTool ? 'center' : 'left',
       padding: 'medium',
       radius: 'large',

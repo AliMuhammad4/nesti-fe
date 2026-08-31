@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from 'lucide-react';
 import { Field, inputClass } from '../builderUiPrimitives';
 
 export const CONTENT_ADD_CLASS = 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-500 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400';
@@ -35,6 +35,32 @@ export function DeleteIconButton({ onClick, label, shrink = false }) {
     >
       <Trash2 size={12} />
     </button>
+  );
+}
+
+function CollectionRowActions({
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onDelete,
+  deleteLabel,
+}) {
+  const actions = [
+    [ArrowUp, onMoveUp, 'Move item up'],
+    [ArrowDown, onMoveDown, 'Move item down'],
+    [Copy, onDuplicate, 'Duplicate item'],
+  ];
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      {actions.map(([Icon, handler, label]) => (
+        handler ? (
+          <button key={label} type="button" onClick={handler} className={DELETE_ICON} aria-label={label}>
+            <Icon size={12} />
+          </button>
+        ) : null
+      ))}
+      <DeleteIconButton onClick={onDelete} label={deleteLabel} shrink />
+    </div>
   );
 }
 
@@ -101,30 +127,62 @@ function RowTitle({ children }) {
   return <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">{children}</span>;
 }
 
-export function CompactCollectionRow({ index, title, fallback, onDelete, deleteLabel, padIndex = true }) {
+export function CompactCollectionRow({
+  index,
+  title,
+  fallback,
+  onDelete,
+  deleteLabel,
+  padIndex = true,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+}) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
       <IndexBadge index={index} pad={padIndex} />
       <RowTitle>{title || fallback}</RowTitle>
-      <DeleteIconButton onClick={onDelete} label={deleteLabel} />
+      <CollectionRowActions {...{ onMoveUp, onMoveDown, onDuplicate, onDelete, deleteLabel }} />
     </div>
   );
 }
 
-export function StackedCollectionRow({ index, title, fallback, onDelete, deleteLabel, children, shrinkDelete = true }) {
+export function StackedCollectionRow({
+  index,
+  title,
+  fallback,
+  onDelete,
+  deleteLabel,
+  children,
+  shrinkDelete = true,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+}) {
   return (
     <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
       <div className="flex items-center gap-2">
         <IndexBadge index={index} />
         <RowTitle>{title || fallback}</RowTitle>
-        <DeleteIconButton onClick={onDelete} label={deleteLabel} shrink={shrinkDelete} />
+        <CollectionRowActions {...{ onMoveUp, onMoveDown, onDuplicate, onDelete, deleteLabel }} shrink={shrinkDelete} />
       </div>
       {children}
     </div>
   );
 }
 
-export function NestedCollectionRow({ stacked, index, title, fallback, onDelete, deleteLabel, children }) {
+export function NestedCollectionRow({
+  stacked,
+  index,
+  title,
+  fallback,
+  onDelete,
+  deleteLabel,
+  children,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+}) {
   return (
     <div
       className={stacked
@@ -134,7 +192,7 @@ export function NestedCollectionRow({ stacked, index, title, fallback, onDelete,
       <div className="flex items-center gap-2">
         <IndexBadge index={index} />
         <RowTitle>{title || fallback}</RowTitle>
-        <DeleteIconButton onClick={onDelete} label={deleteLabel} shrink />
+        <CollectionRowActions {...{ onMoveUp, onMoveDown, onDuplicate, onDelete, deleteLabel }} />
       </div>
       {children}
     </div>

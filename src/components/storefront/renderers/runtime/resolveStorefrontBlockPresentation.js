@@ -100,13 +100,15 @@ export function resolveStorefrontBlockPresentation({
       !preserveExplicitFirstHomeBand
       && TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase())
     );
-  const sectionBackground = resolveSectionBandBackground({
-    isHero,
-    styleBackground: useTemplateBand ? '' : storedBackground,
-    pageCanvas: resolvedTheme.canvas,
-    blockType: block.type,
-    index,
-  });
+  const sectionBackground = templateKey === 'lawyer-newcomer' && useTemplateBand && !isHero
+    ? 'transparent'
+    : resolveSectionBandBackground({
+        isHero,
+        styleBackground: useTemplateBand ? '' : storedBackground,
+        pageCanvas: resolvedTheme.canvas,
+        blockType: block.type,
+        index,
+      });
   const animationType = String(bandLayout.animationType || 'none');
   const animationEnabled = animationType !== 'none' && animationType !== '';
   const animationVisible = !animationEnabled || animatedVisibleById[block.id] !== false;

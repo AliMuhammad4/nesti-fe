@@ -93,10 +93,37 @@ export const LAWYER_FIRST_HOME_CANONICAL_BLOCK_ORDER = [
   STOREFRONT_BLOCK_TYPES.FOOTER,
 ];
 
+export const LAWYER_INVESTOR_CANONICAL_BLOCK_ORDER = [
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.ABOUT,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_SNAPSHOT,
+  STOREFRONT_BLOCK_TYPES.SERVICES,
+  STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+  STOREFRONT_BLOCK_TYPES.GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+  STOREFRONT_BLOCK_TYPES.CTA,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+];
+
+export const LAWYER_NEWCOMER_CANONICAL_BLOCK_ORDER = [
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.ABOUT,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
+  STOREFRONT_BLOCK_TYPES.SERVICES,
+  STOREFRONT_BLOCK_TYPES.GUIDANCE,
+  STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+  STOREFRONT_BLOCK_TYPES.TESTIMONIALS,
+  STOREFRONT_BLOCK_TYPES.CTA,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+];
+
 function canonicalBlockOrderForTemplate(templateKey = '') {
   const key = String(templateKey || '').trim().toLowerCase();
   if (key === 'lawyer-classic') return LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER;
   if (key === 'lawyer-first-home-closing') return LAWYER_FIRST_HOME_CANONICAL_BLOCK_ORDER;
+  if (key === 'lawyer-investor') return LAWYER_INVESTOR_CANONICAL_BLOCK_ORDER;
+  if (key === 'lawyer-newcomer') return LAWYER_NEWCOMER_CANONICAL_BLOCK_ORDER;
   return null;
 }
 
@@ -111,6 +138,7 @@ const PROTECTED_BLOCK_TYPES = new Set([
 
 export function isSingletonBlockType(type, templateKey = '') {
   if (ALWAYS_SINGLETON_BLOCK_TYPES.has(type)) return true;
+  if (String(templateKey || '').trim().toLowerCase() === 'lawyer-investor') return false;
   return Boolean(canonicalBlockOrderForTemplate(templateKey)?.includes(type));
 }
 
@@ -281,6 +309,7 @@ export function coerceCollectionItems(collection, items = []) {
         const title = item.title || '';
         if (!title) return null;
         return {
+            ...item,
             id: uniqueId(item.id, 'fallback-highlight', index),
             title,
             text: item.text || '',
@@ -311,6 +340,7 @@ export function coerceCollectionItems(collection, items = []) {
         const text = String(item.text || item.title || '').trim();
         if (!text) return null;
         return {
+          ...item,
           id: uniqueId(item.id, 'fallback-proof', index),
           text,
           background: item.background || '',
@@ -657,6 +687,7 @@ const DEFAULT_LAYOUT = {
   mediaPosition: 'none',
   columns: '3',
   cardStyle: 'bordered',
+  buttonLayout: 'stacked',
   animationType: 'slide-up',
   animationTrigger: 'scroll',
   animationDuration: 'medium',
@@ -845,6 +876,9 @@ export function normalizeBlock(block, index = 0) {
         mediaPosition: rawLayout.mediaPosition || defaultMediaPosition,
         columns: String(rawLayout.columns || defaultColumns),
         cardStyle: rawLayout.cardStyle || DEFAULT_LAYOUT.cardStyle,
+        buttonLayout: ['inline', 'stacked'].includes(rawLayout.buttonLayout)
+          ? rawLayout.buttonLayout
+          : DEFAULT_LAYOUT.buttonLayout,
         animationType: rawLayout.animationType || animationDefaults.animationType,
         animationTrigger: rawLayout.animationTrigger || animationDefaults.animationTrigger,
         animationDuration: rawLayout.animationDuration || animationDefaults.animationDuration,

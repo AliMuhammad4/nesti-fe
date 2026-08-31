@@ -6,6 +6,7 @@ import {
   ServicesIconControls,
 } from '../InspectorAppearanceControls';
 import { InspectorEyebrow } from '../inspectorUi';
+import { patchContentPath } from '../../contentPath';
 
 const MULTILINE_FIELDS = new Set([
   'body',
@@ -71,7 +72,11 @@ export default function ElementFieldEditor({ block, model, onChange }) {
               <textarea
                 value={contentValue(selectedContentKey)}
                 onChange={(event) => onChange(block.id, {
-                  content: { [selectedContentKey]: event.target.value },
+                  content: patchContentPath(
+                    model.content,
+                    selectedContentKey,
+                    event.target.value,
+                  ),
                 })}
                 className={`${inputClass} min-h-40 resize-y leading-6`}
                 placeholder={contentPlaceholder(selectedContentKey, 'Add supporting copy…')}
@@ -81,7 +86,11 @@ export default function ElementFieldEditor({ block, model, onChange }) {
                 type={inputType}
                 value={contentValue(selectedContentKey)}
                 onChange={(event) => onChange(block.id, {
-                  content: { [selectedContentKey]: event.target.value },
+                  content: patchContentPath(
+                    model.content,
+                    selectedContentKey,
+                    event.target.value,
+                  ),
                 })}
                 className={inputClass}
                 placeholder={contentPlaceholder(selectedContentKey, 'Add text…')}

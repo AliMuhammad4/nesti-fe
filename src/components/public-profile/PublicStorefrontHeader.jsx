@@ -21,13 +21,46 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
   const slug = profile?.slug || '';
   const hashBase = absoluteHashes && slug ? `/professional/${slug}` : '';
   const isInvestor = isInvestorSpecialistTemplate(profile?.storefront_template_key);
+  const isLawyerInvestor = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-investor';
   const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
   const isLawyerFirstHome = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-first-home-closing';
+  const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
   const showReviews = Boolean(profile?.storefront_builder_preview)
     || hasPublicClientStories(profile);
   const availableLinks = (links) => links.filter(
     (link) => isStorefrontHashTargetAvailable(profile, link.href),
   );
+  const availableInvestorLinks = (links) => {
+    const blocks = profile?.storefront_blocks;
+    if (!Array.isArray(blocks)) return links;
+    return links.filter((link) => blocks.some((block) => (
+      block?.type === link.blockType
+      && (block?.data?.enabled ?? block?.enabled ?? true)
+    )));
+  };
+
+  if (isLawyerInvestor) {
+    return availableInvestorLinks([
+      { href: `${hashBase}#about`, label: 'About', blockType: 'about' },
+      { href: `${hashBase}#practice-snapshot`, label: 'Snapshot', blockType: 'practice-snapshot' },
+      { href: `${hashBase}#services`, label: 'Services', blockType: 'services' },
+      { href: `${hashBase}#guidance`, label: 'Process', blockType: 'guidance' },
+      { href: `${hashBase}#contact`, label: 'Contact', blockType: 'cta' },
+    ]).map(({ blockType, ...link }) => link);
+  }
+
+  if (isLawyerNewcomer) {
+    return availableLinks([
+      { href: `${hashBase}#about`, label: 'About' },
+      { href: `${hashBase}#practice-areas`, label: 'Practice areas' },
+      { href: `${hashBase}#services`, label: 'Services' },
+      { href: `${hashBase}#guidance`, label: 'Closing guide' },
+      ...(showReviews ? [{ href: `${hashBase}#reviews`, label: 'Client stories' }] : []),
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact' }]),
+    ]);
+  }
 
   if (isLawyerClassic || isLawyerFirstHome) {
     return availableLinks([
@@ -78,7 +111,10 @@ export default function PublicStorefrontHeader({
   const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
   const isLawyerFirstHome = variant === 'lawyerFirstHome'
     || String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-first-home-closing';
-  const isDarkEditorial = isLuxury || isLawyerFirstHome;
+  const isLawyerInvestor = variant === 'investor'
+    || String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-investor';
+  const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
+  const isDarkEditorial = isLuxury || isLawyerFirstHome || isLawyerInvestor;
   const hasBrandLogo = Boolean(profile?.storefront_logo_url || profile?.storefront_logo_dark_url);
   const hasDedicatedDarkLogo = Boolean(profile?.storefront_logo_dark_url);
   const logoChipModeRaw = String(profile?.storefront_essentials?.logo_chip_mode || 'auto').toLowerCase();
@@ -127,8 +163,12 @@ export default function PublicStorefrontHeader({
       className={`${positionClass} z-[1000] backdrop-blur ${navOpenClass} ${
         isLawyerFirstHome
           ? 'border-b border-white/10 bg-primary/90 text-primary-contrast shadow-none'
+          : isLawyerInvestor
+            ? 'border-b border-white/10 bg-[#12171c]/90 text-white shadow-none'
           : isLuxury
             ? 'border-b border-white/15 bg-[rgba(13,12,11,0.78)] text-[#f5f1e8] shadow-none'
+          : isLawyerNewcomer
+            ? 'border-b border-primary/10 bg-white text-slate-900 shadow-sm'
           : isLawyerClassic
             ? 'border-0 bg-white/95 shadow-none'
             : 'border-b border-border/70 bg-white/95 shadow-sm'
@@ -164,7 +204,7 @@ export default function PublicStorefrontHeader({
                 }`}
                 style={luxuryLogoChipStyle}
               />
-            ) : isLawyerFirstHome ? (
+            ) : isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer ? (
               <span className="grid h-10 w-10 place-items-center border border-accent/60 text-accent">
                 <Scale size={21} strokeWidth={1.5} aria-hidden="true" />
               </span>
@@ -185,7 +225,7 @@ export default function PublicStorefrontHeader({
                 : `font-bold text-slate-900 ${forceMobilePreview ? 'text-[18px]' : 'text-sm sm:text-[15px]'}`
             }`}
             >
-              {hasBrandLogo || isLawyerFirstHome
+              {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer
                 ? (profile.professional_name || 'Nesti Legal')
                 : 'Nesti AI'}
             </span>
@@ -194,7 +234,7 @@ export default function PublicStorefrontHeader({
                 isDarkEditorial ? 'text-white/55' : 'text-slate-500'
               }`}
               >
-                {hasBrandLogo || isLawyerFirstHome ? roleLabel : 'Real Estate Intelligence'}
+                {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer ? roleLabel : 'Real Estate Intelligence'}
               </span>
             ) : null}
           </span>

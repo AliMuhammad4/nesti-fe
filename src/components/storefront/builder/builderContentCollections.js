@@ -31,7 +31,11 @@ function withStableItemIds(items, existingItems = [], identityKeys = []) {
       : null;
     const id = identityMatch?.id || indexedMatch?.id || createCollectionItemId();
     usedIds.add(id);
-    return { ...item, id };
+    return {
+      ...(identityMatch || indexedMatch || {}),
+      ...item,
+      id,
+    };
   });
 }
 
@@ -59,14 +63,19 @@ const CONTENT_COLLECTIONS = {
   },
   [STOREFRONT_BLOCK_TYPES.TESTIMONIALS]: {
     label: 'Client stories',
-    parse: (raw) => raw.split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [client_name = '', text = ''] = line.split('|').map((part) => part.trim());
-        return { client_name, text, rating: 5 };
-      })
-      .filter((item) => item.client_name && item.text),
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [client_name = '', text = ''] = line.split('|').map((part) => part.trim());
+          return { client_name, text, rating: 5 };
+        })
+        .filter((item) => item.client_name && item.text)
+        .slice(0, 8),
+      existingItems,
+      ['client_name'],
+    ),
     format: (items) => (items || [])
       .map((item) => `${item.client_name || ''}${item.text ? ` | ${item.text}` : ''}`)
       .join('\n'),

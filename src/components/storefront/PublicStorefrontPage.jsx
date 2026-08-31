@@ -5,11 +5,13 @@ import PublicChatBubble from '@/components/public-profile/PublicChatBubble';
 import PublicInquiryChatWidget from '@/components/public-profile/PublicInquiryChatWidget';
 import PublicLeadCaptureModal from '@/components/public-profile/PublicLeadCaptureModal';
 import { trackAnalyticsEvent } from '@/lib/publicProfileClient';
-import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
+import { buildTrackedCalendlyUrl, resolvePublicCalendlySource } from '@/lib/publicProfileLinks';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontBlockRenderer from './StorefrontBlockRenderer';
 import { materializeTemplate } from './templates';
 import { migrateLawyerFirstHomeBlocks } from './templates/lawyer/firstHomeMigration';
+import { migrateLawyerInvestorBlocks } from './templates/lawyer/investorMigration';
+import { migrateLawyerNewcomerBlocks } from './templates/lawyer/newcomerMigration';
 
 const PROOF_TEMPLATE_KEYS = new Set([
   'agent-luxury-advisor',
@@ -62,6 +64,14 @@ export default function PublicStorefrontPage({ profile }) {
   const [prefillInquiryProperty, setPrefillInquiryProperty] = useState(null);
   const publicBlocks = useMemo(() => {
     const savedBlocks = Array.isArray(profile.storefront_blocks) ? profile.storefront_blocks : [];
+    if (profile.storefront_template_key === 'lawyer-investor') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateLawyerInvestorBlocks(savedBlocks, defaults);
+    }
     if (profile.storefront_template_key === 'lawyer-first-home-closing') {
       const defaults = materializeTemplate(
         profile.storefront_template_key,
@@ -69,6 +79,14 @@ export default function PublicStorefrontPage({ profile }) {
         profile.storefront_brand_kit || profile.brand_kit || {},
       )?.blocks || [];
       return migrateLawyerFirstHomeBlocks(savedBlocks, defaults);
+    }
+    if (profile.storefront_template_key === 'lawyer-newcomer') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateLawyerNewcomerBlocks(savedBlocks, defaults);
     }
     if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
     const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
@@ -89,6 +107,10 @@ export default function PublicStorefrontPage({ profile }) {
     next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, ...missingProof);
     return next;
   }, [profile]);
+  const canonicalProfile = useMemo(() => ({
+    ...profile,
+    storefront_blocks: publicBlocks,
+  }), [profile, publicBlocks]);
 
   const track = async (eventType, data = {}) => {
     try {
@@ -111,23 +133,24 @@ export default function PublicStorefrontPage({ profile }) {
 
   // Same source as PublicHero / PublicCTA: professional profile Calendly URL.
   const calendlyUrl = buildTrackedCalendlyUrl(
-    profile?.professional_profile?.calendly_link,
+    resolvePublicCalendlySource(profile),
     profile,
   );
 
   const actions = {
-    onCtaClick: async (ctaType = 'storefront_cta') => {
-      await track('cta_click', { cta_type: String(ctaType) });
+    onCtaClick: (ctaType = 'storefront_cta') => {
       if (String(ctaType) === 'book_consultation' && calendlyUrl) {
         window.open(calendlyUrl, '_blank', 'noopener,noreferrer');
+        void track('cta_click', { cta_type: String(ctaType) });
         return;
       }
       // Default: keep published pages non-intrusive and open the lead form.
       openLeadModal();
+      void track('cta_click', { cta_type: String(ctaType) });
     },
-    onDirectLeadClick: async () => {
-      await track('cta_click', { cta_type: 'direct_inquiry' });
+    onDirectLeadClick: () => {
       openLeadModal();
+      void track('cta_click', { cta_type: 'direct_inquiry' });
     },
     // Tracking-only, matching PublicHero/PublicCTA: callers open Calendly themselves.
     onAppointmentClick: () => track('cta_click', { cta_type: 'book_consultation' }),
@@ -143,7 +166,7 @@ export default function PublicStorefrontPage({ profile }) {
       <div className="w-full" data-layout="full-width">
         <div className="w-full">
           <StorefrontBlockRenderer
-            profile={profile}
+            profile={canonicalProfile}
             blocks={publicBlocks}
             templateKey={profile.storefront_template_key}
             theme={profile.storefront_theme}

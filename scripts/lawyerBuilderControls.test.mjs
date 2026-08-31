@@ -129,3 +129,21 @@ test('First Home image treatment is wired through control, preview, and draft se
   );
   assert.doesNotMatch(presets, /\['', 'community expert', 'real estate expert'\]/);
 });
+
+test('First Home credentials use the same lawyer KPI renderer as Classic', async () => {
+  const [registry, template, credentials] = await Promise.all([
+    readSource('../src/components/storefront/renderers/createStorefrontRendererRegistry.jsx'),
+    readSource('../src/components/storefront/templates/lawyer/first-home-closing.js'),
+    readSource('../src/components/storefront/renderers/variants/lawyer/classic/LawyerClassicCredentials.jsx'),
+  ]);
+
+  assert.match(
+    registry,
+    /\[T\.CREDENTIALS\]: \(\{ profile, block \}\) => <LawyerClassicCredentials profile=\{profile\} block=\{block\} \/>/,
+  );
+  assert.match(template, /block\(T\.CREDENTIALS, \{\s+eyebrow: 'Professional standing',\s+heading: 'Your lawyer'/);
+  assert.match(template, /body: 'Current practice activity and experience at a glance\.'/);
+  assert.doesNotMatch(template, /T\.LAWYER_KPIS/);
+  assert.match(credentials, /legacyFirstHomeHeading \? 'Your lawyer' : content\.heading/);
+  assert.match(credentials, /Review licensing, jurisdiction, language, and practice information/);
+});

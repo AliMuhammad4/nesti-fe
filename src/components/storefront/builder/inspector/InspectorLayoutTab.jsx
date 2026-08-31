@@ -14,7 +14,18 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
     supportsColumns,
     isListings,
     sellerSupportsCardStyle,
+    isLawyerInvestor,
+    investorCapabilities,
+    isLawyerNewcomer,
+    newcomerCapabilities,
+    isCta,
   } = model;
+  const investorLayout = investorCapabilities?.layout || {};
+  const newcomerLayout = newcomerCapabilities?.layout || {};
+  const templateLayout = isLawyerInvestor ? investorLayout : newcomerLayout;
+  const supportedCardStyles = isLawyerInvestor
+    ? SECTION_SETTINGS.cardStyles.filter(({ value }) => value !== 'glass')
+    : SECTION_SETTINGS.cardStyles;
 
   return (
     <>
@@ -25,12 +36,20 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
               <BuilderSelect value={layout.variant || 'standard'} options={SECTION_SETTINGS.variants} onChange={(variant) => onChange(block.id, { layout: { variant } })} ariaLabel="Section variant" />
             </Field>
           ) : null}
-          {sellerSupportsAlignment && (!isLayeredLawyerTemplate || isLawyerClassicLayout) ? (
+          {sellerSupportsAlignment && (
+            isLawyerInvestor || isLawyerNewcomer
+              ? templateLayout.alignment
+              : (!isLayeredLawyerTemplate || isLawyerClassicLayout)
+          ) ? (
             <Field label="Alignment">
               <BuilderSelect value={layout.alignment} options={[{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }]} onChange={(alignment) => onChange(block.id, { layout: { alignment } })} ariaLabel="Alignment" />
             </Field>
           ) : null}
-          {sellerSupportsPadding && (!isLayeredLawyerTemplate || isLawyerClassicLayout) ? (
+          {sellerSupportsPadding && (
+            isLawyerInvestor || isLawyerNewcomer
+              ? templateLayout.padding
+              : (!isLayeredLawyerTemplate || isLawyerClassicLayout)
+          ) ? (
             <Field label="Section padding">
               <BuilderSelect value={layout.padding} options={[{ value: 'small', label: 'Compact' }, { value: 'medium', label: 'Comfortable' }, { value: 'large', label: 'Spacious' }]} onChange={(padding) => onChange(block.id, { layout: { padding } })} ariaLabel="Section padding" />
             </Field>
@@ -48,7 +67,7 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
         </p>
       ) : (
         <>
-          {supportsColumns ? (
+          {supportsColumns && (!(isLawyerInvestor || isLawyerNewcomer) || templateLayout.columns) ? (
             <Field label="Columns">
               <BuilderSelect
                 value={layout.columns || (isListings ? '4' : '3')}
@@ -58,9 +77,26 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
               />
             </Field>
           ) : null}
-          {sellerSupportsCardStyle && !isListings && !isLayeredLawyerTemplate ? (
+          {sellerSupportsCardStyle && !isListings && (
+            isLawyerInvestor || isLawyerNewcomer
+              ? templateLayout.cardStyle
+              : !isLayeredLawyerTemplate
+          ) ? (
             <Field label="Card style">
-              <BuilderSelect value={layout.cardStyle || 'bordered'} options={SECTION_SETTINGS.cardStyles} onChange={(cardStyle) => onChange(block.id, { layout: { cardStyle } })} ariaLabel="Card style" />
+              <BuilderSelect value={layout.cardStyle || 'bordered'} options={supportedCardStyles} onChange={(cardStyle) => onChange(block.id, { layout: { cardStyle } })} ariaLabel="Card style" />
+            </Field>
+          ) : null}
+          {(isLawyerInvestor || isLawyerNewcomer) && isCta && templateLayout.buttonLayout ? (
+            <Field label="Button layout">
+              <BuilderSelect
+                value={layout.buttonLayout || 'stacked'}
+                options={[
+                  { value: 'stacked', label: 'Stacked' },
+                  { value: 'inline', label: 'Inline' },
+                ]}
+                onChange={(buttonLayout) => onChange(block.id, { layout: { buttonLayout } })}
+                ariaLabel="CTA button layout"
+              />
             </Field>
           ) : null}
         </>
@@ -68,19 +104,25 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
       {isHero ? (
         <Field label="Media treatment">
           <BuilderSelect
-            value={layout.mediaPosition || 'background'}
-            options={[
-              { value: 'background', label: 'Show cover' },
-              { value: 'none', label: 'Hide cover' },
-            ]}
+            value={layout.mediaPosition || (isLawyerInvestor ? 'portrait' : 'background')}
+            options={isLawyerInvestor
+              ? [
+                { value: 'portrait', label: 'Profile portrait panel' },
+                { value: 'cover', label: 'Cover image panel' },
+                { value: 'none', label: 'No image' },
+              ]
+              : [
+                { value: 'background', label: 'Show cover' },
+                { value: 'none', label: 'Hide cover' },
+              ]}
             onChange={(mediaPosition) => onChange(block.id, { layout: { mediaPosition } })}
             ariaLabel="Media treatment"
           />
         </Field>
       ) : null}
-      {isHero && (layout.mediaPosition || 'background') === 'none' ? (
+      {isHero && (layout.mediaPosition || (isLawyerInvestor ? 'portrait' : 'background')) === 'none' ? (
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
-          Cover image is hidden. Choose <span className="font-semibold text-slate-700">Show cover</span> to display the uploaded cover in the hero band.
+          Hero media is hidden. Choose a media treatment to display a profile or cover image.
         </p>
       ) : null}
       <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">

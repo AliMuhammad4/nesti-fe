@@ -35,6 +35,8 @@ export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) 
   const sectionStyle = block?.data?.style || block?.style || {};
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const isLawyerFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
+  const isLawyerInvestor = profile?.storefront_template_key === 'lawyer-investor';
+  const usesCuratedLinks = isLawyerFirstHome || isLawyerInvestor;
   const profileHref = profile?.slug ? `/p/${encodeURIComponent(profile.slug)}` : '';
   const showReviews = isLawyerFirstHome || isPreview || hasPublicClientStories(profile);
   const hasPersistedLinks = Object.prototype.hasOwnProperty.call(content, 'items')
@@ -59,7 +61,7 @@ export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) 
     next.splice(aboutIndex >= 0 ? aboutIndex + 1 : 0, 0, { label, target });
     return next;
   };
-  const requiredLinks = isLawyerFirstHome
+  const requiredLinks = usesCuratedLinks
     ? sourceLinks
     : ensureFooterLink(
       ensureFooterLink(

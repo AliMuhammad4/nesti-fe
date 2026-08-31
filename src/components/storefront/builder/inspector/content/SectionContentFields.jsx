@@ -4,6 +4,7 @@ import { InspectorInput, InspectorTextarea, bindContent } from '../inspectorUi';
 export function AboutContentFields({ block, model, profile, templateKey, onChange }) {
   const {
     isSellerExpertTemplate,
+    isLawyerInvestor,
     isCommunityTemplate,
     isLayeredLawyerTemplate,
     isLawyerFirstHome,
@@ -55,6 +56,7 @@ export function CtaContentFields({ block, model, onChange }) {
     isElementSelection,
     isCommunityTemplate,
     isSellerExpertTemplate,
+    isLawyerInvestor,
     contentValue,
   } = model;
   if (block.type !== T.CTA || isElementSelection) return null;
@@ -62,7 +64,7 @@ export function CtaContentFields({ block, model, onChange }) {
   return (
     <>
       <InspectorInput
-        label={isCommunityTemplate ? 'Primary inquiry button' : 'Appointment button'}
+        label={isCommunityTemplate || isLawyerInvestor ? 'Primary inquiry button' : 'Appointment button'}
         value={contentValue('cta_label')}
         onChange={setContent('cta_label')}
         placeholder={isCommunityTemplate ? 'Send detailed inquiry' : 'Ask about availability'}
@@ -71,7 +73,7 @@ export function CtaContentFields({ block, model, onChange }) {
         <>
           {!isCommunityTemplate ? (
             <InspectorInput
-              label="Inquiry button"
+              label={isLawyerInvestor ? 'Appointment button' : 'Inquiry button'}
               value={contentValue('secondary_cta_label')}
               onChange={setContent('secondary_cta_label')}
               placeholder="Send detailed inquiry"

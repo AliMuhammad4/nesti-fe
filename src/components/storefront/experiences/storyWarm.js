@@ -39,6 +39,14 @@ export const storyWarmExperience = {
       background-image: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--storefront-primary) 10%, transparent), transparent 24rem);
     }
 
+    [data-template-key='lawyer-newcomer'].storefront-experience-story {
+      background: transparent;
+    }
+
+    [data-template-key='lawyer-newcomer'].storefront-experience-story [data-storefront-block] {
+      background-image: none;
+    }
+
     /* GreenVilla-inspired system, isolated to First Home Specialist. */
     [data-template-key='agent-first-home'].storefront-experience-story {
       background: #ffffff;

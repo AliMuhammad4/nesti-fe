@@ -15,96 +15,27 @@ import {
   lawyerClassicResolvedPaddingClass,
   lawyerClassicSectionStyle,
 } from '../shared/lawyerSectionUtils';
+import { resolveLawyerStandingItems } from './lawyerCredentialMetrics';
 
-const LAWYER_EXPERIENCE_YEAR_COPY = {
-  junior: '0–2 years',
-  mid: '3–5 years',
-  senior: '6–10 years',
-  elite: '10+ years',
-};
-
-function resolveLawyerExperienceYears(profile = {}, professional = {}) {
-  const rawExperience = String(
-    professional.experience || profile?.storefront_essentials?.years_experience || '',
-  ).trim();
-  const explicitYears = rawExperience.match(/\d+\s*(?:\+|[-–]\s*\d+)?\s*years?/i);
-  if (explicitYears) return explicitYears[0].replace(/\s+/g, ' ');
-  const normalizedLevel = String(
-    professional.experience_level || rawExperience,
-  ).trim().toLowerCase();
-  if (LAWYER_EXPERIENCE_YEAR_COPY[normalizedLevel]) {
-    return LAWYER_EXPERIENCE_YEAR_COPY[normalizedLevel];
-  }
-  return '';
-}
-
-function resolveLawyerStandingItems(profile) {
-  const professional = profile?.professional_profile || {};
-  const experience = resolveLawyerExperienceYears(profile, professional);
-  const metrics = profile?.professional_credential_metrics
-    || profile?.seller_credential_metrics
-    || {};
-  const pipelineAmount = Number(metrics.active_pipeline_value);
-  const totalClients = Number(metrics.total_clients);
-  const closedCases = Number(metrics.closed_cases ?? profile?.closed_seller_leads_count);
-  let pipelineValue = '—';
-  if (Number.isFinite(pipelineAmount)) {
-    try {
-      pipelineValue = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: metrics.currency || 'USD',
-        notation: 'compact',
-        maximumFractionDigits: 1,
-      }).format(pipelineAmount);
-    } catch {
-      pipelineValue = `$${new Intl.NumberFormat('en-US', {
-        notation: 'compact',
-        maximumFractionDigits: 1,
-      }).format(pipelineAmount)}`;
-    }
-  }
-
-  return [
-    {
-      id: 'profile-pipeline-value',
-      kind: 'pipeline',
-      title: 'Pipeline value',
-      value: pipelineValue,
-    },
-    {
-      id: 'profile-experience',
-      kind: 'experience',
-      title: 'Experience',
-      value: experience || '—',
-    },
-    {
-      id: 'profile-total-clients',
-      kind: 'clients',
-      title: 'Total clients',
-      value: Number.isFinite(totalClients)
-        ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(totalClients)
-        : '—',
-    },
-    {
-      id: 'profile-closed-cases',
-      kind: 'cases',
-      title: 'Closed cases',
-      value: Number.isFinite(closedCases)
-        ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(closedCases)
-        : '—',
-    },
-  ];
-}
+export { resolveLawyerStandingItems } from './lawyerCredentialMetrics';
 
 export function LawyerClassicCredentials({ profile, block }) {
   const content = blockContent(block);
+  const isFirstHome = profile?.storefront_template_key === 'lawyer-first-home-closing';
   const isVerified = profile?.credentials_verified === true
     || profile?.professional_profile?.credentials_verified === true;
   const items = resolveLawyerStandingItems(profile);
+  const legacyFirstHomeHeading = isFirstHome
+    && String(content.heading || '').trim() === 'Professional details you can verify';
+  const headingCopy = legacyFirstHomeHeading ? 'Your lawyer' : content.heading;
   const legacyBody = [
     '',
     'Professional standing and experience clients can verify.',
     'Experience, expertise, recognition, and current practice affiliation.',
+    ...(isFirstHome ? [
+      'Review licensing, jurisdiction, and practice information before deciding who should handle your closing.',
+      'Review licensing, jurisdiction, language, and practice information before deciding who should handle your closing.',
+    ] : []),
   ].includes(String(content.body || '').trim());
   const bodyCopy = legacyBody
     ? 'Current practice activity and experience at a glance.'
@@ -146,7 +77,7 @@ export function LawyerClassicCredentials({ profile, block }) {
                 requestedTextColor ? 'text-current' : 'text-primary-contrast'
               }`}
             >
-              {content.heading || 'Your lawyer'}
+              {headingCopy || 'Your lawyer'}
             </EditableText>
             <EditableText
               as="p"

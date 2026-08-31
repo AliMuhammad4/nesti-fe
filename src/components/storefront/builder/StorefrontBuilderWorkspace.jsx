@@ -63,6 +63,9 @@ import {
   materializeTemplate,
 } from '../templates';
 import { migrateLawyerFirstHomeBlocks } from '../templates/lawyer/firstHomeMigration';
+import { migrateLawyerInvestorBlocks } from '../templates/lawyer/investorMigration';
+import { migrateLawyerNewcomerBlocks } from '../templates/lawyer/newcomerMigration';
+import { patchContentPath } from './contentPath';
 
 const PANELS = [
   { id: 'layers', label: 'Layers', Icon: LayoutTemplate },
@@ -125,6 +128,21 @@ function appendUniqueItems(items, supplemental, limit) {
       ))
     )),
   ].slice(0, limit);
+}
+
+function pinBoundaryBlocks(blocks = [], templateKey = '') {
+  if (String(templateKey).trim().toLowerCase() !== 'lawyer-investor') return blocks;
+  const hero = blocks.find((block) => block.type === STOREFRONT_BLOCK_TYPES.HERO);
+  const footer = blocks.find((block) => block.type === STOREFRONT_BLOCK_TYPES.FOOTER);
+  const middle = blocks.filter((block) => (
+    block.type !== STOREFRONT_BLOCK_TYPES.HERO
+    && block.type !== STOREFRONT_BLOCK_TYPES.FOOTER
+  ));
+  return [
+    ...(hero ? [hero] : []),
+    ...middle,
+    ...(footer ? [footer] : []),
+  ];
 }
 
 function normalizeHexForCompare(value = '') {
@@ -259,9 +277,17 @@ export default function StorefrontBuilderWorkspace({
 
   const normalized = useMemo(() => {
     let next = normalizeBlocks(blocks);
+    if (templateKey === 'lawyer-investor') {
+      const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+      return normalizeBlocks(migrateLawyerInvestorBlocks(blocks, defaults));
+    }
     if (templateKey === 'lawyer-first-home-closing') {
       const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
       return normalizeBlocks(migrateLawyerFirstHomeBlocks(blocks, defaults));
+    }
+    if (templateKey === 'lawyer-newcomer') {
+      const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+      return normalizeBlocks(migrateLawyerNewcomerBlocks(blocks, defaults));
     }
     if (templateKey !== 'lawyer-classic') return next;
 
@@ -305,11 +331,29 @@ export default function StorefrontBuilderWorkspace({
   }, [blocks, templateKey, profile, brandKit]);
 
   useEffect(() => {
+    if (templateKey !== 'lawyer-investor') return;
+    const source = normalizeBlocks(blocks);
+    const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+    const migrated = normalizeBlocks(migrateLawyerInvestorBlocks(blocks, defaults));
+    if (blockLayoutStyleSignature(source) === blockLayoutStyleSignature(migrated)) return;
+    onChange(migrated);
+  }, [blocks, brandKit, onChange, profile, templateKey]);
+
+  useEffect(() => {
     if (templateKey !== 'lawyer-first-home-closing') return;
     const source = normalizeBlocks(blocks);
     const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
     const migrated = normalizeBlocks(migrateLawyerFirstHomeBlocks(blocks, defaults));
     if (blockLayoutStyleSignature(source) === blockLayoutStyleSignature(migrated)) return;
+    onChange(migrated);
+  }, [blocks, brandKit, onChange, profile, templateKey]);
+
+  useEffect(() => {
+    if (templateKey !== 'lawyer-newcomer') return;
+    const source = normalizeBlocks(blocks);
+    const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+    const migrated = normalizeBlocks(migrateLawyerNewcomerBlocks(blocks, defaults));
+    if (JSON.stringify(source) === JSON.stringify(migrated)) return;
     onChange(migrated);
   }, [blocks, brandKit, onChange, profile, templateKey]);
 
@@ -467,6 +511,43 @@ export default function StorefrontBuilderWorkspace({
   }, [templateKey, profile, brandKit, normalized]);
 
   const materializeCollectionItems = (collection, content, blockType = '') => {
+    if (
+      templateKey === 'lawyer-newcomer'
+      && blockType === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+      && collection === 'items'
+    ) {
+      const source = Object.prototype.hasOwnProperty.call(content || {}, 'items')
+        && Array.isArray(content.items)
+        ? content.items
+        : (Array.isArray(profile?.testimonials) ? profile.testimonials : []);
+      const seen = new Set();
+      return source
+        .map((item, index) => {
+          if (!item || typeof item !== 'object') return null;
+          const clientName = String(item.client_name || item.name || '').trim();
+          const text = String(item.text || item.review || '').trim();
+          if (!clientName || !text) return null;
+          const baseId = String(item.id || item._id || `fallback-testimonial-${index}`);
+          let id = baseId;
+          let suffix = 2;
+          while (seen.has(id)) {
+            id = `${baseId}-${suffix}`;
+            suffix += 1;
+          }
+          seen.add(id);
+          return {
+            ...item,
+            id,
+            client_name: clientName,
+            text,
+            role: item.role || 'Verified client',
+            rating: Math.min(5, Math.max(1, Number(item.rating) || 5)),
+          };
+        })
+        .filter(Boolean)
+        .slice(0, 8);
+    }
+
     // Respect an explicit array (including empty). Only fall back when the key is missing.
     if (Object.prototype.hasOwnProperty.call(content || {}, collection)
       && Array.isArray(content[collection])) {
@@ -618,7 +699,7 @@ export default function StorefrontBuilderWorkspace({
       ));
     }
 
-    const fallbackMatch = String(itemId || '').match(/^fallback-(step|faq|service|highlight|proof)-(\d+)$/);
+    const fallbackMatch = String(itemId || '').match(/^fallback-(step|faq|service|testimonial|highlight|proof)-(\d+)$/);
     if (fallbackMatch) {
       const index = Number(fallbackMatch[2]);
       if (items[index]) {
@@ -884,7 +965,9 @@ export default function StorefrontBuilderWorkspace({
           return;
         }
       }
-      updateBlock(blockId, { content: { [contentKey]: value } });
+      updateBlock(blockId, {
+        content: patchContentPath(content, contentKey, value),
+      });
       setInlineEditingDraft(null);
       return;
     }
@@ -965,6 +1048,11 @@ export default function StorefrontBuilderWorkspace({
             : content[collection]
         )
       : materializeCollectionItems(collection, content, selected?.type);
+    if (
+      selected?.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+      && collection === 'items'
+      && currentItems.length >= 8
+    ) return;
     const nextItems = [...currentItems, nextItem];
     const fieldLabel = collection === 'faqs'
       ? `FAQ ${nextItems.length}`
@@ -974,6 +1062,8 @@ export default function StorefrontBuilderWorkspace({
           ? `Highlight ${nextItems.length}`
           : collection === 'proof'
             ? `Proof ${nextItems.length}`
+            : selected?.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+              ? `Client story ${nextItems.length}`
             : selected?.type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY
               ? `Story card ${nextItems.length}`
               : `Service ${nextItems.length}`;
@@ -988,7 +1078,11 @@ export default function StorefrontBuilderWorkspace({
       kind: 'item',
       itemId: nextItem.id,
       itemIndex: nextItems.length - 1,
-      itemField: collection === 'faqs' || collection === 'proof' ? (collection === 'proof' ? 'text' : 'q') : 'title',
+      itemField: selected?.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
+        ? 'client_name'
+        : collection === 'faqs' || collection === 'proof'
+          ? (collection === 'proof' ? 'text' : 'q')
+          : 'title',
       label: fieldLabel,
     });
   };
@@ -1042,7 +1136,7 @@ export default function StorefrontBuilderWorkspace({
 
   const addBlock = (type) => {
     const existing = normalized.find((block) => block.type === type);
-    if (existing) {
+    if (existing && isSingletonBlockType(type, templateKey)) {
       setSelectedId(existing.id);
       setSelectedElement({ blockId: existing.id, kind: 'block' });
       setInspectorOpen(true);
@@ -1051,7 +1145,7 @@ export default function StorefrontBuilderWorkspace({
     }
     const block = createBlockForTemplate(type);
     const next = insertBlockAtTemplateRank(normalized, block, templateKey);
-    commit(next);
+    commit(pinBoundaryBlocks(next, templateKey));
     setSelectedId(block.id);
     setSelectedElement({ blockId: block.id, kind: 'block' });
     setInspectorOpen(true);
@@ -1140,30 +1234,33 @@ export default function StorefrontBuilderWorkspace({
     if (!over) return;
     if (active.data.current?.fromLibrary) {
       const type = active.data.current.type;
+      const dropIndex = normalized.findIndex((item) => item.id === over.id);
+      const droppedOnCanvas = over.id === 'canvas-dropzone';
+      if (dropIndex < 0 && !droppedOnCanvas) return;
       const existing = normalized.find((block) => block.type === type);
-      if (existing) {
+      if (existing && isSingletonBlockType(type, templateKey)) {
         setSelectedId(existing.id);
         setInspectorOpen(true);
         setActivePanel('layers');
         return;
       }
       const block = createBlockForTemplate(type);
-      const index = normalized.findIndex((item) => item.id === over.id);
       const usesCanonicalOrder = [
         'lawyer-classic',
         'lawyer-first-home-closing',
+        'lawyer-newcomer',
       ].includes(templateKey);
       const next = usesCanonicalOrder
         ? insertBlockAtTemplateRank(normalized, block, templateKey)
         : [...normalized];
       if (!usesCanonicalOrder) {
-        if (index >= 0) next.splice(index, 0, block);
+        if (dropIndex >= 0) next.splice(dropIndex, 0, block);
         else {
           const footerIndex = next.findIndex((item) => item.type === 'footer');
           next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, block);
         }
       }
-      commit(next);
+      commit(pinBoundaryBlocks(next, templateKey));
       setSelectedId(block.id);
       setSelectedElement({ blockId: block.id, kind: 'block' });
       setInspectorOpen(true);
@@ -1173,7 +1270,9 @@ export default function StorefrontBuilderWorkspace({
     if (active.id === over.id) return;
     const oldIndex = normalized.findIndex((block) => block.id === active.id);
     const newIndex = normalized.findIndex((block) => block.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) commit(arrayMove(normalized, oldIndex, newIndex));
+    if (oldIndex >= 0 && newIndex >= 0) {
+      commit(pinBoundaryBlocks(arrayMove(normalized, oldIndex, newIndex), templateKey));
+    }
   };
 
   const showChatbot = brandKit?.show_chatbot !== false;
@@ -1290,6 +1389,7 @@ export default function StorefrontBuilderWorkspace({
                         block={block}
                         index={index}
                         selected={block.id === selected?.id}
+                        pinned={isProtectedBlockType(block.type)}
                         onSelect={() => selectBlock(block.id)}
                         onToggle={() => updateBlock(block.id, { enabled: !block.data.enabled })}
                         onDelete={isProtectedBlockType(block.type) ? null : () => removeBlock(block.id)}

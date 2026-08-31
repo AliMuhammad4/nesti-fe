@@ -11,10 +11,36 @@ export function blockContent(block) {
 export function isLightHexColor(value) {
   const match = String(value || '').trim().match(/^#([0-9a-f]{6})$/i);
   if (!match) return false;
-  const red = Number.parseInt(match[1].slice(0, 2), 16);
-  const green = Number.parseInt(match[1].slice(2, 4), 16);
-  const blue = Number.parseInt(match[1].slice(4, 6), 16);
-  return ((red * 299) + (green * 587) + (blue * 114)) / 1000 > 180;
+  const luminance = [0, 2, 4]
+    .map((offset) => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255)
+    .map((channel) => (
+      channel <= 0.03928
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4
+    ))
+    .reduce((total, channel, index) => total + (channel * [0.2126, 0.7152, 0.0722][index]), 0);
+  return luminance > 0.179;
+}
+
+export function hasReadableHexContrast(foreground, background, minimumRatio = 4.5) {
+  const luminance = (value) => {
+    const match = String(value || '').trim().match(/^#([0-9a-f]{6})$/i);
+    if (!match) return null;
+    return [0, 2, 4]
+      .map((offset) => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255)
+      .map((channel) => (
+        channel <= 0.03928
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4
+      ))
+      .reduce((total, channel, index) => total + (channel * [0.2126, 0.7152, 0.0722][index]), 0);
+  };
+  const foregroundLuminance = luminance(foreground);
+  const backgroundLuminance = luminance(background);
+  if (foregroundLuminance === null || backgroundLuminance === null) return true;
+  const ratio = (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+    / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+  return ratio >= minimumRatio;
 }
 
 export function lawyerClassicBandColors(sectionStyle = {}, {
@@ -26,8 +52,8 @@ export function lawyerClassicBandColors(sectionStyle = {}, {
   const requestedBackground = String(sectionStyle.background || '').trim();
   const requestedTextColor = String(sectionStyle.textColor || '').trim();
   const usesTheme = emptyBackgrounds.includes(requestedBackground.toLowerCase());
-  const unreadable = isLightHexColor(requestedBackground)
-    && (!requestedTextColor || isLightHexColor(requestedTextColor));
+  const unreadable = Boolean(requestedTextColor)
+    && !hasReadableHexContrast(requestedTextColor, requestedBackground);
   const background = usesTheme
     ? themeBackground
     : unreadable
@@ -84,7 +110,7 @@ export function uniqueNamedList(value, fallback = []) {
   return unique.length ? unique : fallback;
 }
 
-export function lawyerClassicGridClass(columns, itemCount) {
+export function lawyerClassicGridClass(columns, itemCount, preserveRequestedColumns = false) {
   const requested = Number.parseInt(String(columns), 10);
   const cols = [1, 2, 3, 4].includes(requested) ? requested : 3;
   const count = Number(itemCount) || 0;
@@ -94,6 +120,7 @@ export function lawyerClassicGridClass(columns, itemCount) {
     3: 'md:grid-cols-2 lg:grid-cols-3',
     4: 'sm:grid-cols-2 xl:grid-cols-4',
   };
+  if (preserveRequestedColumns) return byCount[cols] || 'md:grid-cols-2 lg:grid-cols-3';
   if (count > 0 && count < cols) return byCount[count] || 'grid-cols-1';
   if (count === 4 && cols === 3) return 'md:grid-cols-2';
   if (count === 5 && cols === 4) return 'sm:grid-cols-2 lg:grid-cols-3';

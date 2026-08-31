@@ -8,6 +8,28 @@ export function resolveStorefrontRendererTheme({
   const definedThemeValues = Object.fromEntries(
     Object.entries(explicitTheme || profileTheme || {}).filter(([, value]) => value !== undefined && value !== null && value !== ''),
   );
+  const investorPrimary = String(definedThemeValues.primary || '').trim().toLowerCase();
+  const investorAccent = String(definedThemeValues.accent || '').trim().toLowerCase();
+  const usesLegacyLawyerInvestorPalette = templateKey === 'lawyer-investor'
+    && (
+      (investorPrimary === '#312e81' && investorAccent === '#a78bfa')
+      || (investorPrimary === '#1d2740' && investorAccent === '#b9915e')
+      || (investorPrimary === '#183c34' && investorAccent === '#d07a45')
+    );
+  if (usesLegacyLawyerInvestorPalette) {
+    definedThemeValues.primary = templateBrand.primary_color || '#20252b';
+    definedThemeValues.accent = templateBrand.accent_color || '#00a7c4';
+    if (['#ffffff', '#f5f3ee', '#f4f0e8'].includes(
+      String(definedThemeValues.canvas || '').trim().toLowerCase(),
+    )) {
+      definedThemeValues.canvas = templateBrand.page_background || '#f3f6f7';
+    }
+    if (['999px', '0.75rem', '1rem'].includes(
+      String(definedThemeValues.radius || '').trim().toLowerCase(),
+    )) {
+      definedThemeValues.radius = '2px';
+    }
+  }
   if (
     templateKey === 'agent-luxury-advisor'
     && String(definedThemeValues.canvas || '').trim().toLowerCase() === '#faf7ef'

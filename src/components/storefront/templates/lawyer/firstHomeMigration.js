@@ -1,4 +1,4 @@
-const FIRST_HOME_DESIGN_VERSION = 7;
+const FIRST_HOME_DESIGN_VERSION = 9;
 
 const LEGACY_SECTION_BACKGROUNDS = new Set([
   '#eff6ff',
@@ -53,8 +53,35 @@ function addNewLayersWithoutResetting(current, canonical) {
   ];
   const next = current.map((block) => {
     const marked = markCurrentDesignVersion(block);
-    if (marked?.type !== 'credentials' || !defaultCredentialItems.length) return marked;
+    if (marked?.type !== 'credentials') return marked;
     const existingContent = contentFor(marked);
+    const usesLegacyProfessionalDetails = (
+      existingContent.heading === 'Professional details you can verify'
+      && [
+        'Review licensing, jurisdiction, and practice information before deciding who should handle your closing.',
+        'Review licensing, jurisdiction, language, and practice information before deciding who should handle your closing.',
+      ].includes(existingContent.body)
+    );
+    const copyUpdatedContent = {
+      ...existingContent,
+      ...(usesLegacyProfessionalDetails ? {
+        heading: defaultCredentialContent.heading,
+        body: defaultCredentialContent.body,
+      } : {}),
+    };
+    const copyUpdatedBlock = marked.data
+      ? {
+        ...marked,
+        data: {
+          ...marked.data,
+          content: copyUpdatedContent,
+        },
+      }
+      : {
+        ...marked,
+        content: copyUpdatedContent,
+      };
+    if (!defaultCredentialItems.length) return copyUpdatedBlock;
     const hasExplicitItems = Object.prototype.hasOwnProperty.call(existingContent, 'items')
       && Array.isArray(existingContent.items);
     const existingItems = Array.isArray(existingContent.items) ? existingContent.items : [];
@@ -63,9 +90,9 @@ function addNewLayersWithoutResetting(current, canonical) {
         (title, index) => String(existingItems[index]?.title || '').trim() === title,
       );
     if ((hasExplicitItems && !existingItems.length)
-      || (existingItems.length && !usesLegacyCredentialDefaults)) return marked;
+      || (existingItems.length && !usesLegacyCredentialDefaults)) return copyUpdatedBlock;
     const contentUpdates = {
-      ...existingContent,
+      ...copyUpdatedContent,
       items: defaultCredentialItems,
       ...(existingContent.heading === 'A legal experience built around clarity'
         ? { heading: defaultCredentialContent.heading }
@@ -74,17 +101,17 @@ function addNewLayersWithoutResetting(current, canonical) {
         ? { body: defaultCredentialContent.body }
         : {}),
     };
-    if (marked.data) {
+    if (copyUpdatedBlock.data) {
       return {
-        ...marked,
+        ...copyUpdatedBlock,
         data: {
-          ...marked.data,
+          ...copyUpdatedBlock.data,
           content: contentUpdates,
         },
       };
     }
     return {
-      ...marked,
+      ...copyUpdatedBlock,
       content: contentUpdates,
     };
   });
@@ -119,8 +146,9 @@ export function migrateLawyerFirstHomeBlocks(blocks = [], defaults = []) {
     : [];
   const canonical = Array.isArray(defaults) ? defaults.filter(Boolean) : [];
   const currentVersion = lawyerFirstHomeDesignVersion(current);
-  if (!canonical.length || currentVersion >= FIRST_HOME_DESIGN_VERSION) {
-    return current;
+  if (!canonical.length) return current;
+  if (currentVersion >= FIRST_HOME_DESIGN_VERSION) {
+    return addNewLayersWithoutResetting(current, canonical);
   }
   if (currentVersion >= 3) return addNewLayersWithoutResetting(current, canonical);
 
@@ -174,7 +202,7 @@ export function migrateLawyerFirstHomeBlocks(blocks = [], defaults = []) {
       },
     };
   });
-  return migrated;
+  return addNewLayersWithoutResetting(migrated, canonical);
 }
 
 export { FIRST_HOME_DESIGN_VERSION };

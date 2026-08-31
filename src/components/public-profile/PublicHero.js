@@ -84,10 +84,17 @@ export default function PublicHero({
   const forceMobilePreview = isBuilderPreview && previewMode === 'mobile';
   const professionalProfile = profile.professional_profile || {};
   const companyName = professionalProfile.company_name || '';
+  const usesCanonicalHeroCopy = profile.storefront_template_key === 'lawyer-newcomer';
   const heroName = content.hero_name || profile.professional_name || 'Professional';
-  const heroSubtitle = content.hero_subtitle
+  const heroSubtitle = (usesCanonicalHeroCopy ? content.heading : content.hero_subtitle)
     || profile.headline
     || heroContent.fallbackHeadline(profile.professional_name || 'this professional');
+  const heroEyebrow = usesCanonicalHeroCopy
+    ? (content.eyebrow || profile.hero_eyebrow || '')
+    : '';
+  const heroBody = usesCanonicalHeroCopy
+    ? (content.body || profile.tagline || heroContent.fallbackTagline)
+    : '';
   const heroCompanyBadge = content.hero_company_badge || companyName;
   const roleLabel =
     professionalType === 'mortgage_broker'
@@ -128,14 +135,18 @@ export default function PublicHero({
     || (secondaryButtonBackground ? (isDarkHex(secondaryButtonBackground) ? '#f8fafc' : '#0f172a') : '');
   const primaryButtonClass = primaryButtonBackground
     ? 'storefront-btn inline-flex h-10 items-center justify-center px-5 text-[13px] font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.20)] transition hover:-translate-y-px hover:opacity-95'
-    : 'storefront-btn inline-flex h-10 items-center justify-center bg-primary px-5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(15,118,110,0.28)] transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-[0_14px_30px_rgba(15,118,110,0.38)]';
+    : 'storefront-btn inline-flex h-10 items-center justify-center bg-primary px-5 text-[13px] font-semibold text-primary-contrast shadow-lg shadow-primary/20 transition hover:-translate-y-px hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/25';
   const secondaryButtonClass = secondaryButtonBackground
     ? 'storefront-btn inline-flex h-10 items-center justify-center border px-5 text-[13px] font-semibold transition hover:-translate-y-px hover:opacity-95 whitespace-nowrap'
     : 'storefront-btn inline-flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-[13px] font-semibold text-slate-700 transition hover:-translate-y-px hover:border-primary/40 hover:bg-primary/5 hover:text-primary whitespace-nowrap';
-  const heroCardDesktopPaddingClass = forceCompactPreview ? '' : 'lg:pr-56';
+  const heroCardDesktopPaddingClass = forceCompactPreview
+    ? ''
+    : (usesCanonicalHeroCopy ? 'lg:pr-80' : 'lg:pr-56');
   const heroCompanyBadgeClass = forceCompactPreview
     ? 'mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-[12px] font-bold shadow-sm'
-    : 'mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-[12px] font-bold shadow-sm lg:absolute lg:right-6 lg:top-1/2 lg:mt-0 lg:max-w-48 lg:-translate-y-1/2 lg:px-3.5 lg:py-2 lg:text-sm';
+    : `mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-[12px] font-bold shadow-sm lg:absolute lg:right-6 lg:top-1/2 lg:mt-0 lg:-translate-y-1/2 lg:px-3.5 lg:py-2 lg:text-sm ${
+        usesCanonicalHeroCopy ? 'lg:max-w-72' : 'lg:max-w-48'
+      }`;
 
   const sectionStyle = block?.data?.style || block?.style || {};
   // Prefer the live brand kit canvas from the renderer theme.
@@ -158,8 +169,9 @@ export default function PublicHero({
 
       <div className="relative border-b border-slate-200/70" style={{ backgroundColor: resolvedHeroStripBackground }}>
         {/* Cover spans the contained col-12 canvas (not viewport full-bleed). */}
-        <div data-storefront-field="brandKit.cover_url" data-storefront-source="profile" data-storefront-label="Cover image" className="relative h-48 w-full overflow-hidden sm:h-56 md:h-64 lg:h-80">
-          {showCover && profile.cover_photo_url ? (
+        {showCover ? (
+          <div data-storefront-field="brandKit.cover_url" data-storefront-source="profile" data-storefront-label="Cover image" className="relative h-48 w-full overflow-hidden sm:h-56 md:h-64 lg:h-80">
+          {profile.cover_photo_url ? (
             <Image
               key={coverRenderKey}
               src={profile.cover_photo_url}
@@ -173,10 +185,11 @@ export default function PublicHero({
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-slate-100 to-primary/15" />
           )}
-        </div>
+          </div>
+        ) : null}
 
-        <div className="relative px-4 pb-8 sm:px-6 lg:px-8">
-          <div className={`relative -mt-16 flex flex-col items-start gap-4 sm:-mt-20 ${forceMobilePreview ? '' : 'md:-mt-24 md:flex-row md:items-start md:gap-6'}`}>
+        <div className={`relative px-4 pb-8 sm:px-6 lg:px-8 ${showCover ? '' : 'pt-8'}`}>
+          <div className={`relative flex flex-col items-start gap-4 ${showCover ? '-mt-16 sm:-mt-20' : ''} ${forceMobilePreview ? '' : `${showCover ? 'md:-mt-24' : ''} md:flex-row md:items-start md:gap-6`}`}>
             <div data-storefront-field="brandKit.profile_photo_url" data-storefront-source="profile" data-storefront-label="Profile photo" className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-[5px] border-white bg-slate-100 shadow-[0_18px_40px_rgba(15,23,42,0.18)] sm:h-32 sm:w-32 md:h-40 md:w-40">
                 {profile.profile_photo_url ? (
                   <Image
@@ -203,6 +216,16 @@ export default function PublicHero({
                 ...(heroCardTextColor ? { color: heroCardTextColor } : {}),
               }}
             >
+              {heroEyebrow ? (
+                <p
+                  data-storefront-field="content.eyebrow"
+                  data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+                  data-storefront-label="Hero eyebrow"
+                  className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary"
+                >
+                  {heroEyebrow}
+                </p>
+              ) : null}
               <h1
                 data-storefront-field="content.hero_name"
                 data-storefront-source={content.hero_name ? 'persisted' : 'fallback'}
@@ -213,14 +236,25 @@ export default function PublicHero({
                 {heroName}
               </h1>
               <p
-                data-storefront-field="content.hero_subtitle"
-                data-storefront-source={content.hero_subtitle ? 'persisted' : 'fallback'}
-                data-storefront-label="Hero card subtitle"
+                data-storefront-field={usesCanonicalHeroCopy ? 'content.heading' : 'content.hero_subtitle'}
+                data-storefront-source={(usesCanonicalHeroCopy ? content.heading : content.hero_subtitle) ? 'persisted' : 'fallback'}
+                data-storefront-label={usesCanonicalHeroCopy ? 'Hero heading' : 'Hero card subtitle'}
                 className="mt-2 text-[14px] leading-6 md:text-[15px]"
                 style={{ color: subtitleColor, opacity: heroCardTextColor ? 0.92 : 1 }}
               >
                 {heroSubtitle}
               </p>
+              {heroBody ? (
+                <p
+                  data-storefront-field="content.body"
+                  data-storefront-source={content.body ? 'persisted' : 'fallback'}
+                  data-storefront-label="Hero description"
+                  className="mt-2 max-w-2xl text-[12px] leading-5 md:text-[13px]"
+                  style={{ color: subtitleColor, opacity: heroCardTextColor ? 0.78 : 0.88 }}
+                >
+                  {heroBody}
+                </p>
+              ) : null}
               <div className={`mt-4 flex items-center gap-2 ${forceMobilePreview ? 'flex-col items-stretch' : 'flex-wrap'}`}>
                   <button
                     type="button"
@@ -282,7 +316,9 @@ export default function PublicHero({
                   }}
                 >
                   <Building2 size={14} className="shrink-0" style={{ color: 'currentColor', opacity: 0.92 }} />
-                  <span className="truncate">{heroCompanyBadge}</span>
+                  <span className={usesCanonicalHeroCopy ? 'min-w-0 whitespace-normal break-words leading-5' : 'truncate'}>
+                    {heroCompanyBadge}
+                  </span>
                 </span>
               ) : null}
             </div>

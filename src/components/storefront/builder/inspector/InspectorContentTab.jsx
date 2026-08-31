@@ -1,4 +1,4 @@
-import { Field, inputClass } from '../builderUiPrimitives';
+import { BuilderSelect, Field, inputClass } from '../builderUiPrimitives';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import {
   ExpertiseProcessEditor,
@@ -8,6 +8,7 @@ import {
   RoleHighlightsEditor,
   RoleProofEditor,
   ServiceCardsEditor,
+  InvestorFooterLinksEditor,
 } from './InspectorCollectionEditors';
 import { HeroCopyFields, HeroMediaFields } from './content/HeroContentFields';
 import { AboutContentFields, CtaContentFields } from './content/SectionContentFields';
@@ -47,7 +48,12 @@ export default function InspectorContentTab({
     isSellerCaseStudy,
     isLawyerClassicStatement,
     isLawyerFirstHome,
+    isLawyerInvestor,
+    isLawyerNewcomer,
     isLawyerClassic,
+    isFooter,
+    investorCapabilities,
+    newcomerCapabilities,
     isCommunityTemplate,
     lawyerCredentialsVerified,
     collection,
@@ -57,6 +63,7 @@ export default function InspectorContentTab({
     placeholders,
     roleDefaults,
   } = model;
+  const templateCapabilities = investorCapabilities || newcomerCapabilities;
   const setContent = bindContent(onChange, block.id);
 
   const showSharedEyebrow = (
@@ -71,6 +78,7 @@ export default function InspectorContentTab({
     || isSellerCredentials
     || isLawyerClassicItemCards
     || block.type === T.EXPERTISE
+    || block.type === T.PRACTICE_SNAPSHOT
   ) && !isElementSelection;
 
   return (
@@ -120,15 +128,15 @@ export default function InspectorContentTab({
           className="min-h-28 resize-y"
         />
       ) : null}
-      {isLawyerFirstHome && isServices && !isElementSelection ? (
+      {(isLawyerFirstHome || isLawyerInvestor) && isServices && !isElementSelection ? (
         <InspectorInput
-          label="Toolkit resource label"
+          label={isLawyerInvestor ? 'Workstream label' : 'Toolkit resource label'}
           value={contentValue('resource_label')}
           onChange={setContent('resource_label')}
-          placeholder="Buyer-ready planning resources"
+          placeholder={isLawyerInvestor ? 'Transaction workstreams' : 'Buyer-ready planning resources'}
         />
       ) : null}
-      {isLawyerFirstHome && block.type === T.PRACTICE_SNAPSHOT && !isElementSelection ? (
+      {(isLawyerFirstHome || isLawyerInvestor) && block.type === T.PRACTICE_SNAPSHOT && !isElementSelection ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Snapshot card labels</p>
           <InspectorInput label="Practice focus title" value={contentValue('practice_focus_label')} onChange={setContent('practice_focus_label')} placeholder="Practice focus" />
@@ -139,13 +147,120 @@ export default function InspectorContentTab({
           <InspectorInput label="Languages subtitle" value={contentValue('languages_subtitle')} onChange={setContent('languages_subtitle')} placeholder="Languages available for consultation" />
         </div>
       ) : null}
-      {isLawyerFirstHome && isCredentials && !isElementSelection ? (
+      {isLayeredLawyerTemplate && isCredentials && lawyerCredentialsVerified && !isElementSelection ? (
         <InspectorInput
           label="Verified profile label"
           value={contentValue('verification_label')}
           onChange={setContent('verification_label')}
           placeholder="Verified legal profile"
         />
+      ) : null}
+      {templateCapabilities?.content?.metricVisibility && isCredentials && !isElementSelection ? (
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Profile-synced metrics</p>
+          {[
+            ['pipeline', 'Pipeline value'],
+            ['experience', 'Experience'],
+            ['clients', 'Total clients'],
+            ['cases', 'Closed cases'],
+          ].map(([key, label]) => (
+            <div key={key} className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
+              <InspectorInput
+                label={`${label} label`}
+                value={content.metric_labels?.[key] || ''}
+                onChange={(value) => onChange(block.id, {
+                  content: { metric_labels: { ...(content.metric_labels || {}), [key]: value } },
+                })}
+                placeholder={label}
+              />
+              <Field label={`${label} icon`}>
+                <BuilderSelect
+                  value={content.metric_icons?.[key] || ({
+                    pipeline: 'dollar',
+                    experience: 'calendar',
+                    clients: 'users',
+                    cases: 'file',
+                  }[key])}
+                  options={[
+                    { value: 'dollar', label: 'Currency' },
+                    { value: 'calendar', label: 'Calendar' },
+                    { value: 'users', label: 'People' },
+                    { value: 'file', label: 'File check' },
+                    { value: 'briefcase', label: 'Briefcase' },
+                    { value: 'shield', label: 'Shield' },
+                  ]}
+                  onChange={(value) => onChange(block.id, {
+                    content: { metric_icons: { ...(content.metric_icons || {}), [key]: value } },
+                  })}
+                  ariaLabel={`${label} icon`}
+                />
+              </Field>
+              <Field label={`${label} visibility`}>
+                <BuilderSelect
+                  value={(content.hidden_metrics || []).includes(key) ? 'hidden' : 'visible'}
+                  options={[
+                    { value: 'visible', label: 'Visible' },
+                    { value: 'hidden', label: 'Hidden' },
+                  ]}
+                  onChange={(value) => {
+                    const hidden = new Set(Array.isArray(content.hidden_metrics) ? content.hidden_metrics : []);
+                    if (value === 'hidden') hidden.add(key);
+                    else hidden.delete(key);
+                    onChange(block.id, { content: { hidden_metrics: [...hidden] } });
+                  }}
+                  ariaLabel={`${label} visibility`}
+                />
+              </Field>
+            </div>
+          ))}
+          <InspectorInput
+            label="Metric order"
+            value={(content.metric_order || []).join(', ')}
+            onChange={(value) => {
+              const seen = new Set();
+              const metricOrder = value
+                .split(',')
+                .map((item) => item.trim())
+                .filter((item) => {
+                  if (!['pipeline', 'experience', 'clients', 'cases'].includes(item) || seen.has(item)) {
+                    return false;
+                  }
+                  seen.add(item);
+                  return true;
+                });
+              onChange(block.id, { content: { metric_order: metricOrder } });
+            }}
+            placeholder="pipeline, experience, clients, cases"
+          />
+          <InspectorNote>Values stay synchronized with the professional profile. Control only visibility and order here.</InspectorNote>
+        </div>
+      ) : null}
+      {templateCapabilities?.content?.footerFields && isFooter && !isElementSelection ? (
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Footer content</p>
+          <InspectorInput label="Role label" value={contentValue('role_label')} onChange={setContent('role_label')} placeholder={isLawyerNewcomer ? 'Newcomer home closing counsel' : 'Investor transaction counsel'} />
+          <InspectorInput label="Navigation heading" value={contentValue('resource_heading')} onChange={setContent('resource_heading')} placeholder="Explore" />
+          <InspectorInput label="Contact heading" value={contentValue('contact_heading')} onChange={setContent('contact_heading')} placeholder="Contact details" />
+          <InspectorTextarea label="Disclaimer" value={contentValue('disclaimer')} onChange={setContent('disclaimer')} placeholder="Do not send confidential information until representation is confirmed." />
+          {[
+            ['show_email', 'Email'],
+            ['show_phone', 'Phone'],
+            ['show_booking', 'Calendly booking'],
+          ].map(([key, label]) => (
+            <Field key={key} label={label}>
+              <BuilderSelect
+                value={content[key] === false ? 'hidden' : 'visible'}
+                options={[
+                  { value: 'visible', label: 'Visible' },
+                  { value: 'hidden', label: 'Hidden' },
+                ]}
+                onChange={(value) => onChange(block.id, { content: { [key]: value !== 'hidden' } })}
+                ariaLabel={`${label} visibility`}
+              />
+            </Field>
+          ))}
+          <InvestorFooterLinksEditor block={block} onChange={onChange} />
+        </div>
       ) : null}
       <AboutContentFields
         block={block}
@@ -175,7 +290,11 @@ export default function InspectorContentTab({
           Listing cards pull from your connected property inventory. Edit heading and supporting copy here; style the cards in the Style tab.
         </InspectorNote>
       ) : null}
-      {collection && !hasEditableCards && !isLawyerClassicItemCards && !(isLayeredLawyerTemplate && isCredentials) ? (
+      {collection
+        && !hasEditableCards
+        && !isLawyerClassicItemCards
+        && !(isLayeredLawyerTemplate && isCredentials)
+            && !(isFooter && templateCapabilities?.content?.links) ? (
         <Field label={collection.label}>
           <textarea
             value={collectionDraft ?? collection.format(content.items)}
@@ -192,7 +311,7 @@ export default function InspectorContentTab({
           <p className="mt-1.5 text-[10px] text-slate-400">{collection.hint}</p>
         </Field>
       ) : null}
-      {isLawyerClassic && isCredentials && !isElementSelection ? (
+      {isLayeredLawyerTemplate && !isLawyerInvestor && isCredentials && !isElementSelection ? (
         <InspectorNote>
           The standing metrics come from the legal profile. Edit heading and copy here; change the section colors in Style.
         </InspectorNote>

@@ -115,9 +115,79 @@
   outline-offset: 3px;
 }
 
+[data-template-key='lawyer-investor'] :where(a, button, input, select):focus-visible {
+  outline: 3px solid var(--storefront-accent, #007f95);
+  outline-offset: 3px;
+}
+
+[data-template-key][data-template-key='lawyer-investor'] [data-investor-color-override='true'] {
+  background-color: var(--investor-override-bg) !important;
+  color: var(--investor-override-color) !important;
+}
+
 [data-template-key='lawyer-classic'] :where(#about, #clients, #expertise, #services, #documents, #fees, #reviews, #guidance, #faq, #start, #contact),
 [data-template-key='lawyer-first-home-closing'] :where(#about, #clients, #practice-snapshot, #buyer-toolkit, #services, #closing-roadmap, #buyer-protection, #documents, #fees, #engagement-scope, #professional-standing, #reviews, #guidance, #faq, #service-access, #start, #contact) {
   scroll-margin-top: 5rem;
+}
+
+[data-template-key='lawyer-investor'] :where(#about, #practice-snapshot, #services, #practice-areas, #buyer-protection, #guidance, #contact) {
+  scroll-margin-top: 5rem;
+}
+
+[data-template-key='lawyer-newcomer'] :where(#about, #practice-areas, #services, #guidance, #credentials, #reviews, #contact) {
+  scroll-margin-top: 5rem;
+}
+
+.storefront-canvas[data-template-key='lawyer-newcomer'][data-preview='true'][data-preview-mode='mobile'] [data-newcomer-section='true'] {
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-newcomer'][data-preview='true'][data-preview-mode='tablet'] [data-newcomer-section='true'] {
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-newcomer'][data-preview='true'][data-preview-mode='mobile'] [data-newcomer-grid] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-newcomer'][data-preview='true'][data-preview-mode='tablet'] :is(
+  [data-newcomer-grid='about'],
+  [data-newcomer-grid='cta'],
+  [data-newcomer-grid='footer']
+) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-newcomer'][data-preview='true'][data-preview-mode='tablet'] :is(
+  [data-newcomer-grid='cards'],
+  [data-newcomer-grid='metrics']
+) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-investor'][data-preview='true'][data-preview-mode='mobile'] [data-investor-layout-grid] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-investor'][data-preview='true'][data-preview-mode='tablet'] :is(
+  [data-investor-layout-grid='hero'],
+  [data-investor-layout-grid='about'],
+  [data-investor-layout-grid='cta']
+) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-investor'][data-preview='true'][data-preview-mode='tablet'] :is(
+  [data-investor-layout-grid='cards'],
+  [data-investor-layout-grid='footer']
+) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.storefront-canvas[data-template-key='lawyer-investor'][data-preview='true'][data-preview-mode='tablet'] [data-section-columns='1'] [data-investor-layout-grid='cards'] {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 /* Hidden until JS flips data-anim-visible */
