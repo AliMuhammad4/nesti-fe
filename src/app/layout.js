@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Inter, Poppins } from "next/font/google";
+import Script from "next/script";
 
 import Providers from "./providers";
 import AppChromeShell from "./AppChromeShell";
@@ -26,6 +27,21 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-SJDRCGMMER"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-SJDRCGMMER');
+          `}
+        </Script>
+      </head>
       <body
         suppressHydrationWarning
         className={`${inter.variable} ${poppins.variable} flex flex-col min-h-screen`}
