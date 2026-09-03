@@ -167,8 +167,8 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
           aria-hidden
         />
         <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
+          <Link
+            href="/"
             onClick={goToPublicHome}
             onMouseEnter={() => {
               if (!shouldPrefetch) return;
@@ -194,7 +194,7 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               </div>
               <div className="text-[10px] font-medium text-text-muted">Client Portal</div>
             </div>
-          </button>
+          </Link>
           {isMobileOpen ? (
             <button
               type="button"

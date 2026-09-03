@@ -295,8 +295,8 @@ setReferralsOpen(false);
           aria-hidden
         />
         <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
+          <Link
+            href="/"
             onClick={goToPublicHome}
             onMouseEnter={() => {
               if (!shouldPrefetch) return;
@@ -306,7 +306,7 @@ setReferralsOpen(false);
                 // best-effort
               }
             }}
-            className="relative z-20 group flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent py-0.5 text-left transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="relative z-20 group flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg py-0.5 text-left transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label="Go to Nesti AI home"
           >
             <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg grid place-items-center transition duration-300 group-hover:scale-[1.03]">
@@ -324,7 +324,7 @@ setReferralsOpen(false);
               </div>
               <div className="text-[10px] font-medium text-text-muted">Workspace</div>
             </div>
-          </button>
+          </Link>
           {isMobileOpen ? (
             <button
               type="button"
