@@ -48,12 +48,11 @@ export default function Header() {
 
   const NAVIGATION_ITEMS = useMemo(
     () => [
-          { label: "About", href: "/about" },
-          { label: "Mission", href: "/mission" },
-          { label: "Blog", href: "/blog" },
-          { label: "FAQ", href: "/faq" },
-          { label: "Privacy Policy", href: "/privacy" },
-        ],
+      { label: "About", href: "/about" },
+      { label: "Mission", href: "/mission" },
+      { label: "Blog", href: "/blog" },
+      { label: "FAQ", href: "/faq" },
+    ],
     []
   );
 

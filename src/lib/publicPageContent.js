@@ -480,5 +480,11 @@ export const PUBLIC_PAGES = {
 };
 
 export function getPublicPage(slug) {
-  return PUBLIC_PAGES[slug] || null;
+  const normalizedSlug =
+    slug === "privacy-policy"
+      ? "privacy"
+      : slug === "terms-of-use"
+      ? "terms"
+      : slug;
+  return PUBLIC_PAGES[normalizedSlug] || null;
 }
