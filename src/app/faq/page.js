@@ -5,6 +5,9 @@ import { getPublicPageMeta } from "@/lib/publicPageMeta";
 export const metadata = {
   title: "Frequently Asked Questions | Nesti AI",
   description: "Common platform answers",
+  alternates: {
+    canonical: "https://nesti.ca/faq",
+  },
 };
 
 export default function FaqRoute() {

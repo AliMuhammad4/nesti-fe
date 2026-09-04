@@ -4,6 +4,9 @@ export const metadata = {
   title: "Refund Policy | Nesti AI",
   description:
     "Nesti subscription billing terms, cancellation policy, and strict no-refund policy.",
+  alternates: {
+    canonical: "https://nesti.ca/refund-policy",
+  },
 };
 
 export default function RefundPolicyRoute() {

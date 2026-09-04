@@ -5,6 +5,9 @@ import { getPublicPageMeta } from "@/lib/publicPageMeta";
 export const metadata = {
   title: "Privacy Policy | Nesti AI",
   description: "Our commitment to privacy",
+  alternates: {
+    canonical: "https://nesti.ca/privacy-policy",
+  },
 };
 
 export default function PrivacyPolicyRoute() {

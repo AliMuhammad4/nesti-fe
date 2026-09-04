@@ -5,6 +5,9 @@ import { getPublicPageMeta } from "@/lib/publicPageMeta";
 export const metadata = {
   title: "Our Mission | Nesti AI",
   description: "Modernizing real estate through intelligent technology",
+  alternates: {
+    canonical: "https://nesti.ca/mission",
+  },
 };
 
 export default function MissionRoute() {

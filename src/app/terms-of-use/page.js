@@ -5,6 +5,9 @@ import { getPublicPageMeta } from "@/lib/publicPageMeta";
 export const metadata = {
   title: "Terms of Use | Nesti AI",
   description: "Platform terms and conditions",
+  alternates: {
+    canonical: "https://nesti.ca/terms-of-use",
+  },
 };
 
 export default function TermsOfUseRoute() {
