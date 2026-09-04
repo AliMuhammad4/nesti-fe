@@ -48,12 +48,11 @@ export default function Header() {
 
   const NAVIGATION_ITEMS = useMemo(
     () => [
-          { label: "About", href: "/about" },
-          { label: "Mission", href: "/mission" },
-          { label: "Blog", href: "/blog" },
-          { label: "FAQ", href: "/faq" },
-          { label: "Privacy Policy", href: "/privacy" },
-        ],
+      { label: "About", href: "/about" },
+      { label: "Mission", href: "/mission" },
+      { label: "Blog", href: "/blog" },
+      { label: "FAQ", href: "/faq" },
+    ],
     []
   );
 
@@ -137,10 +136,10 @@ export default function Header() {
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
           {/* Logo — public landing home */}
-          <button
-            type="button"
+          <Link
+            href="/"
             onClick={goToPublicHome}
-            className="group flex cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="group flex cursor-pointer items-center gap-2.5 rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label="Go to Nesti AI home"
           >
             <motion.div
@@ -163,7 +162,7 @@ export default function Header() {
                 Real Estate Intelligence
               </span>
             </div>
-          </button>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:block">
@@ -416,13 +415,13 @@ export default function Header() {
             >
               {/* Menu header */}
               <div className="flex items-center justify-between gap-3 border-b border-border bg-gradient-to-r from-primary/5 to-transparent px-4 py-3.5">
-                <button
-                  type="button"
+                <Link
+                  href="/"
                   onClick={goToPublicHome}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   aria-label="Go to Nesti AI home"
                 >
-                  <div className="grid h-9 w-9 shrink-0 place-items-center">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center transition-transform group-hover:scale-105">
                     <Image
                       src="/logo/logo.png"
                       alt="Nesti AI logo"
@@ -439,7 +438,7 @@ export default function Header() {
                       Real Estate Intelligence
                     </span>
                   </div>
-                </button>
+                </Link>
                 <motion.button
                   onClick={() => setIsMenuOpen(false)}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border bg-white text-text-body shadow-sm transition-colors hover:bg-primary/5 hover:text-primary"

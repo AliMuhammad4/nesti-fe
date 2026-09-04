@@ -88,15 +88,23 @@ export const PUBLIC_PAGE_META = {
 };
 
 export function getPublicPageMeta(slug) {
-  return PUBLIC_PAGE_META[slug] || {
-    badge: "Nesti AI",
-    Icon: Sparkles,
-    gradient: "from-primary to-primary-dark",
-    highlight: null,
-    summary: [
-      "Modern real estate infrastructure",
-      "AI-powered workflows",
-      "Built for professionals",
-    ],
-  };
+  const normalizedSlug =
+    slug === "privacy-policy"
+      ? "privacy"
+      : slug === "terms-of-use"
+      ? "terms"
+      : slug;
+  return (
+    PUBLIC_PAGE_META[normalizedSlug] || {
+      badge: "Nesti AI",
+      Icon: Sparkles,
+      gradient: "from-primary to-primary-dark",
+      highlight: null,
+      summary: [
+        "Modern real estate infrastructure",
+        "AI-powered workflows",
+        "Built for professionals",
+      ],
+    }
+  );
 }

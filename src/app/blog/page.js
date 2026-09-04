@@ -5,6 +5,9 @@ import { getPublicPageMeta } from "@/lib/publicPageMeta";
 export const metadata = {
   title: "Nesti Journal | Nesti AI",
   description: "Blog & Insights Hub",
+  alternates: {
+    canonical: "https://nesti.ca/blog",
+  },
 };
 
 export default function BlogRoute() {

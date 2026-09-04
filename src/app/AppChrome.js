@@ -680,8 +680,11 @@ export default function AppChrome({ children }) {
             {!isFullHeightWorkspaceRoute ? (
               <footer className="shrink-0 border-t border-primary/20 bg-gradient-to-r from-primary/[0.08] via-white/95 to-primary/[0.06] px-4 py-2.5 sm:px-6">
                 <div className="flex items-center justify-between gap-3 text-[11px] text-text-muted">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg overflow-hidden">
+                  <Link
+                    href={isClient ? "/client-dashboard" : "/dashboard"}
+                    className="group flex min-w-0 items-center gap-2"
+                  >
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg overflow-hidden transition-transform group-hover:scale-105">
                       <Image
                         src="/logo/logo.png"
                         alt="Nesti AI logo"
@@ -691,10 +694,10 @@ export default function AppChrome({ children }) {
                       />
                     </span>
                     <div className="min-w-0 leading-tight">
-                      <p className="truncate text-[12px] font-semibold text-text-heading">Nesti AI</p>
+                      <p className="truncate text-[12px] font-semibold text-text-heading group-hover:text-primary transition-colors">Nesti AI</p>
                       <p className="truncate text-[10px] text-text-muted">Workspace</p>
                     </div>
-                  </div>
+                  </Link>
                   <p className="shrink-0 text-[10px] text-text-muted/90">
                     &copy; {new Date().getFullYear()} Nesti AI
                   </p>

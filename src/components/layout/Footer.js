@@ -89,9 +89,9 @@ export default function Footer() {
   ];
 
   const legalLinks = [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Use", href: "/terms" },
-    { label: "Finance Policy", href: "/refund-policy" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
+    { label: "Terms of Use", href: "/terms-of-use" },
+    { label: "Refund Policy", href: "/refund-policy" },
   ];
 
   const socialLinks = [
@@ -107,8 +107,8 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 md:py-8">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] lg:gap-12">
             <div>
-              <div className="mb-3 flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl overflow-hidden">
+              <Link href="/" className="mb-3 flex items-center gap-3 w-fit group">
+                <div className="grid h-10 w-10 place-items-center rounded-xl overflow-hidden transition-transform group-hover:scale-105">
                   <Image
                     src="/logo/logo.png"
                     alt="Nesti AI logo"
@@ -118,14 +118,14 @@ export default function Footer() {
                   />
                 </div>
                 <div>
-                  <span className="block text-xl font-black leading-tight tracking-tight text-text-heading">
+                  <span className="block text-xl font-black leading-tight tracking-tight text-text-heading group-hover:text-primary transition-colors">
                     Nesti AI
                   </span>
                   <span className="-mt-0.5 block text-[11px] font-bold uppercase leading-tight tracking-[0.2em] text-primary">
                     Real Estate Intelligence
                   </span>
                 </div>
-              </div>
+              </Link>
 
               <p className="max-w-md text-sm leading-5 text-text-body">
                 AI-powered real estate intelligence for buyers, sellers, and
