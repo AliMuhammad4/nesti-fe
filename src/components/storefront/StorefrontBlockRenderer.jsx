@@ -76,10 +76,14 @@ export default function StorefrontBlockRenderer({
     || [];
   const experienceClass = experienceCanvasClass(experience);
   const templateBrand = getStorefrontTemplate(templateRef)?.brand || {};
-  const templateThemeVersion = profile?.storefront_essentials?.lawyer_first_home_brand_version
-    ?? profile?.storefront_brand_kit?.essentials?.lawyer_first_home_brand_version
-    ?? profile?.brand_kit?.essentials?.lawyer_first_home_brand_version
-    ?? 0;
+  const templateThemeVersion = templateRef === 'lawyer-first-home-closing'
+    ? (
+      profile?.storefront_essentials?.lawyer_first_home_brand_version
+      ?? profile?.storefront_brand_kit?.essentials?.lawyer_first_home_brand_version
+      ?? profile?.brand_kit?.essentials?.lawyer_first_home_brand_version
+      ?? 0
+    )
+    : 0;
   const resolvedTheme = resolveStorefrontRendererTheme({
     templateKey: templateRef,
     explicitTheme: theme,

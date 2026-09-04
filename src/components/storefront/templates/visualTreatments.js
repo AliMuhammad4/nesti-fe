@@ -85,16 +85,26 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'medium',
     },
     'mortgage_broker-classic': {
-      bg: index % 2 === 0 ? '#f8fafc' : '#ffffff',
-      align: isHero ? 'left' : 'center',
-      padding: isTool ? 'large' : 'medium',
-      radius: isTool ? 'large' : 'default',
-      variant: isHero ? 'split' : isTool ? 'lead-magnet' : 'feature-grid',
-      cardStyle: isTool ? 'elevated' : 'bordered',
-      columns: '3',
+      bg: [T.HERO, T.FOOTER].includes(type)
+        ? '#0c2139'
+        : '',
+      align: 'left',
+      padding: 'large',
+      radius: 'none',
+      variant: isHero ? 'editorial' : isTool ? 'lead-magnet' : 'standard',
+      cardStyle: 'bordered',
+      columns: type === T.CREDENTIALS
+        ? '4'
+        : type === T.LENDER_NETWORK
+          ? '4'
+        : type === T.FAQ || type === T.MORTGAGE_RATES || type === T.MORTGAGE_CALCULATOR
+          ? '1'
+        : [T.MORTGAGE_PROGRAMS, T.GUIDANCE, T.TESTIMONIALS, T.ALTERNATIVE_LENDING].includes(type)
+          ? '3'
+          : '2',
       mediaPosition: isHero ? 'right' : 'none',
-      width: isTool ? 'narrow' : 'contained',
-      shadow: isTool ? 'large' : 'small',
+      width: 'full',
+      shadow: 'none',
     },
     'mortgage_broker-first-home': {
       bg: index % 2 === 0 ? '#eff6ff' : '#fff7ed',

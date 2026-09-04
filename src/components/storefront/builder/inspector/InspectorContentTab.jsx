@@ -1,10 +1,14 @@
 import { BuilderSelect, Field, inputClass } from '../builderUiPrimitives';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
+import { BROKER_CLASSIC_FOOTER_ITEMS } from '../../renderers/variants/broker/classic/brokerClassicDefaults';
 import {
   ExpertiseProcessEditor,
   GuidanceFaqsEditor,
   GuidanceStepsEditor,
   LawyerClassicCardsEditor,
+  LenderCardsEditor,
+  AlternativeCardsEditor,
+  RateCardsEditor,
   RoleHighlightsEditor,
   RoleProofEditor,
   ServiceCardsEditor,
@@ -50,10 +54,12 @@ export default function InspectorContentTab({
     isLawyerFirstHome,
     isLawyerInvestor,
     isLawyerNewcomer,
+    isBrokerClassic,
     isLawyerClassic,
     isFooter,
     investorCapabilities,
     newcomerCapabilities,
+    brokerCapabilities,
     isCommunityTemplate,
     lawyerCredentialsVerified,
     collection,
@@ -63,7 +69,7 @@ export default function InspectorContentTab({
     placeholders,
     roleDefaults,
   } = model;
-  const templateCapabilities = investorCapabilities || newcomerCapabilities;
+  const templateCapabilities = investorCapabilities || newcomerCapabilities || brokerCapabilities;
   const setContent = bindContent(onChange, block.id);
 
   const showSharedEyebrow = (
@@ -72,7 +78,7 @@ export default function InspectorContentTab({
     || block.type === T.SELLER_PERFORMANCE
     || block.type === T.CTA
     || isListings
-    || hasEditableCards
+    || (hasEditableCards && block.type !== T.BROKER_COMPENSATION)
     || isRoleDetails
     || (isLayeredLawyerTemplate && isCredentials)
     || isSellerCredentials
@@ -136,9 +142,14 @@ export default function InspectorContentTab({
           placeholder={isLawyerInvestor ? 'Transaction workstreams' : 'Buyer-ready planning resources'}
         />
       ) : null}
-      {(isLawyerFirstHome || isLawyerInvestor) && block.type === T.PRACTICE_SNAPSHOT && !isElementSelection ? (
+      {(isLawyerFirstHome || isLawyerInvestor || isBrokerClassic) && block.type === T.PRACTICE_SNAPSHOT && !isElementSelection ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Snapshot card labels</p>
+          {isBrokerClassic ? (
+            <InspectorNote>
+              Specialty, market, and language values come from your professional profile. Edit the card titles and subtitles here.
+            </InspectorNote>
+          ) : null}
           <InspectorInput label="Practice focus title" value={contentValue('practice_focus_label')} onChange={setContent('practice_focus_label')} placeholder="Practice focus" />
           <InspectorInput label="Practice focus subtitle" value={contentValue('practice_focus_subtitle')} onChange={setContent('practice_focus_subtitle')} placeholder="Where counsel is concentrated" />
           <InspectorInput label="Markets title" value={contentValue('markets_label')} onChange={setContent('markets_label')} placeholder="Markets served" />
@@ -238,8 +249,8 @@ export default function InspectorContentTab({
       {templateCapabilities?.content?.footerFields && isFooter && !isElementSelection ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Footer content</p>
-          <InspectorInput label="Role label" value={contentValue('role_label')} onChange={setContent('role_label')} placeholder={isLawyerNewcomer ? 'Newcomer home closing counsel' : 'Investor transaction counsel'} />
-          <InspectorInput label="Navigation heading" value={contentValue('resource_heading')} onChange={setContent('resource_heading')} placeholder="Explore" />
+          <InspectorInput label="Role label" value={contentValue('role_label')} onChange={setContent('role_label')} placeholder={isLawyerNewcomer ? 'Newcomer home closing counsel' : isBrokerClassic ? 'Mortgage advisor' : 'Investor transaction counsel'} />
+          <InspectorInput label="Navigation heading" value={contentValue(isBrokerClassic ? 'links_heading' : 'resource_heading')} onChange={setContent(isBrokerClassic ? 'links_heading' : 'resource_heading')} placeholder="Explore" />
           <InspectorInput label="Contact heading" value={contentValue('contact_heading')} onChange={setContent('contact_heading')} placeholder="Contact details" />
           <InspectorTextarea label="Disclaimer" value={contentValue('disclaimer')} onChange={setContent('disclaimer')} placeholder="Do not send confidential information until representation is confirmed." />
           {[
@@ -259,7 +270,11 @@ export default function InspectorContentTab({
               />
             </Field>
           ))}
-          <InvestorFooterLinksEditor block={block} onChange={onChange} />
+          <InvestorFooterLinksEditor
+            block={block}
+            onChange={onChange}
+            resolvedItems={isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
+          />
         </div>
       ) : null}
       <AboutContentFields
@@ -284,7 +299,62 @@ export default function InspectorContentTab({
           Preview is using fallback copy until you save a heading here.
         </InspectorNote>
       ) : null}
-      {hasEditableCards ? <ServiceCardsEditor block={block} model={model} /> : null}
+      {hasEditableCards && (block.type === T.MORTGAGE_RATES || block.type === T.ALTERNATIVE_LENDING) && !isElementSelection ? (
+        <InspectorInput
+          label="CTA button label"
+          value={contentValue('cta_label')}
+          onChange={setContent('cta_label')}
+          placeholder={block.type === T.ALTERNATIVE_LENDING ? 'Explore My Mortgage Options' : 'Get My Personalized Rate'}
+        />
+      ) : null}
+      {hasEditableCards && block.type === T.MORTGAGE_RATES ? (
+        <RateCardsEditor block={block} model={model} />
+      ) : null}
+      {hasEditableCards && block.type === T.ALTERNATIVE_LENDING ? (
+        <AlternativeCardsEditor block={block} model={model} />
+      ) : null}
+      {hasEditableCards && block.type === T.MORTGAGE_PROGRAMS ? (
+        <AlternativeCardsEditor
+          block={block}
+          model={model}
+          fieldLabel="Programs"
+          addLabel="Add program"
+          titlePlaceholder="First-time home buyer"
+          descriptionPlaceholder="Plan your down payment, affordability, and pre-approval with clear guidance."
+        />
+      ) : null}
+      {hasEditableCards && block.type === T.BROKER_COMPENSATION ? (
+        <>
+          {!isElementSelection ? (
+            <InspectorTextarea
+              label="Disclaimer"
+              value={contentValue('disclaimer')}
+              onChange={setContent('disclaimer')}
+              placeholder="Compensation structures vary by lender, product, and transaction type."
+              className="min-h-20 resize-y"
+            />
+          ) : null}
+          <AlternativeCardsEditor
+            block={block}
+            model={model}
+            fieldLabel="Compensation items"
+            addLabel="Add compensation item"
+            titlePlaceholder="Lender compensation"
+            descriptionPlaceholder="Explain how compensation works for this item."
+          />
+        </>
+      ) : null}
+      {hasEditableCards && block.type === T.LENDER_NETWORK ? (
+        <LenderCardsEditor block={block} model={model} />
+      ) : null}
+      {hasEditableCards
+        && block.type !== T.LENDER_NETWORK
+        && block.type !== T.MORTGAGE_RATES
+        && block.type !== T.ALTERNATIVE_LENDING
+        && block.type !== T.BROKER_COMPENSATION
+        && block.type !== T.MORTGAGE_PROGRAMS ? (
+        <ServiceCardsEditor block={block} model={model} />
+      ) : null}
       {isListings && !isElementSelection ? (
         <InspectorNote>
           Listing cards pull from your connected property inventory. Edit heading and supporting copy here; style the cards in the Style tab.
@@ -325,7 +395,29 @@ export default function InspectorContentTab({
       {block.type === T.ROLE_DETAILS ? (
         <>
           <RoleHighlightsEditor block={block} model={model} />
-          {!isCommunityTemplate && !isLawyerClassicStatement ? (
+          {isBrokerClassic && !isElementSelection ? (
+            <>
+              <InspectorInput
+                label="Snapshot eyebrow"
+                value={contentValue('snapshot_eyebrow')}
+                onChange={setContent('snapshot_eyebrow')}
+                placeholder="Business finance snapshot"
+              />
+              <InspectorInput
+                label="Snapshot heading"
+                value={contentValue('snapshot_heading')}
+                onChange={setContent('snapshot_heading')}
+                placeholder="Financing structured around your next stage of growth."
+              />
+              <InspectorInput
+                label="Financing button"
+                value={contentValue('cta_label')}
+                onChange={setContent('cta_label')}
+                placeholder="See What I May Qualify For"
+              />
+            </>
+          ) : null}
+          {!isCommunityTemplate && !isLawyerClassicStatement && !isBrokerClassic ? (
             <RoleProofEditor block={block} model={model} />
           ) : null}
         </>

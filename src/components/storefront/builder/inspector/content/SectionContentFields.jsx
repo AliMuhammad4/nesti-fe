@@ -8,6 +8,7 @@ export function AboutContentFields({ block, model, profile, templateKey, onChang
     isCommunityTemplate,
     isLayeredLawyerTemplate,
     isLawyerFirstHome,
+    isBrokerClassic,
     isElementSelection,
     contentValue,
   } = model;
@@ -33,14 +34,14 @@ export function AboutContentFields({ block, model, profile, templateKey, onChang
             </>
           ) : null}
         </>
-      ) : (
+      ) : !isBrokerClassic ? (
         <InspectorInput
           label={templateKey === 'agent-luxury-advisor' ? 'Advisor credential' : 'Practice badge'}
           value={contentValue('about_badge')}
           onChange={setContent('about_badge')}
           placeholder={templateKey === 'agent-luxury-advisor' ? 'Real Estate Market Advisor' : 'A relationship-first real estate practice'}
         />
-      )}
+      ) : null}
       {templateKey === 'agent-luxury-advisor' ? (
         <>
           <InspectorInput label="Editorial label" value={contentValue('about_label')} onChange={setContent('about_label')} placeholder="The advisory standard" />
@@ -57,6 +58,7 @@ export function CtaContentFields({ block, model, onChange }) {
     isCommunityTemplate,
     isSellerExpertTemplate,
     isLawyerInvestor,
+    isBrokerClassic,
     contentValue,
   } = model;
   if (block.type !== T.CTA || isElementSelection) return null;
@@ -64,19 +66,19 @@ export function CtaContentFields({ block, model, onChange }) {
   return (
     <>
       <InspectorInput
-        label={isCommunityTemplate || isLawyerInvestor ? 'Primary inquiry button' : 'Appointment button'}
+        label={isCommunityTemplate || isLawyerInvestor ? 'Primary inquiry button' : isBrokerClassic ? 'Primary button' : 'Appointment button'}
         value={contentValue('cta_label')}
         onChange={setContent('cta_label')}
-        placeholder={isCommunityTemplate ? 'Send detailed inquiry' : 'Ask about availability'}
+        placeholder={isBrokerClassic ? 'Find My Mortgage Options' : isCommunityTemplate ? 'Send detailed inquiry' : 'Ask about availability'}
       />
       {!isSellerExpertTemplate ? (
         <>
           {!isCommunityTemplate ? (
             <InspectorInput
-              label={isLawyerInvestor ? 'Appointment button' : 'Inquiry button'}
+              label={isLawyerInvestor ? 'Appointment button' : isBrokerClassic ? 'Secondary button' : 'Inquiry button'}
               value={contentValue('secondary_cta_label')}
               onChange={setContent('secondary_cta_label')}
-              placeholder="Send detailed inquiry"
+              placeholder={isBrokerClassic ? 'Book a Consultation' : 'Send detailed inquiry'}
             />
           ) : null}
           <InspectorTextarea

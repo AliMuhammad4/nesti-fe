@@ -10,6 +10,7 @@ export function GuidanceContentFields({ block, model, onChange }) {
     isCommunityTemplate,
     isSellerExpertTemplate,
     isLayeredLawyerTemplate,
+    isBrokerClassic,
     contentValue,
     contentPlaceholder,
   } = model;
@@ -20,7 +21,7 @@ export function GuidanceContentFields({ block, model, onChange }) {
       {!isElementSelection && isCommunityTemplate ? (
         <InspectorInput label="FAQ section label" value={contentValue('faq_label')} onChange={setContent('faq_label')} placeholder="Ask a local" />
       ) : null}
-      {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLayeredLawyerTemplate ? (
+      {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLayeredLawyerTemplate && !isBrokerClassic ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
           <InspectorEyebrow>Process card</InspectorEyebrow>
           <InspectorInput label="Process label" value={contentValue('process_label')} onChange={setContent('process_label')} placeholder={contentPlaceholder('process_label', 'Guided process')} />
@@ -29,7 +30,7 @@ export function GuidanceContentFields({ block, model, onChange }) {
           <InspectorInput label="Proof chip: handoff" value={contentValue('proof_handoff')} onChange={setContent('proof_handoff')} placeholder={contentPlaceholder('proof_handoff', 'Organized professional handoff')} />
         </div>
       ) : null}
-      {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLayeredLawyerTemplate ? (
+      {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate && !isLayeredLawyerTemplate && !isBrokerClassic ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
           <InspectorEyebrow>FAQ card</InspectorEyebrow>
           <InspectorInput label="FAQ label" value={contentValue('faq_label')} onChange={setContent('faq_label')} placeholder={contentPlaceholder('faq_label', 'Helpful questions')} />
@@ -46,7 +47,7 @@ export function GuidanceContentFields({ block, model, onChange }) {
       ) : null}
       {!isFaq ? <GuidanceStepsEditor block={block} model={model} /> : null}
       {!isElementSelection && !isSellerExpertTemplate && !isCommunityTemplate
-        && (!isLayeredLawyerTemplate || isFaq) ? (
+        && (isFaq || (!isBrokerClassic && !isLayeredLawyerTemplate)) ? (
         <GuidanceFaqsEditor block={block} model={model} />
       ) : null}
     </>

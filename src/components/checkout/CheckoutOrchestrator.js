@@ -114,7 +114,11 @@ export default function CheckoutOrchestrator() {
   };
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-text-muted">
+        Redirecting to login…
+      </div>
+    );
   }
 
   if (isClient) {

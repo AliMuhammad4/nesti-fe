@@ -90,7 +90,7 @@ export default function InquiryRow({ item, onOpenChat, unread = 0 }) {
             {item.thread_id ? (
               <button
                 type="button"
-                onClick={() => onOpenChat(item.thread_id)}
+                onClick={() => onOpenChat(item, item.thread_id)}
                 className={`relative grid h-7 w-7 place-items-center rounded-lg border text-primary transition hover:bg-primary hover:text-white ${
                   unreadCount > 0 ? "border-emerald-300 bg-emerald-50" : "border-primary/15 bg-primary/10"
                 }`}

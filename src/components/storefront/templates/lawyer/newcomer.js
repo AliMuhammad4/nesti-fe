@@ -14,6 +14,7 @@ const lawyerNewcomer = {
   tagline: 'Newcomer-friendly closing experience',
   description: 'Warm, plain-language guidance and a multilingual-ready path to closing.',
   features: ['Newcomer focus', 'Plain-language guidance', 'Client stories', 'Warm CTA'],
+  free: true,
   brand: brand(
     NEWCOMER_BRAND_DEFAULTS.primary_color,
     NEWCOMER_BRAND_DEFAULTS.accent_color,
@@ -101,7 +102,7 @@ const lawyerNewcomer = {
         { id: 'newcomer-footer-practice', label: 'Practice areas', target: '#practice-areas' },
         { id: 'newcomer-footer-services', label: 'Services', target: '#services' },
         { id: 'newcomer-footer-guidance', label: 'Closing guide', target: '#guidance' },
-        { id: 'newcomer-footer-contact', label: 'Start consultation', target: '#contact' },
+        { id: 'newcomer-footer-contact', label: 'Start consultation', target: '/contact' },
       ],
     }),
   ],

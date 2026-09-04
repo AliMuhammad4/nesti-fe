@@ -145,6 +145,59 @@ export function useConfirmStorefrontTemplateCheckoutSession() {
   });
 }
 
+export function useCancelStorefrontTemplateSubscription() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ templateId, reason = "" }) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCancel,
+        method: "POST",
+        data: {
+          template_id: templateId,
+          ...(reason ? { reason } : {}),
+        },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+      toast.success("Template subscription will cancel at the end of the billing period.", {
+        toastId: "storefront-template-cancel-scheduled",
+      });
+    },
+    onError: toastError,
+  });
+}
+
+export function useResumeStorefrontTemplateSubscription() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (templateId) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateResume,
+        method: "POST",
+        data: { template_id: templateId },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+      toast.success("Template subscription will continue renewing.", {
+        toastId: "storefront-template-subscription-resumed",
+      });
+    },
+    onError: toastError,
+  });
+}
+
 export function openCheckoutPlaceholderWindow() {
   const payWindow = window.open("about:blank", "_blank");
   if (!payWindow) return null;

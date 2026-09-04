@@ -47,6 +47,13 @@ export function newcomerFooterLinkProps(item = {}, {
   slug = '',
 } = {}) {
   const raw = text(item.target || item.url || item.href);
+  if (raw === '/contact' && slug) {
+    return {
+      href: absoluteHashes
+        ? `/p/${encodeURIComponent(slug)}/contact`
+        : `/professional/${encodeURIComponent(slug)}/contact`,
+    };
+  }
   if (raw.startsWith('#')) {
     return { href: absoluteHashes && slug ? `/professional/${slug}${raw}` : raw };
   }

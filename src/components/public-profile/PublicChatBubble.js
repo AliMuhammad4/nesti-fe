@@ -6,9 +6,9 @@ import Image from 'next/image';
 import PublicInquiryChatWidget from './PublicInquiryChatWidget';
 
 const ROLE_LABEL = {
-  agent: 'Need help ?',
-  mortgage_broker: 'Need help ?',
-  lawyer: 'Need help ?',
+  agent: "Let's chat",
+  mortgage_broker: "Let's chat",
+  lawyer: "Let's chat",
 };
 
 function resolveProfilePlacement(profile) {
@@ -50,7 +50,7 @@ export default function PublicChatBubble({
     || '';
   const profilePlacement = resolveProfilePlacement(profile);
 
-  const label = ROLE_LABEL[profile?.professional_type] || 'Need help ?';
+  const label = ROLE_LABEL[profile?.professional_type] || "Let's chat";
   const isControlled = typeof controlledOpen === 'boolean';
   const isOpen = isControlled ? controlledOpen : open;
   const toggleOpen = () => {

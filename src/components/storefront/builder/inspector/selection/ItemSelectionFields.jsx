@@ -33,7 +33,7 @@ export default function ItemSelectionFields({
     selectedItemField,
   } = model;
 
-  if (isLayeredLawyerTemplate && isFooter && selection?.collection === 'items') {
+  if ((isLayeredLawyerTemplate || model.isBrokerClassic) && isFooter && selection?.collection === 'items') {
     return <FooterLinkItemFields selection={selection} onItemChange={onItemChange} />;
   }
   if (isLawyerClassicExpertise && selection?.collection === 'process_steps') {

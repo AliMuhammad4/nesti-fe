@@ -12,6 +12,10 @@ import { materializeTemplate } from './templates';
 import { migrateLawyerFirstHomeBlocks } from './templates/lawyer/firstHomeMigration';
 import { migrateLawyerInvestorBlocks } from './templates/lawyer/investorMigration';
 import { migrateLawyerNewcomerBlocks } from './templates/lawyer/newcomerMigration';
+import {
+  migrateBrokerClassicBlocks,
+  migrateBrokerClassicBrandKit,
+} from './templates/mortgage-broker/classicMigration';
 
 const PROOF_TEMPLATE_KEYS = new Set([
   'agent-luxury-advisor',
@@ -88,6 +92,14 @@ export default function PublicStorefrontPage({ profile }) {
       )?.blocks || [];
       return migrateLawyerNewcomerBlocks(savedBlocks, defaults);
     }
+    if (profile.storefront_template_key === 'mortgage_broker-classic') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateBrokerClassicBlocks(savedBlocks, defaults);
+    }
     if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
     const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
       ? migrateCommunityPublishedBlocks(savedBlocks)
@@ -107,10 +119,24 @@ export default function PublicStorefrontPage({ profile }) {
     next.splice(footerIndex >= 0 ? footerIndex : next.length, 0, ...missingProof);
     return next;
   }, [profile]);
-  const canonicalProfile = useMemo(() => ({
-    ...profile,
-    storefront_blocks: publicBlocks,
-  }), [profile, publicBlocks]);
+  const canonicalProfile = useMemo(() => {
+    const storefrontBrandKit = migrateBrokerClassicBrandKit(
+      profile.storefront_template_key,
+      profile.storefront_brand_kit || profile.brand_kit || {},
+    );
+    return {
+      ...profile,
+      storefront_blocks: publicBlocks,
+      storefront_brand_kit: storefrontBrandKit,
+      storefront_theme: {
+        ...(profile.storefront_theme || {}),
+        primary: storefrontBrandKit.primary_color || profile.storefront_theme?.primary,
+        accent: storefrontBrandKit.accent_color || profile.storefront_theme?.accent,
+        canvas: storefrontBrandKit.page_background || profile.storefront_theme?.canvas,
+        fontFamily: storefrontBrandKit.font_family || profile.storefront_theme?.fontFamily,
+      },
+    };
+  }, [profile, publicBlocks]);
 
   const track = async (eventType, data = {}) => {
     try {
@@ -169,7 +195,7 @@ export default function PublicStorefrontPage({ profile }) {
             profile={canonicalProfile}
             blocks={publicBlocks}
             templateKey={profile.storefront_template_key}
-            theme={profile.storefront_theme}
+            theme={canonicalProfile.storefront_theme}
             actions={actions}
           />
         </div>

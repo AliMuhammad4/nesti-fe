@@ -34,6 +34,8 @@ import StorefrontBlockRenderer from '@/components/storefront/StorefrontBlockRend
 import PublicChatBubble from '@/components/public-profile/PublicChatBubble';
 import { getGuidanceCollectionFallback } from '@/components/public-profile/PublicGuidanceSection';
 import { getRoleDetailsCollectionFallback } from '@/components/public-profile/PublicRoleDetailSection';
+import { brokerClassicCollectionFallback } from '@/components/storefront/renderers/variants/broker/classic/brokerClassicDefaults';
+import { withServiceBenefitPatch } from '@/components/storefront/renderers/variants/broker/classic/brokerClassicServiceBenefits';
 import DeleteLeadConfirmModal from '@/components/leads/DeleteLeadConfirmModal';
 import { apiClient, API_ENDPOINTS } from '@/lib/api';
 import {
@@ -65,6 +67,10 @@ import {
 import { migrateLawyerFirstHomeBlocks } from '../templates/lawyer/firstHomeMigration';
 import { migrateLawyerInvestorBlocks } from '../templates/lawyer/investorMigration';
 import { migrateLawyerNewcomerBlocks } from '../templates/lawyer/newcomerMigration';
+import {
+  migrateBrokerClassicBlocks,
+  migrateBrokerClassicBrandKit,
+} from '../templates/mortgage-broker/classicMigration';
 import { patchContentPath } from './contentPath';
 
 const PANELS = [
@@ -131,7 +137,8 @@ function appendUniqueItems(items, supplemental, limit) {
 }
 
 function pinBoundaryBlocks(blocks = [], templateKey = '') {
-  if (String(templateKey).trim().toLowerCase() !== 'lawyer-investor') return blocks;
+  const key = String(templateKey).trim().toLowerCase();
+  if (!['lawyer-investor', 'mortgage_broker-classic', 'lawyer-classic'].includes(key)) return blocks;
   const hero = blocks.find((block) => block.type === STOREFRONT_BLOCK_TYPES.HERO);
   const footer = blocks.find((block) => block.type === STOREFRONT_BLOCK_TYPES.FOOTER);
   const middle = blocks.filter((block) => (
@@ -289,6 +296,10 @@ export default function StorefrontBuilderWorkspace({
       const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
       return normalizeBlocks(migrateLawyerNewcomerBlocks(blocks, defaults));
     }
+    if (templateKey === 'mortgage_broker-classic') {
+      const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+      return normalizeBlocks(migrateBrokerClassicBlocks(blocks, defaults));
+    }
     if (templateKey !== 'lawyer-classic') return next;
 
     if (!next.some((block) => block.type === STOREFRONT_BLOCK_TYPES.FAQ)) {
@@ -356,6 +367,22 @@ export default function StorefrontBuilderWorkspace({
     if (JSON.stringify(source) === JSON.stringify(migrated)) return;
     onChange(migrated);
   }, [blocks, brandKit, onChange, profile, templateKey]);
+
+  useEffect(() => {
+    if (templateKey !== 'mortgage_broker-classic') return;
+    const source = normalizeBlocks(blocks);
+    const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
+    const migrated = normalizeBlocks(migrateBrokerClassicBlocks(blocks, defaults));
+    if (blockLayoutStyleSignature(source) === blockLayoutStyleSignature(migrated)) return;
+    onChange(migrated);
+  }, [blocks, brandKit, onChange, profile, templateKey]);
+
+  useEffect(() => {
+    if (templateKey !== 'mortgage_broker-classic') return;
+    const migrated = migrateBrokerClassicBrandKit(templateKey, brandKit || {});
+    if (JSON.stringify(brandKit || {}) === JSON.stringify(migrated)) return;
+    onBrandKitChange(migrated);
+  }, [brandKit, onBrandKitChange, templateKey]);
 
   useEffect(() => {
     if (templateKey !== 'lawyer-classic') return;
@@ -583,6 +610,12 @@ export default function StorefrontBuilderWorkspace({
     }
 
     if (collection === 'items' || collection === 'services') {
+      if (templateKey === 'mortgage_broker-classic') {
+        const brokerFallback = brokerClassicCollectionFallback(blockType, collection);
+        if (brokerFallback?.length) {
+          return coerceCollectionItems(collection === 'services' ? 'items' : collection, brokerFallback);
+        }
+      }
       const supplementalByRole = {
         agent: {
           title: 'Portfolio Growth Strategy',
@@ -665,6 +698,12 @@ export default function StorefrontBuilderWorkspace({
     }
 
     if (collection === 'steps' || collection === 'faqs') {
+      if (templateKey === 'mortgage_broker-classic' && blockType === STOREFRONT_BLOCK_TYPES.FAQ) {
+        const brokerFallback = brokerClassicCollectionFallback(blockType, collection);
+        if (brokerFallback?.length) {
+          return coerceCollectionItems('faqs', brokerFallback);
+        }
+      }
       return getGuidanceCollectionFallback(profile?.professional_type, collection);
     }
 
@@ -674,6 +713,12 @@ export default function StorefrontBuilderWorkspace({
     }
 
     if (collection === 'highlights' || collection === 'proof') {
+      if (templateKey === 'mortgage_broker-classic' && blockType === STOREFRONT_BLOCK_TYPES.ROLE_DETAILS && collection === 'highlights') {
+        const brokerFallback = brokerClassicCollectionFallback(blockType, collection);
+        if (brokerFallback?.length) {
+          return coerceCollectionItems('highlights', brokerFallback);
+        }
+      }
       const fallback = getRoleDetailsCollectionFallback(profile?.professional_type, collection);
       if (
         templateKey === 'agent-seller-expert'
@@ -927,7 +972,14 @@ export default function StorefrontBuilderWorkspace({
     }
 
     updateBlock(selectedElement.blockId, {
-      content: updateContentItem(nextContent, nextSelection, patch),
+      content: updateContentItem(nextContent, nextSelection, (() => {
+        const benefitKey = Object.keys(patch).find((key) => /^benefit_[0-2]$/.test(key));
+        if (!benefitKey || selected.type !== STOREFRONT_BLOCK_TYPES.SERVICES || templateKey !== 'mortgage_broker-classic') {
+          return patch;
+        }
+        const resolved = resolveContentItem(nextContent, nextSelection);
+        return withServiceBenefitPatch(resolved?.item || {}, benefitKey, patch[benefitKey]);
+      })()),
     });
   };
 
@@ -988,13 +1040,15 @@ export default function StorefrontBuilderWorkspace({
       currentIndex === index ? { ...item, id: resolvedItemId } : item
     ));
     const nextContent = { ...content, [collection]: materializedItems };
+    const currentItem = materializedItems[index];
+    const patch = /^benefit_[0-2]$/.test(itemField || '')
+      ? withServiceBenefitPatch(currentItem, itemField, value)
+      : { [itemField || 'text']: value };
     updateBlock(blockId, {
       content: updateContentItem(nextContent, {
         collection,
         itemId: resolvedItemId,
-      }, {
-        [itemField || 'text']: value,
-      }),
+      }, patch),
     });
     setInlineEditingDraft(null);
   };
@@ -1053,6 +1107,11 @@ export default function StorefrontBuilderWorkspace({
       && collection === 'items'
       && currentItems.length >= 8
     ) return;
+    if (
+      selected?.type === STOREFRONT_BLOCK_TYPES.LENDER_NETWORK
+      && collection === 'items'
+      && currentItems.length >= 24
+    ) return;
     const nextItems = [...currentItems, nextItem];
     const fieldLabel = collection === 'faqs'
       ? `FAQ ${nextItems.length}`
@@ -1066,6 +1125,8 @@ export default function StorefrontBuilderWorkspace({
               ? `Client story ${nextItems.length}`
             : selected?.type === STOREFRONT_BLOCK_TYPES.SELLER_CASE_STUDY
               ? `Story card ${nextItems.length}`
+              : selected?.type === STOREFRONT_BLOCK_TYPES.LENDER_NETWORK
+                ? `Lender ${nextItems.length}`
               : `Service ${nextItems.length}`;
     updateBlock(selectedElement.blockId, {
       content: {

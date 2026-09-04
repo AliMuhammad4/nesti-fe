@@ -279,16 +279,14 @@ export function useProfileQuery({ enabled = true } = {}) {
         method: "GET",
         token,
       }),
-    onError: (error) => {
-      toastError(error);
-      const status = error?.status;
-      // Only invalid/expired session should clear auth. 403 here would be unexpected for GET /auth/profile;
-      // other features return 403 for role/rules and must not log the user out.
-      if (status === 401) {
-        dispatch(logoutAndClearAll());
-      }
-    },
   });
+
+  // React Query v5 removed useQuery onError; handle expired sessions here.
+  // apiClient already emits `nesti:auth-expired` (AppChrome → /log-in).
+  useEffect(() => {
+    if (!query.isError || Number(query.error?.status) !== 401) return;
+    dispatch(logoutAndClearAll());
+  }, [query.isError, query.error, dispatch]);
 
   // Keep Redux auth.user in sync so plan-based UI gates update immediately.
   useEffect(() => {

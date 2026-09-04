@@ -11,13 +11,13 @@ const lawyerInvestor = {
   brand: brand('#20252b', '#00a7c4', 'Inter', 'square', 'minimal', '#f3f6f7'),
   blocks: (ctx) => [
     block(T.HERO, {
-        investor_design_version: 11,
+        investor_design_version: 12,
       eyebrow: 'Investor transaction counsel',
       heading: ctx.headline || 'Transaction counsel for active investors',
       body: ctx.tagline || 'Structured legal support for acquisitions, refinances, assignments, entity transfers, and portfolio title work.',
       primary_cta_label: 'Start investor intake',
       cta_label: 'Book a strategy call',
-      join_label: '',
+      join_label: 'Join Nesti',
     }, {
       bg: '#20252b',
       color: '#ffffff',
@@ -173,7 +173,7 @@ const lawyerInvestor = {
         { id: 'investor-footer-safeguards', label: 'Safeguards', target: '#buyer-protection' },
         { id: 'investor-footer-practice', label: 'Practice areas', target: '#practice-areas' },
         { id: 'investor-footer-guidance', label: 'Process', target: '#guidance' },
-        { id: 'investor-footer-intake', label: 'Start intake', target: '#contact' },
+        { id: 'investor-footer-intake', label: 'Start intake', target: '/contact' },
       ],
     }, {
       padding: 'large',

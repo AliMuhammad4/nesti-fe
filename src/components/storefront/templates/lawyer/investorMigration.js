@@ -1,4 +1,4 @@
-const INVESTOR_DESIGN_VERSION = 11;
+const INVESTOR_DESIGN_VERSION = 12;
 
 const INVESTOR_BLOCK_ORDER = Object.freeze([
   'hero',
@@ -204,16 +204,20 @@ export function migrateLawyerInvestorBlocks(blocks = [], defaults = []) {
 
   const defaultsByType = new Map(canonical.map((block) => [block.type, block]));
   if (currentVersion >= 10) {
-    return repairDuplicateBlockIds(current.map((block) => ({
-      ...block,
-      data: {
-        ...block.data,
-        content: {
-          ...block.data.content,
-          investor_design_version: INVESTOR_DESIGN_VERSION,
+    return repairDuplicateBlockIds(current.map((block) => {
+      const content = { ...block.data.content };
+      if (block.type === 'hero' && !String(content.join_label || '').trim()) {
+        content.join_label = 'Join Nesti';
+      }
+      content.investor_design_version = INVESTOR_DESIGN_VERSION;
+      return {
+        ...block,
+        data: {
+          ...block.data,
+          content,
         },
-      },
-    })));
+      };
+    }));
   }
   if (currentVersion >= 6) {
     const upgraded = current.map((block) => {

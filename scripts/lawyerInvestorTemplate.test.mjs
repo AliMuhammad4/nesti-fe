@@ -137,6 +137,17 @@ test('version 10 pages preserve custom structure, repair duplicate ids, and upda
   );
 });
 
+test('version 11 hero pages adopt Join Nesti label during design version upgrade', () => {
+  const current = [
+    block('hero', { investor_design_version: 11, join_label: '' }, {}, {}, 'hero-v11'),
+    block('footer', {}, {}, {}, 'footer-v11'),
+  ];
+
+  const migrated = migrateLawyerInvestorBlocks(current, defaults);
+  assert.equal(migrated[0].data.content.join_label, 'Join Nesti');
+  assert.equal(migrated[0].data.content.investor_design_version, INVESTOR_DESIGN_VERSION);
+});
+
 test('missing Investor hero no longer reports design version zero', () => {
   const current = [block('about', { heading: 'Preserved without a hero' })];
   const migrated = migrateLawyerInvestorBlocks(current, defaults);

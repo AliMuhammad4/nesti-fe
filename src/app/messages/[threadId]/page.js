@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 import { toast } from "react-toastify";
 import {
   ArrowLeft,
+  History,
   Loader2,
   LogOut,
   Phone,
@@ -105,6 +106,19 @@ export default function ProMessagesThreadPage() {
     }
     return displayRole(otherUser);
   }, [isGroup, thread?.member_count, thread?.participants, members.length, otherUser]);
+
+  const callHistoryHref = useMemo(() => {
+    if (!threadId) return "";
+    const base = isClientUser ? "/client-dashboard/calls" : "/call-history";
+    const params = new URLSearchParams();
+    const otherId = String(otherUser?.id || otherUser?._id || "").trim();
+    if (!isGroup && otherId) {
+      params.set("other_user_id", otherId);
+    } else {
+      params.set("thread_id", threadId);
+    }
+    return `${base}?${params.toString()}`;
+  }, [isClientUser, isGroup, otherUser, threadId]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("members"); // members | add
@@ -679,6 +693,17 @@ export default function ProMessagesThreadPage() {
             <div className="flex items-center gap-2">
               {canReply ? (
                 <>
+                  {callHistoryHref ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push(callHistoryHref)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white text-text-heading transition hover:bg-background-light"
+                      aria-label="View call history"
+                      title="View call history"
+                    >
+                      <History size={14} />
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => void call.startCall("voice")}

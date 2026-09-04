@@ -125,6 +125,25 @@ import {
   LawyerInvestorServices,
 } from './variants/lawyer/investor';
 import {
+  BrokerClassicAbout,
+  BrokerClassicAlternativeLending,
+  BrokerClassicBusinessLoans,
+  BrokerClassicCalculator,
+  BrokerClassicCompensation,
+  BrokerClassicCredentials,
+  BrokerClassicCta,
+  BrokerClassicFaq,
+  BrokerClassicFooter,
+  BrokerClassicGuidance,
+  BrokerClassicHero,
+  BrokerClassicLenders,
+  BrokerClassicPrograms,
+  BrokerClassicRates,
+  BrokerClassicSnapshot,
+  BrokerClassicServices,
+  BrokerClassicTestimonials,
+} from './variants/broker/classic';
+import {
   LawyerNewcomerAbout,
   LawyerNewcomerCredentials,
   LawyerNewcomerCta,
@@ -694,6 +713,25 @@ const experienceOverrides = {
 };
 
 const templateOverrides = {
+  'mortgage_broker-classic': {
+    [T.HERO]: ({ profile, actions, block }) => <BrokerClassicHero profile={profile} actions={actions} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <BrokerClassicAbout profile={profile} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerClassicSnapshot profile={profile} block={block} />,
+    [T.MORTGAGE_RATES]: ({ profile, actions, block }) => <BrokerClassicRates profile={profile} actions={actions} block={block} />,
+    [T.MORTGAGE_PROGRAMS]: ({ profile, actions, block }) => <BrokerClassicPrograms profile={profile} actions={actions} block={block} />,
+    [T.MORTGAGE_CALCULATOR]: ({ profile, actions, block }) => <BrokerClassicCalculator profile={profile} actions={actions} block={block} />,
+    [T.LENDER_NETWORK]: ({ profile, block }) => <BrokerClassicLenders profile={profile} block={block} />,
+    [T.ROLE_DETAILS]: ({ profile, actions, block }) => <BrokerClassicBusinessLoans profile={profile} actions={actions} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <BrokerClassicServices profile={profile} block={block} />,
+    [T.ALTERNATIVE_LENDING]: ({ profile, actions, block }) => <BrokerClassicAlternativeLending profile={profile} actions={actions} block={block} />,
+    [T.BROKER_COMPENSATION]: ({ profile, block }) => <BrokerClassicCompensation profile={profile} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => <BrokerClassicTestimonials profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <BrokerClassicGuidance block={block} />,
+    [T.FAQ]: ({ profile, block }) => <BrokerClassicFaq profile={profile} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <BrokerClassicCredentials profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <BrokerClassicCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <BrokerClassicFooter profile={profile} actions={actions} block={block} />,
+  },
   'lawyer-newcomer': {
     [T.ABOUT]: ({ profile, block }) => <LawyerNewcomerAbout profile={profile} block={block} />,
     [T.PRACTICE_AREAS]: ({ profile, block }) => <LawyerNewcomerPracticeAreas profile={profile} block={block} />,

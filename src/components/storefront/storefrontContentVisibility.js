@@ -25,6 +25,14 @@ const HASH_TARGET_BLOCK_TYPES = {
   'service-access': ['practice-logistics'],
   start: ['consultation-options'],
   programs: ['mortgage-programs'],
+  rates: ['mortgage-rates'],
+  calculator: ['mortgage-calculator'],
+  lenders: ['lender-network'],
+  'alternative-lending': ['alternative-lending'],
+  compensation: ['broker-compensation'],
+  'practice-snapshot': ['practice-snapshot'],
+  credentials: ['credentials'],
+  'business-loans': ['role-details'],
   contact: ['consultation-options', 'cta'],
 };
 

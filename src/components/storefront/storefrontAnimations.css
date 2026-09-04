@@ -17,6 +17,51 @@
   outline-offset: 3px;
   border-radius: 3px;
   caret-color: var(--storefront-primary, #0f766e);
+  white-space: pre-wrap !important;
+}
+
+/* Builder preview: keep sections stable while selecting/hovering blocks. */
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'] .storefront-anim-body,
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'] [data-storefront-anim-item='true'] {
+  animation: none !important;
+  transition: none !important;
+}
+
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] .storefront-anim-body,
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] .storefront-anim-body,
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'][data-anim-visible='false'] [data-storefront-anim-item='true'],
+.storefront-canvas[data-preview='true'] .storefront-public-band[data-anim-enabled='true'][data-anim-visible='true'] [data-storefront-anim-item='true'] {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: auto !important;
+}
+
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-grid,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-veil,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-panel-line,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-aurora,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-scan,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-network,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-network-link,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-finance-flow,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-finance-node-halo,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-veil-alt,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-rule,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-copy > *,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action,
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-media {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-media {
+  transform: scale(1.06) !important;
+}
+
+.storefront-canvas[data-preview='true'][data-template-key='mortgage_broker-classic'] .broker-hero-rule {
+  width: 4.5rem !important;
 }
 
 @keyframes storefront-anim-body-fade-in {
@@ -311,6 +356,222 @@
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
 }
 
+@keyframes broker-hero-grid-drift {
+  from { background-position: 0 0; }
+  to { background-position: 48px 48px; }
+}
+
+@keyframes broker-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes broker-hero-veil {
+  0%, 100% { opacity: 0.55; transform: translate3d(0, 0, 0) scale(1); }
+  50% { opacity: 0.9; transform: translate3d(18px, -10px, 0) scale(1.04); }
+}
+
+@keyframes broker-hero-veil-alt {
+  0%, 100% { opacity: 0.35; transform: translate3d(0, 0, 0); }
+  50% { opacity: 0.65; transform: translate3d(-14px, -8px, 0); }
+}
+
+@keyframes broker-hero-rule {
+  from { width: 0; opacity: 0; }
+  to { width: 4.5rem; opacity: 1; }
+}
+
+@keyframes broker-hero-action-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes broker-hero-kenburns {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(-1.2%, 0.6%, 0); }
+}
+
+@keyframes broker-hero-panel-line {
+  0%, 100% { opacity: 0.35; transform: scaleY(0.72); }
+  50% { opacity: 0.9; transform: scaleY(1); }
+}
+
+@keyframes broker-hero-aurora {
+  0%, 100% { opacity: 0.38; transform: translate3d(0, 0, 0) rotate(12deg); }
+  50% { opacity: 0.72; transform: translate3d(-22px, 12px, 0) rotate(8deg); }
+}
+
+@keyframes broker-hero-scan {
+  0% { opacity: 0; transform: translateY(0); }
+  12%, 72% { opacity: 0.55; }
+  100% { opacity: 0; transform: translateY(34rem); }
+}
+
+@keyframes broker-network-flow {
+  to { stroke-dashoffset: -88; }
+}
+
+@keyframes broker-network-breathe {
+  0%, 100% { opacity: 0.62; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes broker-network-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.02); }
+  50% { transform: translate3d(-6px, 4px, 0) scale(1.035); }
+}
+
+@keyframes broker-finance-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(105deg, rgba(0, 0, 0, 0.45), transparent 62%);
+  animation: broker-hero-grid-drift 36s linear infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-veil {
+  animation: broker-hero-veil 14s ease-in-out infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-panel-line {
+  animation: broker-hero-panel-line 5.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-aurora {
+  animation: broker-hero-aurora 12s ease-in-out infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-scan {
+  animation: broker-hero-scan 10s linear infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-network {
+  animation: broker-network-drift 24s ease-in-out infinite;
+  opacity: 0.62;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-network-link {
+  fill: none;
+  stroke: rgba(126, 211, 255, 0.16);
+  stroke-width: 1;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-flow {
+  fill: none;
+  stroke: url('#broker-network-line');
+  stroke-dasharray: 2 42;
+  stroke-linecap: round;
+  stroke-width: 2;
+  animation: broker-network-flow 7.5s linear infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-network-link-delay {
+  animation-delay: -3.2s;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-network-link-slow {
+  animation-duration: 11s;
+  animation-direction: reverse;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-node-halo {
+  fill: rgba(0, 143, 213, 0.14);
+  stroke: rgba(84, 194, 247, 0.14);
+  animation: broker-finance-glow 5.8s ease-in-out infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-node-delay-1 .broker-finance-node-halo {
+  animation-delay: -1.9s;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-node-delay-2 .broker-finance-node-halo {
+  animation-delay: -3.8s;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-node-ring {
+  fill: rgba(5, 30, 51, 0.88);
+  stroke: rgba(142, 220, 255, 0.62);
+  stroke-width: 1;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-node-dot {
+  fill: #8edcff;
+  filter: drop-shadow(0 0 7px rgba(0, 143, 213, 0.9));
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-glyph {
+  fill: rgba(230, 248, 255, 0.98);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-label {
+  fill: rgba(179, 225, 247, 0.68);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-finance-icon {
+  fill: none;
+  stroke: rgba(230, 248, 255, 0.98);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-veil-alt {
+  animation: broker-hero-veil-alt 18s ease-in-out infinite;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-rule {
+  animation: broker-hero-rule 1.05s cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-copy > * {
+  animation: broker-hero-copy-in 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-copy > :nth-child(2) { animation-delay: 90ms; }
+[data-template-key='mortgage_broker-classic'] .broker-hero-copy > :nth-child(3) { animation-delay: 160ms; }
+[data-template-key='mortgage_broker-classic'] .broker-hero-copy > :nth-child(4) { animation-delay: 230ms; }
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action {
+  animation: broker-hero-action-in 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action:nth-child(1) { animation-delay: 280ms; }
+[data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action:nth-child(2) { animation-delay: 350ms; }
+[data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action:nth-child(3) { animation-delay: 420ms; }
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-media {
+  animation: broker-hero-kenburns 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+[data-template-key='mortgage_broker-classic'] .broker-hero-heading {
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-template-key='lawyer-classic'] .lawyer-classic-hero-kicker,
   [data-template-key='lawyer-classic'] .lawyer-classic-hero-heading,
@@ -346,5 +607,28 @@
     transform: none !important;
     filter: none !important;
     pointer-events: auto !important;
+  }
+
+  [data-template-key='mortgage_broker-classic'] .broker-hero-grid,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-veil,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-panel-line,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-aurora,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-scan,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-network,
+  [data-template-key='mortgage_broker-classic'] .broker-network-link,
+  [data-template-key='mortgage_broker-classic'] .broker-finance-flow,
+  [data-template-key='mortgage_broker-classic'] .broker-finance-node-halo,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-veil-alt,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-rule,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-copy > *,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-actions .broker-hero-action,
+  [data-template-key='mortgage_broker-classic'] .broker-hero-media {
+    animation: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  [data-template-key='mortgage_broker-classic'] .broker-hero-rule {
+    width: 4.5rem !important;
   }
 }

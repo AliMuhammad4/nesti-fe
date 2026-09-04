@@ -21,21 +21,35 @@ export function HeroMediaFields({
     isSellerExpertTemplate,
     isLayeredLawyerTemplate,
     isLawyerInvestor,
+    isBrokerClassic,
     heroUsesProfilePhoto,
     layout,
   } = model;
   const investorMediaPosition = layout?.mediaPosition || 'portrait';
-  const showCoverPicker = !isLawyerInvestor || investorMediaPosition === 'cover';
+  const brokerMediaPosition = layout?.mediaPosition || 'right';
+  const showCoverPicker = isBrokerClassic
+    ? brokerMediaPosition !== 'none'
+    : !isLawyerInvestor || investorMediaPosition === 'cover';
   const showProfilePicker = heroUsesProfilePhoto
-    && (!isLawyerInvestor || investorMediaPosition === 'portrait');
+    && (
+      isBrokerClassic
+      || !isLawyerInvestor
+      || investorMediaPosition === 'portrait'
+    );
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Hero media</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+        {isBrokerClassic ? 'Site media' : 'Hero media'}
+      </p>
       {showCoverPicker ? (
         <>
           <MediaPicker
             label="Page cover"
-            hint={isLawyerInvestor ? 'Displayed in the Investor hero cover panel' : 'Shown behind the hero band'}
+            hint={isLawyerInvestor
+              ? 'Displayed in the Investor hero cover panel'
+              : isBrokerClassic
+                ? 'Displayed in the hero right column'
+                : 'Shown behind the hero band'}
             image={media?.cover || brandKit?.cover_url}
             onUpload={(file) => onMediaUpload?.('cover', file)}
             tall
@@ -53,12 +67,14 @@ export function HeroMediaFields({
       {showProfilePicker ? (
         <>
           <MediaPicker
-            label={isSellerExpertTemplate ? 'Professional photo' : 'Page profile'}
+            label={isBrokerClassic ? 'About advisor photo' : isSellerExpertTemplate ? 'Professional photo' : 'Page profile'}
             hint={isSellerExpertTemplate
               ? 'Used by Seller About, footer, and profile surfaces'
               : isLawyerInvestor
                 ? 'Displayed in the Investor hero portrait panel and profile sections'
-                : isLayeredLawyerTemplate
+                : isBrokerClassic
+                  ? 'Displayed in the About section advisor portrait'
+                  : isLayeredLawyerTemplate
                   ? 'Used by profile sections and as a hero fallback when no cover is set'
                   : 'Displayed inside the hero card'}
             image={media?.profile || brandKit?.profile_photo_url}
@@ -92,6 +108,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
     isLawyerFirstHome,
     isLawyerInvestor,
     isLawyerNewcomer,
+    isBrokerClassic,
     isThemeDrivenAgentHero,
     contentValue,
     placeholders,
@@ -101,7 +118,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
   return (
     <>
       <InspectorInput label="Hero eyebrow" value={contentValue('eyebrow')} onChange={setContent('eyebrow')} placeholder="Full-service real estate" />
-      {isLayeredLawyerTemplate || isLawyerNewcomer ? (
+      {isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic ? (
         <>
           <InspectorInput label="Hero heading" value={contentValue('heading')} onChange={setContent('heading')} placeholder={placeholders.heading} />
           <InspectorTextarea
@@ -137,7 +154,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
           ) : null}
         </>
       ) : null}
-      {!isThemeDrivenAgentHero && !isLayeredLawyerTemplate && !isLawyerNewcomer ? (
+      {!isThemeDrivenAgentHero && !isLayeredLawyerTemplate && !isLawyerNewcomer && !isBrokerClassic ? (
         <>
           <InspectorInput label="Hero card name" value={contentValue('hero_name')} onChange={setContent('hero_name')} placeholder={profile?.professional_name || 'Professional'} />
           <InspectorInput label="Hero card subtitle" value={contentValue('hero_subtitle')} onChange={setContent('hero_subtitle')} placeholder={profile?.headline || 'Your trusted real estate partner'} />
@@ -153,7 +170,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
       ) : null}
       <InspectorInput label="Primary button label" value={contentValue('primary_cta_label')} onChange={setContent('primary_cta_label')} placeholder="Submit inquiry" />
       <InspectorInput label="Secondary button label" value={contentValue('cta_label')} onChange={setContent('cta_label')} placeholder="Book a Free Consultation" />
-      {isLayeredLawyerTemplate && !isLawyerInvestor ? (
+      {isLayeredLawyerTemplate || isBrokerClassic ? (
         <InspectorInput label="Join Nesti button label" value={contentValue('join_label')} onChange={setContent('join_label')} placeholder="Join Nesti" />
       ) : null}
       <Field label="Header navigation links">

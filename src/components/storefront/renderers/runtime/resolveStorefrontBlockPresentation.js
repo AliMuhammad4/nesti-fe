@@ -57,6 +57,7 @@ export function resolveStorefrontBlockPresentation({
     ...(isFirstHomeServices ? { width: 'full' } : {}),
     ...(isSellerExpertTemplate ? { width: 'full' } : {}),
     ...(templateKey === 'lawyer-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
+    ...(templateKey === 'mortgage_broker-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
     ...((isLuxuryHero || isLuxuryServices || isLuxuryFooter)
       && (!layout.animationType || layout.animationType === 'none' || isLuxuryHero)
       ? {
@@ -100,7 +101,11 @@ export function resolveStorefrontBlockPresentation({
       !preserveExplicitFirstHomeBand
       && TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase())
     );
-  const sectionBackground = templateKey === 'lawyer-newcomer' && useTemplateBand && !isHero
+  const sectionBackground = (
+    (templateKey === 'lawyer-newcomer' || templateKey === 'mortgage_broker-classic')
+    && useTemplateBand
+    && !isHero
+  )
     ? 'transparent'
     : resolveSectionBandBackground({
         isHero,

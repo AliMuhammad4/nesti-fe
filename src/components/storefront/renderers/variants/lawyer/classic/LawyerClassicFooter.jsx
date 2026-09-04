@@ -48,6 +48,7 @@ export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) 
     { label: 'Documents', url: '#documents' },
     { label: 'Client feedback', url: '#reviews' },
     { label: 'Closing guide', url: '#guidance' },
+    { label: 'Contact', url: '/contact' },
   ];
   const sourceLinks = hasPersistedLinks ? [...content.items] : defaultLinks;
   const ensureFooterLink = (links, { label, target }) => {
@@ -65,10 +66,13 @@ export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) 
     ? sourceLinks
     : ensureFooterLink(
       ensureFooterLink(
-        ensureFooterLink(sourceLinks, { label: 'Who we help', target: '#clients' }),
-        { label: 'Documents', target: '#documents' },
+        ensureFooterLink(
+          ensureFooterLink(sourceLinks, { label: 'Who we help', target: '#clients' }),
+          { label: 'Documents', target: '#documents' },
+        ),
+        { label: 'Client feedback', target: '#reviews' },
       ),
-      { label: 'Client feedback', target: '#reviews' },
+      { label: 'Contact', target: '/contact' },
     );
   const links = requiredLinks
     .filter((link) => link && typeof link === 'object' && link.label)
@@ -76,16 +80,22 @@ export function LawyerClassicFooter({ profile, block, absoluteHashes = false }) 
       ...link,
       safeTarget: safeFooterTarget(link.target || link.url),
     }))
-    .map((link) => ({
-      ...link,
-      safeTarget: absoluteHashes && profileHref && link.safeTarget.startsWith('#')
-        ? `${profileHref}${link.safeTarget}`
-        : link.safeTarget,
-    }))
+    .map((link) => {
+      let target = link.safeTarget;
+      if (target === '/contact' && profileHref) {
+        target = `${profileHref}/contact`;
+      } else if (absoluteHashes && profileHref && target.startsWith('#')) {
+        target = `${profileHref}${target}`;
+      }
+      return { ...link, safeTarget: target };
+    })
     .filter((link) => link.safeTarget && (
-      showReviews || link.safeTarget.toLowerCase() !== '#reviews'
+      showReviews || !link.safeTarget.toLowerCase().includes('#reviews')
     ))
-    .filter((link) => isStorefrontHashTargetAvailable(profile, link.safeTarget))
+    .filter((link) => {
+      if (String(link.safeTarget || '').includes('/contact')) return Boolean(profile?.slug);
+      return isStorefrontHashTargetAvailable(profile, link.safeTarget);
+    })
     .slice(0, 8);
   const photo = profile?.profile_photo_url
     || profile?.storefront_profile_fallback_url

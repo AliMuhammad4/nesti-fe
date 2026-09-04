@@ -41,7 +41,7 @@ export default function Inspector({
   const heroUsesProfilePhoto = templateKey !== 'agent-classic';
   const allowHeroContentTabForSelection = isHero
     && isProfileSelection
-    && ['brandKit.cover_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
+    && ['brandKit.cover_url', 'brandKit.cover_photo_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
   const model = block
     ? buildInspectorModel({
         block,

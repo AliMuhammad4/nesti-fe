@@ -75,7 +75,7 @@ function TemplatePaymentModal({ open, template, isPending, onCancel, onPay }) {
                 Unlock to publish
               </h2>
               <p className="mt-1 text-xs leading-[1.55] text-slate-500">
-                Preview and customize for free. Pay once when you are ready to go live.
+                Preview and customize for free. Subscribe monthly when you are ready to go live.
               </p>
             </div>
           </div>
@@ -88,11 +88,11 @@ function TemplatePaymentModal({ open, template, isPending, onCancel, onPay }) {
                 {tierLabel} template
               </p>
               <p className="mt-1 truncate text-sm font-semibold text-slate-950">{template.name}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">Permanent account unlock</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">Monthly subscription</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-xl font-bold tracking-tight text-slate-950">{template.display_amount}</p>
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">One time</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Per month</p>
             </div>
           </div>
 
@@ -100,7 +100,7 @@ function TemplatePaymentModal({ open, template, isPending, onCancel, onPay }) {
             <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700">
               <Check size={10} strokeWidth={3} />
             </span>
-            Your page publishes automatically after successful payment.
+            Your page publishes automatically after successful payment. Cancel anytime from billing.
           </div>
         </div>
 
@@ -120,7 +120,7 @@ function TemplatePaymentModal({ open, template, isPending, onCancel, onPay }) {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-[0_8px_20px_rgba(5,150,105,0.2)] transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-              {isPending ? 'Preparing checkout…' : 'Pay and publish'}
+              {isPending ? 'Preparing checkout…' : 'Subscribe and publish'}
             </button>
         </div>
       </div>
@@ -397,7 +397,7 @@ export default function PublicProfilePage() {
         if (applied) return;
         checkoutTemplateSelectionRef.current = '';
         setCheckoutPublishTemplateId('');
-        toast.success('Template unlocked. Select it when you are ready to publish.');
+        toast.success('Template subscribed. Select it when you are ready to publish.');
       });
       return;
     }
@@ -408,7 +408,7 @@ export default function PublicProfilePage() {
     builderRef.current.handlePublish().then((published) => {
       checkoutPublishStartedRef.current = false;
       if (!published) {
-        toast.info('Template unlocked. Review your draft and publish when ready.');
+        toast.info('Template subscribed. Review your draft and publish when ready.');
       }
     });
   }, [builder.editorData, checkoutPublishTemplateId]);

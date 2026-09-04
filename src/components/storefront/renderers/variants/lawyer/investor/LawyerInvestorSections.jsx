@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import {
   ArrowUpRight,
   BriefcaseBusiness,
@@ -13,6 +14,7 @@ import {
   Phone,
   Radar,
   ShieldCheck,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import PublicStorefrontHeader from '@/components/public-profile/PublicStorefrontHeader';
@@ -78,6 +80,13 @@ function investorReadableColor(background, requestedColor) {
 
 function investorFooterLinkProps(item, absoluteHashes = false, slug = '') {
   const raw = String(item?.target || item?.url || item?.href || '').trim();
+  if (raw === '/contact' && slug) {
+    return {
+      href: absoluteHashes
+        ? `/p/${encodeURIComponent(slug)}/contact`
+        : `/professional/${encodeURIComponent(slug)}/contact`,
+    };
+  }
   if (raw.startsWith('#')) {
     return { href: absoluteHashes && slug ? `/professional/${slug}${raw}` : raw };
   }
@@ -210,6 +219,8 @@ export function LawyerInvestorHero({ profile, actions = {}, block }) {
     || '';
   const primaryLabel = lawyerContentValue(content, 'primary_cta_label', 'Start investor intake');
   const secondaryLabel = lawyerContentValue(content, 'cta_label', 'Book a strategy call');
+  const joinLabel = lawyerContentValue(content, 'join_label', 'Join Nesti').trim() || 'Join Nesti';
+  const inviteShareUrl = String(profile?.invite_link?.share_url || '').trim();
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const mediaMode = ['portrait', 'cover', 'none'].includes(presentation.mediaPosition)
     ? presentation.mediaPosition
@@ -300,6 +311,22 @@ export function LawyerInvestorHero({ profile, actions = {}, block }) {
                 <CalendarDays size={17} />
                 {secondaryLabel}
               </button>
+              {inviteShareUrl ? (
+                <a
+                  href={inviteShareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-storefront-field="content.join_label"
+                  data-storefront-source={lawyerContentSource(content, 'join_label')}
+                  data-storefront-label="Join Nesti button"
+                  data-investor-color-override="true"
+                  className={`${joinLabel ? 'inline-flex' : 'hidden'} storefront-btn min-h-14 items-center gap-3 border border-accent/60 px-7 text-xs font-bold uppercase tracking-[0.16em] text-accent transition hover:border-accent hover:bg-accent/[0.08] hover:brightness-110`}
+                  style={{ '--investor-override-bg': secondaryButtonBackground, '--investor-override-color': secondaryButtonColor }}
+                >
+                  <UserPlus size={17} />
+                  {joinLabel}
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1107,11 +1134,19 @@ export function LawyerInvestorFooter({ profile, actions = {}, block, absoluteHas
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col justify-between gap-4 border-t border-current/10 pt-6 text-[10px] leading-5 text-current opacity-40 sm:flex-row sm:items-center">
+        <div className="mt-14 flex flex-col gap-4 border-t border-current/10 pt-6 text-[10px] leading-5 text-current opacity-40 lg:flex-row lg:items-center lg:justify-between">
           <EditableText field="content.disclaimer" label="Footer disclaimer" source={lawyerContentSource(content, 'disclaimer')}>
             {lawyerContentValue(content, 'disclaimer', 'Do not send confidential information until the lawyer confirms representation.')}
           </EditableText>
           <span className="shrink-0 uppercase tracking-[0.12em]">© {new Date().getFullYear()} {identity.name || footerName}</span>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 font-bold uppercase tracking-[0.12em] text-current transition hover:text-accent"
+          >
+            <Image src="/logo/logo.png" alt="Nesti AI logo" width={26} height={26} className="rounded-md" />
+            <span>Powered by Nesti AI</span>
+            <ArrowUpRight size={12} />
+          </a>
         </div>
       </div>
     </footer>

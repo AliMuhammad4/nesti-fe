@@ -25,6 +25,7 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
   const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
   const isLawyerFirstHome = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-first-home-closing';
   const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
+  const isBrokerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
   const showReviews = Boolean(profile?.storefront_builder_preview)
     || hasPublicClientStories(profile);
   const availableLinks = (links) => links.filter(
@@ -39,13 +40,27 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
     )));
   };
 
+  if (isBrokerClassic) {
+    return availableLinks([
+      { href: `${hashBase}#about`, label: 'About' },
+      { href: `${hashBase}#programs`, label: 'Programs' },
+      { href: `${hashBase}#services`, label: 'Services' },
+      { href: `${hashBase}#faq`, label: 'FAQ' },
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact' }]),
+    ]);
+  }
+
   if (isLawyerInvestor) {
     return availableInvestorLinks([
       { href: `${hashBase}#about`, label: 'About', blockType: 'about' },
       { href: `${hashBase}#practice-snapshot`, label: 'Snapshot', blockType: 'practice-snapshot' },
       { href: `${hashBase}#services`, label: 'Services', blockType: 'services' },
       { href: `${hashBase}#guidance`, label: 'Process', blockType: 'guidance' },
-      { href: `${hashBase}#contact`, label: 'Contact', blockType: 'cta' },
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact', blockType: 'cta' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact', blockType: 'cta' }]),
     ]).map(({ blockType, ...link }) => link);
   }
 
@@ -114,6 +129,8 @@ export default function PublicStorefrontHeader({
   const isLawyerInvestor = variant === 'investor'
     || String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-investor';
   const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
+  const isBrokerClassic = variant === 'brokerClassic'
+    || String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
   const isDarkEditorial = isLuxury || isLawyerFirstHome || isLawyerInvestor;
   const hasBrandLogo = Boolean(profile?.storefront_logo_url || profile?.storefront_logo_dark_url);
   const hasDedicatedDarkLogo = Boolean(profile?.storefront_logo_dark_url);
@@ -163,6 +180,8 @@ export default function PublicStorefrontHeader({
       className={`${positionClass} z-[1000] backdrop-blur ${navOpenClass} ${
         isLawyerFirstHome
           ? 'border-b border-white/10 bg-primary/90 text-primary-contrast shadow-none'
+          : isBrokerClassic
+            ? 'border-b border-slate-200 bg-white text-[#0c2139] shadow-sm'
           : isLawyerInvestor
             ? 'border-b border-white/10 bg-[#12171c]/90 text-white shadow-none'
           : isLuxury
@@ -225,8 +244,8 @@ export default function PublicStorefrontHeader({
                 : `font-bold text-slate-900 ${forceMobilePreview ? 'text-[18px]' : 'text-sm sm:text-[15px]'}`
             }`}
             >
-              {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer
-                ? (profile.professional_name || 'Nesti Legal')
+              {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerClassic
+                ? (profile.professional_name || 'Nesti Professional')
                 : 'Nesti AI'}
             </span>
             {!forceMobilePreview ? (
@@ -234,7 +253,7 @@ export default function PublicStorefrontHeader({
                 isDarkEditorial ? 'text-white/55' : 'text-slate-500'
               }`}
               >
-                {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer ? roleLabel : 'Real Estate Intelligence'}
+                {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerClassic ? roleLabel : 'Real Estate Intelligence'}
               </span>
             ) : null}
           </span>

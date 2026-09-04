@@ -10,6 +10,8 @@ import PublicStorefrontHeader from '@/components/public-profile/PublicStorefront
 import { LawyerClassicFooter } from './renderers/variants/LawyerClassicSections';
 import { LawyerInvestorFooter } from './renderers/variants/lawyer/investor';
 import { LawyerNewcomerFooter } from './renderers/variants/lawyer/newcomer';
+import { BrokerClassicFooter } from './renderers/variants/broker/classic/BrokerClassicFooter';
+import { BROKER_CLASSIC_FOOTER_ITEMS } from './renderers/variants/broker/classic/brokerClassicDefaults';
 import { submitPublicLead } from '@/lib/publicProfileClient';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontInlineStyle from './StorefrontInlineStyle';
@@ -26,11 +28,21 @@ const EMPTY_FORM = {
   email: '',
   phone: '',
   intent: 'buy',
+  purchase_purpose: '',
   legal_services_needed: '',
   message: '',
   preferred_contact_method: 'email',
   best_time_to_contact: '',
 };
+
+const BROKER_PURPOSE_OPTIONS = [
+  { value: 'primary_residence', label: 'Buying a home (primary residence)' },
+  { value: 'investment', label: 'Investment property financing' },
+  { value: 'vacation_home', label: 'Vacation / second home' },
+  { value: 'refinance', label: 'Refinance an existing mortgage' },
+  { value: 'renewal', label: 'Mortgage renewal' },
+  { value: 'pre_approval', label: 'Pre-approval / rate check' },
+];
 
 function resolveSectionVariant(templateKey = '') {
   const key = String(templateKey || '').toLowerCase();
@@ -39,6 +51,7 @@ function resolveSectionVariant(templateKey = '') {
   if (key.includes('seller')) return 'seller';
   if (key.includes('community')) return 'community';
   if (key.includes('investor')) return 'investor';
+  if (key === 'mortgage_broker-classic') return 'brokerClassic';
   return undefined;
 }
 
@@ -133,8 +146,11 @@ export default function PublicContactPage({ profile }) {
   const isLawyerClassic = templateKey === 'lawyer-classic';
   const isLawyerInvestor = templateKey === 'lawyer-investor';
   const isLawyerNewcomer = templateKey === 'lawyer-newcomer';
+  const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
+  const isBrokerClassic = templateKey === 'mortgage_broker-classic';
+  const isBroker = profile?.professional_type === 'mortgage_broker' || isBrokerClassic;
   const isLayeredLawyer = isLawyerClassic
-    || templateKey === 'lawyer-first-home-closing'
+    || isLawyerFirstHome
     || isLawyerNewcomer;
   const isLawyer = profile?.professional_type === 'lawyer';
   const isInvestor = isInvestorSpecialistTemplate(templateKey);
@@ -155,12 +171,26 @@ export default function PublicContactPage({ profile }) {
     ...footerBlockContent,
     items: Array.isArray(footerBlockContent?.items) && footerBlockContent.items.length
       ? footerBlockContent.items
-      : [
+      : isBrokerClassic
+        ? BROKER_CLASSIC_FOOTER_ITEMS.map((item) => ({
+            ...item,
+            url: item.target === '/contact'
+              ? `${profileHref}/contact`
+              : item.target?.startsWith('#')
+                ? `${profileHref}${item.target}`
+                : item.target,
+          }))
+        : [
           { label: 'Profile', url: profileHref },
           { label: 'Services', url: `${profileHref}#services` },
-          { label: 'Properties', url: `${profileHref}/properties` },
+          ...(isBroker
+            ? [
+                { label: 'Rates', url: `${profileHref}#rates` },
+                { label: 'Calculator', url: `${profileHref}#calculator` },
+              ]
+            : [{ label: 'Properties', url: `${profileHref}/properties` }]),
           ...(isInvestor ? [] : [
-            { label: 'Reviews', url: `${profileHref}#reviews` },
+            ...(isBrokerClassic ? [] : [{ label: 'Reviews', url: `${profileHref}#reviews` }]),
             { label: 'Contact', url: `${profileHref}/contact` },
           ]),
         ],
@@ -185,6 +215,10 @@ export default function PublicContactPage({ profile }) {
       setErrorMessage('Please select the legal service you need.');
       return;
     }
+    if (isBroker && !form.purchase_purpose) {
+      setErrorMessage('Please select what you need help with.');
+      return;
+    }
     if (!form.message.trim()) {
       setErrorMessage('Please tell the professional how they can help.');
       return;
@@ -195,7 +229,8 @@ export default function PublicContactPage({ profile }) {
     try {
       const response = await submitPublicLead(profile.slug, {
         ...form,
-        ...(isLawyer ? { intent: 'unspecified' } : {}),
+        ...(isLawyer || isBroker ? { intent: 'unspecified' } : {}),
+        ...(isBroker ? { purchase_purpose: form.purchase_purpose } : {}),
         full_name: form.full_name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -217,17 +252,21 @@ export default function PublicContactPage({ profile }) {
 
   const fieldClass = isLuxury
     ? 'w-full rounded-none bg-white/[0.045] px-3.5 py-2.5 text-[13px] text-[#f5f1e8] outline-none ring-1 ring-white/[0.09] transition-all duration-300 [color-scheme:dark] placeholder:text-white/30 hover:bg-white/[0.06] hover:ring-white/15 focus:bg-white/[0.07] focus:ring-[var(--storefront-accent)]'
-    : isLawyerClassic
+    : isLawyerClassic || isLawyerFirstHome
       ? 'w-full border border-primary/15 bg-white/80 px-3.5 py-3 text-[13px] text-primary outline-none transition-colors placeholder:text-slate-400 focus:border-accent focus:bg-white'
       : isLawyerNewcomer
         ? 'w-full rounded-2xl border border-primary/15 bg-white/90 px-3.5 py-3 text-[13px] text-text-heading outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/15'
+      : isBrokerClassic
+        ? 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] text-[color:var(--storefront-primary,#0c2139)] outline-none transition placeholder:text-slate-400 focus:border-[color:var(--storefront-accent,#008fd5)] focus:ring-2 focus:ring-[color:var(--storefront-accent,#008fd5)]/15'
       : 'w-full rounded-xl bg-white px-3.5 py-2.5 text-[13px] text-text-heading outline-none ring-1 ring-slate-200 transition-all duration-300 placeholder:text-slate-400 focus:ring-primary';
   const labelClass = isLuxury
     ? 'mb-1.5 block text-[8px] font-semibold uppercase tracking-[0.19em] text-[var(--storefront-accent)]'
-    : isLawyerClassic
+    : isLawyerClassic || isLawyerFirstHome
       ? 'mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-primary'
       : isLawyerNewcomer
         ? 'mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-primary'
+      : isBrokerClassic
+        ? 'mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--storefront-primary,#0c2139)]'
       : 'mb-1.5 block text-[11px] font-semibold text-text-heading';
   const firstHomeSelectButtonClass = 'w-full rounded-xl bg-white px-3.5 py-2.5 text-[13px] text-text-heading outline-none ring-1 ring-[#5bd36d]/35 transition-all duration-300 hover:ring-[#5bd36d]/55';
   const firstHomeSelectPanelClass = 'absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-xl border border-[#5bd36d]/35 bg-white shadow-[0_14px_36px_rgba(11,61,32,.16)]';
@@ -280,24 +319,51 @@ export default function PublicContactPage({ profile }) {
           >
             <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
               <div className="self-start lg:sticky lg:top-28">
-                <p className={`mt-8 text-[9px] font-semibold uppercase tracking-[0.26em] ${
-                  isLuxury || isLawyerClassic ? 'text-[var(--storefront-accent)]' : 'text-primary'
+                <p className={`mt-8 text-[11px] font-bold uppercase tracking-[0.22em] ${
+                  isLuxury || isLawyerClassic || isLawyerFirstHome || isBrokerClassic
+                    ? 'text-[color:var(--storefront-accent,#008fd5)]'
+                    : 'text-primary'
                 }`}>
-                  {isLawyerClassic ? 'Legal consultation inquiry' : isLawyerNewcomer ? 'A welcoming place to start' : 'Private inquiry'}
+                  {isLawyerClassic || isLawyerFirstHome
+                    ? 'Legal consultation inquiry'
+                    : isLawyerNewcomer
+                      ? 'A welcoming place to start'
+                      : isLawyerInvestor
+                        ? 'Investor legal inquiry'
+                        : isBrokerClassic || isBroker
+                          ? 'Mortgage consultation'
+                          : 'Private inquiry'}
                 </p>
                 <h1 className={`mt-3 max-w-xl text-4xl leading-[1.04] sm:text-[2.75rem] lg:text-5xl ${
                   isLuxury
                     ? 'font-serif font-normal text-[#f5f1e8]'
-                    : isLawyerClassic
+                    : isLawyerClassic || isLawyerFirstHome
                       ? 'font-semibold uppercase tracking-[-0.025em] text-primary'
+                      : isBrokerClassic || isBroker
+                        ? 'font-bold tracking-tight text-[color:var(--storefront-primary,#0c2139)]'
                       : 'font-bold text-text-heading'
                 }`}>
-                  {isLawyerClassic ? 'Discuss your legal matter.' : isLawyerNewcomer ? 'Tell us about your move.' : 'Begin a direct conversation.'}
+                  {isLawyerClassic || isLawyerFirstHome
+                    ? 'Discuss your legal matter.'
+                    : isLawyerNewcomer
+                      ? 'Tell us about your move.'
+                      : isLawyerInvestor
+                        ? 'Discuss your transaction.'
+                        : isBrokerClassic || isBroker
+                          ? 'Get your mortgage options.'
+                          : 'Begin a direct conversation.'}
                 </h1>
+                <div className={`mt-4 h-[3px] w-10 rounded-full ${
+                  isLuxury ? 'bg-[var(--storefront-accent)]' : 'bg-[color:var(--storefront-accent,#008fd5)]'
+                }`} />
                 <p className={`mt-5 max-w-lg text-[13px] leading-6 ${
                   isLuxury ? 'text-white/58' : 'text-text-muted'
                 }`}>
-                  Share your objectives, timing, and preferred way to connect. Your request is delivered directly to {profile.professional_name}.
+                  {isBrokerClassic || isBroker
+                    ? `Share your goals, timeline, and preferred way to connect. Your request is delivered directly to ${profile.professional_name}.`
+                    : isLawyer
+                      ? `Share your objectives, timing, and preferred way to connect. Your request is delivered directly to ${profile.professional_name}.`
+                      : `Share your objectives, timing, and preferred way to connect. Your request is delivered directly to ${profile.professional_name}.`}
                 </p>
 
                 <div className="mt-7 space-y-2.5">
@@ -325,10 +391,12 @@ export default function PublicContactPage({ profile }) {
               <div className={`p-5 sm:p-6 lg:p-7 ${
                 isLuxury
                   ? 'bg-[#161310] shadow-[0_24px_70px_rgba(0,0,0,.34)] ring-1 ring-white/[0.07] transition-shadow duration-500 hover:shadow-[0_28px_80px_rgba(0,0,0,.42)]'
-                  : isLawyerClassic
+                  : isLawyerClassic || isLawyerFirstHome
                     ? 'border border-primary/12 bg-white/75 shadow-[0_18px_45px_rgba(15,23,42,.06)]'
                     : isLawyerNewcomer
                       ? 'rounded-[2rem] border border-primary/10 bg-white/85 shadow-[0_22px_60px_rgba(48,77,67,.1)]'
+                    : isBrokerClassic
+                      ? 'rounded-[1.35rem] border border-slate-200/90 bg-white shadow-[0_14px_40px_rgba(12,33,57,.07)]'
                     : 'rounded-3xl bg-white shadow-xl ring-1 ring-slate-200'
               }`}>
                 {submitted ? (
@@ -347,6 +415,8 @@ export default function PublicContactPage({ profile }) {
                         className={`mt-7 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.16em] ${
                           isLuxury
                             ? 'bg-[var(--storefront-accent)] text-[#15110d] hover:brightness-105'
+                            : isBrokerClassic
+                              ? 'rounded-xl bg-[color:var(--storefront-accent,#008fd5)] text-white hover:brightness-105'
                             : 'rounded-full bg-primary text-white hover:brightness-95'
                         }`}
                       >
@@ -357,7 +427,11 @@ export default function PublicContactPage({ profile }) {
                 ) : (
                   <form onSubmit={submit}>
                     <h2 className={`mt-2.5 text-3xl sm:text-[2rem] ${isLuxury ? 'font-serif font-normal text-[#f5f1e8]' : 'font-bold text-text-heading'}`}>
-                      {isLawyerClassic ? 'Tell us about your matter' : 'How may I assist?'}
+                      {isLawyerClassic || isLawyerFirstHome
+                        ? 'Tell us about your matter'
+                        : isBrokerClassic || isBroker
+                          ? 'Tell us about your mortgage goals'
+                          : 'How may I assist?'}
                     </h2>
                     <p className={`mt-2 text-xs leading-5 ${isLuxury ? 'text-white/50' : 'text-text-muted'}`}>
                       Fields marked with an asterisk are required.
@@ -378,7 +452,11 @@ export default function PublicContactPage({ profile }) {
                       </label>
                       <label>
                         <span className={labelClass}>
-                          {isLawyer ? 'Legal service needed *' : 'I am interested in'}
+                          {isLawyer
+                            ? 'Legal service needed *'
+                            : isBroker
+                              ? 'I need help with *'
+                              : 'I am interested in'}
                         </span>
                         {isLawyer ? (
                           <select
@@ -393,6 +471,19 @@ export default function PublicContactPage({ profile }) {
                             <option value="contract_or_document_review" className="bg-white text-stone-900">Contract or document review</option>
                             <option value="commercial_real_estate" className="bg-white text-stone-900">Commercial real estate</option>
                             <option value="property_dispute_or_other" className="bg-white text-stone-900">Property dispute or another matter</option>
+                          </select>
+                        ) : isBroker ? (
+                          <select
+                            value={form.purchase_purpose}
+                            onChange={(event) => updateField('purchase_purpose', event.target.value)}
+                            className={fieldClass}
+                          >
+                            <option value="" className="bg-white text-stone-900">Select a mortgage need</option>
+                            {BROKER_PURPOSE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value} className="bg-white text-stone-900">
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
                         ) : isFirstHome ? (
                           <TemplateSelect
@@ -466,6 +557,8 @@ export default function PublicContactPage({ profile }) {
                           ? 'bg-[var(--storefront-accent)] text-[#15110d] shadow-[0_10px_24px_color-mix(in_srgb,var(--storefront-accent)_12%,transparent)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_30px_color-mix(in_srgb,var(--storefront-accent)_18%,transparent)]'
                           : isLayeredLawyer
                             ? `${isLawyerNewcomer ? 'rounded-full' : ''} bg-accent text-accent-contrast hover:-translate-y-0.5 hover:brightness-105`
+                            : isBrokerClassic
+                              ? 'rounded-xl bg-[color:var(--storefront-accent,#008fd5)] text-white shadow-[0_10px_24px_rgba(0,143,213,.2)] hover:-translate-y-0.5 hover:brightness-105'
                             : 'rounded-full bg-primary text-white hover:brightness-95'
                       }`}
                     >
@@ -505,6 +598,8 @@ export default function PublicContactPage({ profile }) {
             <LawyerNewcomerFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isLayeredLawyer ? (
             <LawyerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
+          ) : isBrokerClassic ? (
+            <BrokerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : (
             <PublicStorefrontFooter profile={profile} content={footerContent} sectionStyle={footerBlockStyle} />
           )}

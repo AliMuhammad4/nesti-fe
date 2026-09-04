@@ -76,6 +76,12 @@ export function useStorefrontBlockAnimations({
 
   useEffect(() => {
     if (!isHydrated || !blocks.length) return undefined;
+    if (preview) {
+      setAnimatedVisibleById(Object.fromEntries(blocks.map((block) => [block.id, true])));
+      markAnimatedChildren(canvasRef.current, blocks);
+      return undefined;
+    }
+
     const root = canvasRef.current;
     if (!root) return undefined;
 

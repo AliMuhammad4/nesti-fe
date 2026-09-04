@@ -9,6 +9,15 @@ import { CONTENT_COLLECTIONS } from '../builderContentCollections';
 import { getGuidanceCollectionFallback, getGuidanceTextDefaults } from '@/components/public-profile/PublicGuidanceSection';
 import { getRoleDetailsCollectionFallback, getRoleDetailsDefaults } from '@/components/public-profile/PublicRoleDetailSection';
 import { listingCardThemeFromTemplate, materializeTemplate } from '../../templates';
+import {
+  BROKER_CLASSIC_COMPENSATION_ITEMS,
+  BROKER_CLASSIC_FAQS,
+  BROKER_CLASSIC_FOOTER_ITEMS,
+  BROKER_CLASSIC_PROGRAM_ITEMS,
+  BROKER_CLASSIC_ROLE_HIGHLIGHTS,
+  BROKER_CLASSIC_SERVICE_ITEMS,
+  brokerClassicCollectionFallback,
+} from '../../renderers/variants/broker/classic/brokerClassicDefaults';
 import { LAWYER_CLASSIC_PROCESS_DEFAULTS } from '../../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import { SERVICE_ICON_DEFAULTS } from '../storefrontServiceIcons';
 import {
@@ -35,6 +44,7 @@ import {
 } from './inspectorConstants';
 import { lawyerInvestorCapabilities } from './investorCapabilities';
 import { lawyerNewcomerCapabilities } from './newcomerCapabilities';
+import { brokerClassicCapabilities } from '../../renderers/variants/broker/classic/brokerClassicCapabilities';
 import { readContentPath } from '../contentPath';
 
 function mapProfileServiceCards(profile) {
@@ -102,11 +112,15 @@ export function buildInspectorModel({
   const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
   const isLawyerInvestor = templateKey === 'lawyer-investor';
   const isLawyerNewcomer = templateKey === 'lawyer-newcomer';
+  const isBrokerClassic = templateKey === 'mortgage_broker-classic';
   const investorCapabilities = isLawyerInvestor
     ? lawyerInvestorCapabilities(block?.type)
     : null;
   const newcomerCapabilities = isLawyerNewcomer
     ? lawyerNewcomerCapabilities(block?.type)
+    : null;
+  const brokerCapabilities = isBrokerClassic
+    ? brokerClassicCapabilities(block?.type)
     : null;
   // Keep the story-warm Newcomer Hero on its established generic control path.
   const isLayeredLawyerTemplate = isLawyerClassic
@@ -143,8 +157,8 @@ export function buildInspectorModel({
     ? ['layout', 'style']
     : ['content', 'layout', 'style'];
   const showSectionDesignTabs = !isItemSelection;
-  const supportsColumns = isLawyerInvestor || (isLawyerNewcomer && !isHero)
-    ? (investorCapabilities || newcomerCapabilities)?.layout?.columns === true
+  const supportsColumns = isLawyerInvestor || (isLawyerNewcomer && !isHero) || isBrokerClassic
+    ? (investorCapabilities || newcomerCapabilities || brokerCapabilities)?.layout?.columns === true
     : [
         ...COLUMN_SUPPORT_BASE_TYPES,
         ...(isCommunityTemplate || isLayeredLawyerTemplate
@@ -161,9 +175,26 @@ export function buildInspectorModel({
     : CONTENT_COLLECTIONS[block.type];
   const name = profile?.professional_name || 'your name';
   const isServices = block.type === T.SERVICES;
+  const isBrokerPrograms = isBrokerClassic && (
+    block.type === T.MORTGAGE_PROGRAMS
+    || block.type === T.MORTGAGE_RATES
+    || block.type === T.LENDER_NETWORK
+    || block.type === T.ALTERNATIVE_LENDING
+    || block.type === T.BROKER_COMPENSATION
+  );
   const isSellerCaseStudy = block.type === T.SELLER_CASE_STUDY;
   const isSellerCredentials = block.type === T.SELLER_CREDENTIALS;
-  const hasEditableCards = isServices || isSellerCaseStudy;
+  const hasEditableCards = isServices || isSellerCaseStudy || isBrokerPrograms;
+  const serviceCardLimit = isBrokerClassic && block.type === T.LENDER_NETWORK
+    ? 24
+    : isBrokerClassic && (
+      block.type === T.MORTGAGE_RATES
+      || block.type === T.ALTERNATIVE_LENDING
+      || block.type === T.BROKER_COMPENSATION
+      || block.type === T.MORTGAGE_PROGRAMS
+    )
+      ? 12
+      : SERVICE_CARD_LIMIT;
   const isFaq = block.type === T.FAQ;
   const isGuidance = block.type === T.GUIDANCE || isFaq;
   const isRoleDetails = block.type === T.ROLE_DETAILS;
@@ -174,8 +205,9 @@ export function buildInspectorModel({
     || profile?.professional_profile?.credentials_verified === true;
   const isLawyerClassicStatement = isLayeredLawyerTemplate && isRoleDetails;
   const isLawyerClassicGuidance = isLayeredLawyerTemplate && isGuidance;
-  const guidanceStepLimit = isLawyerClassicGuidance ? 6 : 8;
-  const guidanceFaqLimit = isLawyerClassicGuidance ? 6 : 8;
+  const isBrokerClassicGuidance = isBrokerClassic && isGuidance;
+  const guidanceStepLimit = isLawyerClassicGuidance || isBrokerClassicGuidance ? 6 : 8;
+  const guidanceFaqLimit = isLawyerClassicGuidance || (isBrokerClassic && isFaq) ? 8 : 8;
   const sellerCustomBlock = isSellerExpertTemplate && SELLER_CUSTOM_BLOCK_TYPES.includes(block.type);
   const sellerSupportsCardStyle = !isSellerExpertTemplate || SELLER_CARD_STYLE_TYPES.includes(block.type);
   const sellerSupportsRadiusShadow = !isSellerExpertTemplate || SELLER_RADIUS_SHADOW_TYPES.includes(block.type);
@@ -239,18 +271,37 @@ export function buildInspectorModel({
     isCommunityTemplate,
     professionalType: profile?.professional_type,
   });
-  const rawCardSource = Object.prototype.hasOwnProperty.call(content, 'items')
-    && Array.isArray(content.items)
-    ? content.items
-    : isSellerCaseStudy
-      ? []
-      : profileServiceCards;
+  const rawCardSource = (() => {
+    const hasItems = Object.prototype.hasOwnProperty.call(content, 'items')
+      && Array.isArray(content.items);
+    if (hasItems) return content.items;
+    if (isSellerCaseStudy) return [];
+    if (isBrokerPrograms) {
+      const templateItems = templateDefaultBlock?.data?.content?.items;
+      if (Array.isArray(templateItems) && templateItems.length) return templateItems;
+      if (block.type === T.BROKER_COMPENSATION) return BROKER_CLASSIC_COMPENSATION_ITEMS;
+      if (block.type === T.MORTGAGE_PROGRAMS) return BROKER_CLASSIC_PROGRAM_ITEMS;
+      const brokerFallback = brokerClassicCollectionFallback(block.type, 'items');
+      if (brokerFallback?.length) return brokerFallback;
+      return BROKER_CLASSIC_PROGRAM_ITEMS;
+    }
+    if (isBrokerClassic && isServices) {
+      const templateItems = templateDefaultBlock?.data?.content?.items;
+      if (Array.isArray(templateItems) && templateItems.length) return templateItems;
+      return BROKER_CLASSIC_SERVICE_ITEMS;
+    }
+    return profileServiceCards;
+  })();
   const cardSource = resolveCardSource(rawCardSource, { isCommunityTemplate, isServices });
-  const serviceCards = cardSource.slice(0, SERVICE_CARD_LIMIT).map((item, index) => ({
+  const serviceCards = cardSource.slice(0, serviceCardLimit).map((item, index) => ({
     ...item,
     id: item?.id || `fallback-card-${index}`,
     title: item?.title || '',
     description: item?.description || item?.text || '',
+    rate: item?.rate || item?.value || '',
+    category: item?.category || item?.group || '',
+    domain: item?.domain || item?.website || '',
+    website: item?.website || item?.domain || '',
     icon: item?.icon || SERVICE_ICON_DEFAULTS[index % SERVICE_ICON_DEFAULTS.length],
     background: item?.background || '',
     text_color: item?.text_color || '',
@@ -271,11 +322,15 @@ export function buildInspectorModel({
       )).slice(0, 8).length
     : 0;
   const commitServiceCards = (next) => {
-    const normalized = next.slice(0, SERVICE_CARD_LIMIT).map((item) => ({
+    const normalized = next.slice(0, serviceCardLimit).map((item) => ({
       ...item,
       id: item?.id || createContentItemId(),
       title: item?.title || '',
       description: item?.description || '',
+      rate: item?.rate || '',
+      category: item?.category || '',
+      domain: item?.domain || item?.website || '',
+      website: item?.website || item?.domain || '',
       icon: item?.icon || 'target',
       background: item?.background || '',
       text_color: item?.text_color || '',
@@ -283,6 +338,11 @@ export function buildInspectorModel({
       icon_color: item?.icon_color || '',
       url: item?.url || item?.href || '',
       link_disabled: item?.link_disabled === true,
+      ...(isBrokerClassic && block.type === T.SERVICES ? {
+        benefit_0: item?.benefit_0 ?? '',
+        benefit_1: item?.benefit_1 ?? '',
+        benefit_2: item?.benefit_2 ?? '',
+      } : {}),
     }));
     onChange(block.id, { content: { items: normalized } });
   };
@@ -323,7 +383,9 @@ export function buildInspectorModel({
   const guidanceFaqs = Object.prototype.hasOwnProperty.call(content, 'faqs')
     && Array.isArray(content.faqs)
     ? coerceCollectionItems('faqs', content.faqs)
-    : getGuidanceCollectionFallback(profile?.professional_type, 'faqs');
+    : (isBrokerClassic && isFaq
+      ? coerceCollectionItems('faqs', BROKER_CLASSIC_FAQS)
+      : getGuidanceCollectionFallback(profile?.professional_type, 'faqs'));
   const commitGuidanceSteps = (next) => {
     onChange(block.id, {
       content: {
@@ -380,7 +442,9 @@ export function buildInspectorModel({
     ? (
       Array.isArray(content.highlights) && (isLawyerFirstHome || content.highlights.length)
         ? coerceCollectionItems('highlights', content.highlights)
-        : getRoleDetailsCollectionFallback(profile?.professional_type, 'highlights')
+        : (isBrokerClassic
+          ? coerceCollectionItems('highlights', BROKER_CLASSIC_ROLE_HIGHLIGHTS)
+          : getRoleDetailsCollectionFallback(profile?.professional_type, 'highlights'))
     )
     : [];
   const roleProof = isRoleDetails
@@ -454,6 +518,7 @@ export function buildInspectorModel({
 
   return {
     onChange,
+    block,
     content,
     layout,
     style,
@@ -468,8 +533,10 @@ export function buildInspectorModel({
     isLawyerFirstHome,
     isLawyerInvestor,
     isLawyerNewcomer,
+    isBrokerClassic,
     investorCapabilities,
     newcomerCapabilities,
+    brokerCapabilities,
     isLayeredLawyerTemplate,
     isLawyerClassicItemCards,
     lawyerClassicUsesCardIcons,
@@ -489,6 +556,7 @@ export function buildInspectorModel({
     isSellerCaseStudy,
     isSellerCredentials,
     hasEditableCards,
+    serviceCardLimit,
     isFaq,
     isGuidance,
     isRoleDetails,
@@ -498,6 +566,7 @@ export function buildInspectorModel({
     lawyerCredentialsVerified,
     isLawyerClassicStatement,
     isLawyerClassicGuidance,
+    isBrokerClassicGuidance,
     guidanceStepLimit,
     guidanceFaqLimit,
     sellerCustomBlock,

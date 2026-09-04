@@ -8,7 +8,7 @@ export default function ProfileSelectionFields({
   onMediaUpload,
   onBrandKitChange,
 }) {
-  if (selectedField === 'brandKit.cover_url') {
+  if (selectedField === 'brandKit.cover_url' || selectedField === 'brandKit.cover_photo_url') {
     return (
       <>
         <MediaPicker

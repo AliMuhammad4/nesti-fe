@@ -10,6 +10,10 @@ export const STOREFRONT_BLOCK_TYPES = {
   TOP_LISTINGS: 'top-listings',
   SOLD_LISTINGS: 'sold-listings',
   MORTGAGE_PROGRAMS: 'mortgage-programs',
+  MORTGAGE_RATES: 'mortgage-rates',
+  LENDER_NETWORK: 'lender-network',
+  BROKER_COMPENSATION: 'broker-compensation',
+  ALTERNATIVE_LENDING: 'alternative-lending',
   PRACTICE_AREAS: 'practice-areas',
   CREDENTIALS: 'credentials',
   WHO_WE_HELP: 'who-we-help',
@@ -138,6 +142,65 @@ export function refreshLawyerClassicBlockCopy(block) {
   return { ...block, content: { ...content, ...updates } };
 }
 
+export function refreshBrokerClassicBlockCopy(block) {
+  const content = block?.data?.content || block?.content || {};
+  const updates = {};
+  const normalized = (value) => String(value || '').trim().toLowerCase();
+
+  if (
+    block?.type === STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS
+    && Array.isArray(content.items)
+    && content.items.some((item) => ['program-car', 'program-wedding', 'program-property'].includes(item?.id))
+  ) {
+    updates.items = [
+      { id: 'program-first-home', title: 'First-time home buyer', description: 'Plan your down payment, affordability, and pre-approval with clear guidance.', icon: 'home' },
+      { id: 'program-refinance', title: 'Refinance and renewal', description: 'Review rates, equity, and payment structure before signing new terms.', icon: 'percent' },
+      { id: 'program-investor', title: 'Rental and investor', description: 'Structure financing around rental income, cash flow, and portfolio goals.', icon: 'building' },
+    ];
+  }
+  if (
+    block?.type === STOREFRONT_BLOCK_TYPES.SERVICES
+    && Array.isArray(content.items)
+    && content.items.some((item) => ['service-credit', 'service-personal', 'service-auto'].includes(item?.id))
+  ) {
+    updates.eyebrow = 'Mortgage solutions';
+    updates.heading = 'Advice for every stage of your mortgage';
+    updates.body = 'Explore practical financing strategies backed by clear comparisons, careful preparation, and responsive support.';
+    updates.items = [
+      { id: 'service-purchase', title: 'Purchase financing', description: 'Compare mortgage structures and lender options for your next home.', icon: 'home' },
+      { id: 'service-preapproval', title: 'Pre-approval strategy', description: 'Clarify affordability and strengthen your position before making an offer.', icon: 'shield' },
+      { id: 'service-refinance', title: 'Refinance planning', description: 'Review equity, debt consolidation, and payment-improvement opportunities.', icon: 'percent' },
+      { id: 'service-renewal', title: 'Mortgage renewal', description: 'Assess the market before maturity instead of accepting the first renewal offer.', icon: 'target' },
+      { id: 'service-investor', title: 'Investor mortgages', description: 'Structure financing around rental income, portfolio goals, and cash flow.', icon: 'building' },
+      { id: 'service-self-employed', title: 'Self-employed solutions', description: 'Present business and income documentation through suitable lender programs.', icon: 'briefcase' },
+    ];
+  }
+  if (
+    block?.type === STOREFRONT_BLOCK_TYPES.FOOTER
+    && Array.isArray(content.items)
+    && !content.items.some((item) => String(item?.target || '') === '#faq')
+  ) {
+    const nextItems = [...content.items];
+    const contactIndex = nextItems.findIndex((item) => String(item?.target || '') === '#contact');
+    const faqItem = { id: 'footer-faq', label: 'FAQ', target: '#faq' };
+    if (contactIndex >= 0) nextItems.splice(contactIndex, 0, faqItem);
+    else nextItems.push(faqItem);
+    updates.items = nextItems;
+  }
+  if (!Object.keys(updates).length) return block;
+
+  if (block?.data) {
+    return {
+      ...block,
+      data: {
+        ...block.data,
+        content: { ...content, ...updates },
+      },
+    };
+  }
+  return { ...block, content: { ...content, ...updates } };
+}
+
 /**
  * Returns a fresh, role-aware block list. Consumers can pass a persisted
  * `storefront_blocks` array later; profiles without it retain their current layout.
@@ -182,6 +245,12 @@ export function resolveStorefrontBlocks(
         visibleBlocks.splice(index, 1);
       }
     }
+  }
+
+  if (resolvedTemplateKey === 'mortgage_broker-classic') {
+    visibleBlocks.forEach((block, index) => {
+      visibleBlocks[index] = refreshBrokerClassicBlockCopy(block);
+    });
   }
 
   const sharedProofTypes = [

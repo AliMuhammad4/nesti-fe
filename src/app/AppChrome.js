@@ -94,6 +94,30 @@ export default function AppChrome({ children }) {
   }, []);
 
   useEffect(() => {
+    if (!isMounted || typeof window === "undefined") return undefined;
+    const onAuthExpired = () => {
+      dispatch(logoutAndClearAll());
+      queryClient.clear();
+      const path = String(window.location.pathname || "");
+      if (
+        path === "/log-in"
+        || path === "/sign-up"
+        || path.startsWith("/forgot-password")
+        || path.startsWith("/verify-")
+        || path.startsWith("/reset-password")
+      ) {
+        return;
+      }
+      toast.info("Your session expired. Please log in again.", {
+        toastId: "session-expired",
+      });
+      router.replace("/log-in");
+    };
+    window.addEventListener("nesti:auth-expired", onAuthExpired);
+    return () => window.removeEventListener("nesti:auth-expired", onAuthExpired);
+  }, [isMounted, dispatch, queryClient, router]);
+
+  useEffect(() => {
     if (!isMounted || !token || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("billing") !== "success") return;
@@ -394,7 +418,7 @@ export default function AppChrome({ children }) {
     if (!authCheckReady) return;
     if (token || hasPersistedToken) return;
     if (isPublicAuthPage || isChatbotEmbed || isCalendlyCallback) return;
-    router.replace("/");
+    router.replace("/log-in");
   }, [isMounted, authCheckReady, token, hasPersistedToken, isPublicAuthPage, isChatbotEmbed, isCalendlyCallback, router]);
 
   useEffect(() => {

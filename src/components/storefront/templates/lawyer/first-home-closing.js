@@ -367,6 +367,7 @@ const lawyerFirstHomeClosing = {
         { label: 'Closing guide', target: '#guidance' },
         { label: 'Client stories', target: '#reviews' },
         { label: 'Questions', target: '#faq' },
+        { label: 'Contact', target: '/contact' },
       ],
     }, {
       animationType: 'fade',

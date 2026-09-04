@@ -39,8 +39,8 @@ const TEMPLATE_GALLERY_COPY = {
     tagline: 'Local insight for the streets you know',
   },
   'mortgage_broker-classic': {
-    title: 'Advisor',
-    tagline: 'Rates, tools, and a clear next step',
+    title: 'Lead Storefront',
+    tagline: 'Focused mortgage programs, services, and lead conversion',
   },
   'mortgage_broker-first-home': {
     title: 'First Home',
@@ -85,9 +85,9 @@ function galleryCopyForTemplate(template) {
 }
 
 function fallbackTemplateAccess(template) {
-  const isFree = template?.free || template?.id === 'agent-investor';
+  const isFree = Boolean(template?.free);
   return {
-    unlocked: isFree || !String(template?.id || '').startsWith('agent-'),
+    unlocked: isFree,
     tier: isFree ? 'free' : '',
     display_amount: isFree ? 'Free' : '',
   };

@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Copy, Trash2 } from 'lucide-react';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { createContentItemId, labelForBlock } from '../storefrontBuilderState';
 import { lawyerClassicIconDefault } from '../../renderers/variants/lawyer/shared/lawyerSectionUtils';
+import { normalizeLenderDomain } from '../../renderers/variants/broker/classic/lenderLogoUtils';
 import {
   getServiceIconEntry,
   resolveServiceIconKey,
@@ -44,30 +45,41 @@ function duplicateCollectionItem(items, index, limit) {
   return next;
 }
 
-export function ServiceCardsEditor({ block, model }) {
-  const { serviceCards, commitServiceCards, isSellerCaseStudy } = model;
+export function AlternativeCardsEditor({
+  block,
+  model,
+  fieldLabel = 'Options',
+  addLabel = 'Add option',
+  titlePlaceholder = 'Self-employed borrowers',
+  descriptionPlaceholder = 'Present business income through suitable lender programs.',
+}) {
+  const { serviceCards, commitServiceCards, serviceCardLimit = 12 } = model;
+  const updateCard = (index, patch) => {
+    commitServiceCards(serviceCards.map((card, cardIndex) => (
+      cardIndex === index
+        ? { ...card, id: card?.id || createContentItemId(), ...patch }
+        : card
+    )));
+  };
+
   return (
-    <Field label={`${isSellerCaseStudy ? 'Success story cards' : 'Service cards'} (${serviceCards.length}/${SERVICE_CARD_LIMIT})`}>
+    <Field label={`${fieldLabel} (${serviceCards.length}/${serviceCardLimit})`}>
       <div className="space-y-2">
         {serviceCards.map((item, index) => {
           const iconKey = resolveServiceIconKey(item?.icon, index);
-          const CardIcon = getServiceIconEntry(iconKey).Icon;
           return (
             <div
-              key={item?.id || `${block.id}-service-${index}`}
+              key={item?.id || `${block.id}-alt-${index}`}
               className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2"
             >
               <div className="flex items-center gap-2">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-                  <CardIcon size={14} />
-                </span>
                 <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
-                  {item?.title || 'Untitled service'}
+                  {item?.title || `Item ${index + 1}`}
                 </span>
                 {[
-                  [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move card up'],
-                  [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move card down'],
-                  [Copy, serviceCards.length < SERVICE_CARD_LIMIT, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, SERVICE_CARD_LIMIT)), 'Duplicate card'],
+                  [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move item up'],
+                  [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move item down'],
+                  [Copy, serviceCards.length < serviceCardLimit, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, serviceCardLimit)), 'Duplicate item'],
                 ].map(([Icon, enabled, handler, label]) => (
                   <button
                     key={label}
@@ -84,50 +96,323 @@ export function ServiceCardsEditor({ block, model }) {
                   type="button"
                   onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
                   className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                  aria-label={`Delete ${isSellerCaseStudy ? 'story' : 'service'} card ${index + 1}`}
+                  aria-label={`Delete item ${index + 1}`}
                 >
                   <Trash2 size={12} />
                 </button>
               </div>
-              <ServiceIconDropdown
-                value={iconKey}
-                onChange={(icon) => {
-                  const next = serviceCards.map((card, cardIndex) => (
-                    cardIndex === index
-                      ? { ...card, id: card?.id || createContentItemId(), icon }
-                      : {
-                          ...card,
-                          id: card?.id || createContentItemId(),
-                          icon: resolveServiceIconKey(card?.icon, cardIndex),
-                        }
-                  ));
-                  commitServiceCards(next);
-                }}
+              <InspectorInput
+                label="Title"
+                value={item?.title || ''}
+                onChange={(title) => updateCard(index, { title })}
+                placeholder={titlePlaceholder}
               />
+              <InspectorInput
+                label="Description"
+                value={item?.description || ''}
+                onChange={(description) => updateCard(index, { description })}
+                placeholder={descriptionPlaceholder}
+              />
+              <Field label="Icon">
+                <ServiceIconDropdown
+                  value={iconKey}
+                  onChange={(icon) => updateCard(index, { icon })}
+                />
+              </Field>
             </div>
           );
         })}
         <DashedAddButton
-          disabled={serviceCards.length >= SERVICE_CARD_LIMIT}
+          disabled={serviceCards.length >= serviceCardLimit}
           onClick={() => commitServiceCards([...serviceCards, {
             id: createContentItemId(),
-            title: isSellerCaseStudy ? 'New story stage' : 'New service',
-            description: isSellerCaseStudy
-              ? 'Add the challenge, strategy, or result for this success story.'
-              : 'Add a clear one-line summary of this service for better client understanding.',
+            title: 'New item',
+            description: 'Add a clear description visitors can scan quickly.',
             icon: SERVICE_ICON_DEFAULTS[serviceCards.length % SERVICE_ICON_DEFAULTS.length],
-            url: '',
           }])}
         >
-          {serviceCards.length >= SERVICE_CARD_LIMIT
-            ? 'Max 6 cards reached'
-            : isSellerCaseStudy
-              ? 'Add story card'
-              : 'Add service card'}
+          {serviceCards.length >= serviceCardLimit
+            ? `Max ${serviceCardLimit} items reached`
+            : addLabel}
         </DashedAddButton>
       </div>
       <InspectorHint>
-        Choose an icon here, or click a card in the preview to edit title, description, and card-level colors.
+        Edit title, description, and icon here, or click a card in the preview.
+      </InspectorHint>
+    </Field>
+  );
+}
+
+export function RateCardsEditor({ block, model }) {
+  const { serviceCards, commitServiceCards, serviceCardLimit = 12 } = model;
+  const updateRate = (index, patch) => {
+    commitServiceCards(serviceCards.map((card, cardIndex) => (
+      cardIndex === index
+        ? { ...card, id: card?.id || createContentItemId(), ...patch }
+        : card
+    )));
+  };
+
+  return (
+    <Field label={`Rate rows (${serviceCards.length}/${serviceCardLimit})`}>
+      <div className="space-y-2">
+        {serviceCards.map((item, index) => (
+          <div
+            key={item?.id || `${block.id}-rate-${index}`}
+            className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2"
+          >
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                {item?.title || `Rate ${index + 1}`}
+              </span>
+              {[
+                [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move rate up'],
+                [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move rate down'],
+                [Copy, serviceCards.length < serviceCardLimit, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, serviceCardLimit)), 'Duplicate rate'],
+              ].map(([Icon, enabled, handler, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={!enabled}
+                  onClick={handler}
+                  className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-primary disabled:opacity-25"
+                  aria-label={label}
+                >
+                  <Icon size={12} />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
+                className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                aria-label={`Delete rate ${index + 1}`}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+            <InspectorInput
+              label="Product name"
+              value={item?.title || ''}
+              onChange={(title) => updateRate(index, { title })}
+              placeholder="5-Year Fixed"
+            />
+            <InspectorInput
+              label="Rate"
+              value={item?.rate || ''}
+              onChange={(rate) => updateRate(index, { rate })}
+              placeholder="Starting from 4.29%"
+            />
+            <InspectorInput
+              label="Description"
+              value={item?.description || ''}
+              onChange={(description) => updateRate(index, { description })}
+              placeholder="Popular fixed term for purchase and refinance planning."
+            />
+          </div>
+        ))}
+        <DashedAddButton
+          disabled={serviceCards.length >= serviceCardLimit}
+          onClick={() => commitServiceCards([...serviceCards, {
+            id: createContentItemId(),
+            title: 'New rate',
+            rate: 'Starting from —%',
+            description: 'Add a short note about who this rate is for.',
+          }])}
+        >
+          {serviceCards.length >= serviceCardLimit
+            ? `Max ${serviceCardLimit} rates reached`
+            : 'Add rate'}
+        </DashedAddButton>
+      </div>
+      <InspectorHint>
+        Edit product name, rate, and description here, or click a row in the preview.
+      </InspectorHint>
+    </Field>
+  );
+}
+
+export function LenderCardsEditor({ block, model }) {
+  const { serviceCards, commitServiceCards, serviceCardLimit = 24 } = model;
+  const updateLender = (index, patch) => {
+    commitServiceCards(serviceCards.map((card, cardIndex) => (
+      cardIndex === index
+        ? { ...card, id: card?.id || createContentItemId(), ...patch }
+        : card
+    )));
+  };
+
+  return (
+    <Field label={`Banks & lenders (${serviceCards.length}/${serviceCardLimit})`}>
+      <div className="space-y-2">
+        {serviceCards.map((item, index) => (
+          <div
+            key={item?.id || `${block.id}-lender-${index}`}
+            className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2"
+          >
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                {item?.title || `Lender ${index + 1}`}
+              </span>
+              {[
+                [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move lender up'],
+                [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move lender down'],
+                [Copy, serviceCards.length < serviceCardLimit, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, serviceCardLimit)), 'Duplicate lender'],
+              ].map(([Icon, enabled, handler, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={!enabled}
+                  onClick={handler}
+                  className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-primary disabled:opacity-25"
+                  aria-label={label}
+                >
+                  <Icon size={12} />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
+                className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                aria-label={`Delete lender ${index + 1}`}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+            <InspectorInput
+              label="Bank name"
+              value={item?.title || ''}
+              onChange={(title) => updateLender(index, { title })}
+              placeholder="TD"
+            />
+            <InspectorInput
+              label="Website / logo URL"
+              value={item?.domain || item?.website || ''}
+              onChange={(value) => {
+                const domain = normalizeLenderDomain(value);
+                updateLender(index, { domain, website: value.trim() });
+              }}
+              placeholder="td.com or https://www.td.com"
+            />
+          </div>
+        ))}
+        <DashedAddButton
+          disabled={serviceCards.length >= serviceCardLimit}
+          onClick={() => commitServiceCards([...serviceCards, {
+            id: createContentItemId(),
+            title: 'New bank',
+            domain: '',
+            website: '',
+            description: '',
+          }])}
+        >
+          {serviceCards.length >= serviceCardLimit
+            ? `Max ${serviceCardLimit} lenders reached`
+            : 'Add bank'}
+        </DashedAddButton>
+      </div>
+      <InspectorHint>
+        Logos load automatically from the website domain. Click a bank in the preview to edit it there too.
+      </InspectorHint>
+    </Field>
+  );
+}
+
+export function ServiceCardsEditor({ block, model }) {
+  const { serviceCards, commitServiceCards, isSellerCaseStudy, serviceCardLimit = SERVICE_CARD_LIMIT } = model;
+  const cardLimit = Number(serviceCardLimit) > 0 ? serviceCardLimit : SERVICE_CARD_LIMIT;
+  const isBrokerRates = block?.type === T.MORTGAGE_RATES;
+  const showIconPicker = !isBrokerRates && block?.type !== T.BROKER_COMPENSATION;
+  return (
+    <Field label={`${isSellerCaseStudy ? 'Success story cards' : isBrokerRates ? 'Rate cards' : 'Service cards'} (${serviceCards.length}/${cardLimit})`}>
+      <div className="space-y-2">
+        {serviceCards.map((item, index) => {
+          const iconKey = resolveServiceIconKey(item?.icon, index);
+          const CardIcon = getServiceIconEntry(iconKey).Icon;
+          return (
+            <div
+              key={item?.id || `${block.id}-service-${index}`}
+              className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2"
+            >
+              <div className="flex items-center gap-2">
+                {showIconPicker ? (
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                    <CardIcon size={14} />
+                  </span>
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-700">
+                  {item?.title || (isBrokerRates ? 'Untitled rate' : 'Untitled service')}
+                </span>
+                {[
+                  [ArrowUp, index > 0, () => commitServiceCards(moveCollectionItem(serviceCards, index, -1)), 'Move card up'],
+                  [ArrowDown, index < serviceCards.length - 1, () => commitServiceCards(moveCollectionItem(serviceCards, index, 1)), 'Move card down'],
+                  [Copy, serviceCards.length < cardLimit, () => commitServiceCards(duplicateCollectionItem(serviceCards, index, cardLimit)), 'Duplicate card'],
+                ].map(([Icon, enabled, handler, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={handler}
+                    className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-primary disabled:opacity-25"
+                    aria-label={label}
+                  >
+                    <Icon size={12} />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => commitServiceCards(serviceCards.filter((_, itemIndex) => itemIndex !== index))}
+                  className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  aria-label={`Delete ${isSellerCaseStudy ? 'story' : isBrokerRates ? 'rate' : 'service'} card ${index + 1}`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              {showIconPicker ? (
+                <ServiceIconDropdown
+                  value={iconKey}
+                  onChange={(icon) => {
+                    const next = serviceCards.map((card, cardIndex) => (
+                      cardIndex === index
+                        ? { ...card, id: card?.id || createContentItemId(), icon }
+                        : {
+                            ...card,
+                            id: card?.id || createContentItemId(),
+                            icon: resolveServiceIconKey(card?.icon, cardIndex),
+                          }
+                    ));
+                    commitServiceCards(next);
+                  }}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+        <DashedAddButton
+          disabled={serviceCards.length >= cardLimit}
+          onClick={() => commitServiceCards([...serviceCards, {
+            id: createContentItemId(),
+            title: isSellerCaseStudy ? 'New story stage' : isBrokerRates ? 'New rate' : 'New service',
+            description: isSellerCaseStudy
+              ? 'Add the challenge, strategy, or result for this success story.'
+              : 'Add a clear one-line summary of this service for better client understanding.',
+            rate: isBrokerRates ? 'Starting from X.XX%' : '',
+            icon: showIconPicker ? SERVICE_ICON_DEFAULTS[serviceCards.length % SERVICE_ICON_DEFAULTS.length] : '',
+            url: '',
+          }])}
+        >
+          {serviceCards.length >= cardLimit
+            ? `Max ${cardLimit} cards reached`
+            : isSellerCaseStudy
+              ? 'Add story card'
+              : isBrokerRates
+                ? 'Add rate'
+                : 'Add service card'}
+        </DashedAddButton>
+      </div>
+      <InspectorHint>
+        {showIconPicker
+          ? 'Choose an icon here, or click a card in the preview to edit title, description, and card-level colors.'
+          : 'Click a card in the preview to edit title, rate, and description.'}
       </InspectorHint>
     </Field>
   );
@@ -412,8 +697,9 @@ export function GuidanceStepsEditor({ block, model }) {
   );
 }
 
-export function InvestorFooterLinksEditor({ block, onChange }) {
-  const items = Array.isArray(block?.data?.content?.items) ? block.data.content.items : [];
+export function InvestorFooterLinksEditor({ block, onChange, resolvedItems = [] }) {
+  const persisted = Array.isArray(block?.data?.content?.items) ? block.data.content.items : [];
+  const items = persisted.length ? persisted : resolvedItems;
   const commit = (next) => onChange(block.id, { content: { items: next } });
   return (
     <Field label={`Footer links (${items.length}/8)`}>
@@ -495,3 +781,5 @@ export function GuidanceFaqsEditor({ block, model }) {
     </Field>
   );
 }
+
+

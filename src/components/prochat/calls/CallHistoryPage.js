@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { History, Loader2 } from "lucide-react";
 import { useAppSelector } from "@/store";
@@ -39,8 +39,28 @@ function recordNeedsLiveUpdates(record, locallyEndedRooms) {
 }
 
 export default function CallHistoryPage({ client = false }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-64 place-items-center px-4 py-12">
+          <p className="text-xs text-gray-500">Loading call history…</p>
+        </div>
+      }
+    >
+      <CallHistoryPageContent client={client} />
+    </Suspense>
+  );
+}
+
+function CallHistoryPageContent({ client = false }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const token = useAppSelector((state) => state.auth.token);
+  const scopedThreadId = String(searchParams?.get("thread_id") || "").trim();
+  const scopedOtherUserId = String(
+    searchParams?.get("other_user_id") || searchParams?.get("professional_id") || "",
+  ).trim();
+  const queryThreadId = scopedOtherUserId ? "" : scopedThreadId;
   const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState(1);
   const [callType, setCallType] = useState("");
@@ -51,7 +71,19 @@ export default function CallHistoryPage({ client = false }) {
   const detailBasePath = client ? "/client-dashboard/calls" : "/call-history";
 
   const callsQuery = useQuery({
-    queryKey: ["prochat-call-records", client, token, page, callType, status, from, to],
+    queryKey: [
+      "prochat-call-records",
+      client,
+      token,
+      page,
+      callType,
+      status,
+      from,
+      to,
+      scopedThreadId,
+      scopedOtherUserId,
+      queryThreadId,
+    ],
     queryFn: () =>
       fetchProChatCallRecords({
         token,
@@ -62,6 +94,8 @@ export default function CallHistoryPage({ client = false }) {
         status,
         from,
         to,
+        threadId: queryThreadId,
+        otherUserId: scopedOtherUserId,
       }),
     enabled: mounted && Boolean(token),
     placeholderData: (previous) => previous,
@@ -114,6 +148,22 @@ export default function CallHistoryPage({ client = false }) {
     setPage(1);
   };
 
+  const scopeLabel = useMemo(() => {
+    if (!scopedThreadId && !scopedOtherUserId) return "";
+    if (scopedOtherUserId) {
+      const match = records.find((record) =>
+        (record?.other_participants || []).some(
+          (participant) => String(participant?.id || "") === scopedOtherUserId,
+        ),
+      );
+      const name = String(match?.other_participants?.find(
+        (participant) => String(participant?.id || "") === scopedOtherUserId,
+      )?.full_name || "").trim();
+      return name ? `Calls with ${name}` : "Calls with this professional";
+    }
+    return "Calls in this conversation";
+  }, [records, scopedOtherUserId, scopedThreadId]);
+
   if (!mounted) return null;
 
   return (
@@ -125,9 +175,26 @@ export default function CallHistoryPage({ client = false }) {
           </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Call History</h1>
-            <p className="text-xs text-gray-600">Review your voice and video call activity</p>
+            <p className="text-xs text-gray-600">
+              {scopeLabel || "Review your voice and video call activity"}
+            </p>
           </div>
         </div>
+
+        {(scopedThreadId || scopedOtherUserId) && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+            <p className="text-[11px] font-medium text-primary-dark">
+              {scopeLabel || "Showing calls for the selected conversation"}
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push(detailBasePath)}
+              className="text-[11px] font-semibold text-primary hover:underline"
+            >
+              Show all calls
+            </button>
+          </div>
+        )}
 
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
           <div className="inline-flex w-fit rounded-lg border border-gray-200 bg-gray-50 p-0.5">
@@ -188,7 +255,11 @@ export default function CallHistoryPage({ client = false }) {
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center shadow-sm">
             <History size={34} className="mx-auto text-gray-300" />
             <p className="mt-3 text-sm font-semibold text-gray-900">No call records found</p>
-            <p className="mt-1 text-xs text-gray-500">Your completed, missed, and declined calls will appear here.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {scopeLabel
+                ? "No calls with this person yet in the selected view."
+                : "Your completed, missed, and declined calls will appear here."}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

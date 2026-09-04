@@ -32,7 +32,19 @@ export default function InspectorSelectionPanel({
   if (!selection?.kind || selection.kind === 'block') return null;
 
   const deleteLabel = hasEditableCards
-    ? (isSellerCaseStudy ? 'Delete this story card' : 'Delete this service card')
+    ? (isSellerCaseStudy
+      ? 'Delete this story card'
+      : block?.type === 'lender-network'
+        ? 'Delete this bank'
+        : block?.type === 'mortgage-rates'
+          ? 'Delete this rate'
+          : block?.type === 'alternative-lending'
+            ? 'Delete this option'
+            : block?.type === 'broker-compensation'
+              ? 'Delete this item'
+              : block?.type === 'mortgage-programs'
+                ? 'Delete this program'
+                : 'Delete this service card')
     : isLawyerClassicItemCards && selection?.collection === 'items'
       ? `Delete this ${labelForBlock(block.type).toLowerCase()} card`
       : isRoleDetails && selection?.collection === 'highlights'

@@ -32,17 +32,34 @@ function isAllowedAfterTrial(pathname) {
   return ALLOWED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function isAuthEntryPath(pathname) {
+  return (
+    pathname === "/log-in"
+    || pathname === "/sign-up"
+    || pathname.startsWith("/forgot-password")
+    || pathname.startsWith("/verify-")
+    || pathname.startsWith("/reset-password")
+  );
+}
+
 export function useTrialExpiryRedirect(isMounted) {
   const pathname = usePathname() || "";
   const router = useRouter();
-  const { token, user } = useAppSelector((state) => state.auth);
+  const { token } = useAppSelector((state) => state.auth);
   const [now, setNow] = useState(Date.now());
   const [quotaRedirectRequested, setQuotaRedirectRequested] = useState(false);
   const allowedPath = isAllowedAfterTrial(pathname);
 
-  const { data: profileData } = useQuery({
+  const {
+    data: profileData,
+    isError: profileIsError,
+    error: profileError,
+    isSuccess: profileIsSuccess,
+  } = useQuery({
     queryKey: ["profile"],
-    enabled: Boolean(isMounted && token && !allowedPath),
+    // Always validate the session when a token exists — including /checkout.
+    // Disabling this on checkout left expired tokens stranded on billing screens.
+    enabled: Boolean(isMounted && token),
     staleTime: 15_000,
     queryFn: () =>
       apiClient({
@@ -52,7 +69,10 @@ export function useTrialExpiryRedirect(isMounted) {
       }),
   });
 
-  const effectiveUser = profileData?.user || user;
+  // Never drive checkout redirects from stale Redux user when the session is dead.
+  // Expired tokens previously fell through to checkout because Redux still had trial=expired.
+  const sessionInvalid = profileIsError && Number(profileError?.status) === 401;
+  const effectiveUser = profileIsSuccess ? profileData?.user : null;
 
   const accountStatus = String(effectiveUser?.accountStatus || effectiveUser?.account_status || "").toLowerCase();
   const isClient = String(effectiveUser?.role || "").toLowerCase() === "client";
@@ -73,13 +93,20 @@ export function useTrialExpiryRedirect(isMounted) {
     getActivePlanLimitStates(planLimits, usage).length > 0;
 
   useEffect(() => {
-    if (!isMounted || !token || accountStatus !== ACCOUNT_STATUS.FREE_TRIAL || !trialEndsAt) return;
+    if (!isMounted || !token || !effectiveUser || accountStatus !== ACCOUNT_STATUS.FREE_TRIAL || !trialEndsAt) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [isMounted, token, accountStatus, trialEndsAt]);
+  }, [isMounted, token, effectiveUser, accountStatus, trialEndsAt]);
+
+  // Dead session → login (apiClient also emits nesti:auth-expired; this covers /checkout).
+  useEffect(() => {
+    if (!isMounted || !sessionInvalid) return;
+    if (isAuthEntryPath(pathname)) return;
+    router.replace("/log-in");
+  }, [isMounted, sessionInvalid, pathname, router]);
 
   useEffect(() => {
-    if (!isMounted || !token) return;
+    if (!isMounted || !token || sessionInvalid || !effectiveUser) return;
     const shouldHonorQuotaRedirect = quotaRedirectRequested && !trialStillActive;
     if (!trialHasEnded && !trialQuotaExhausted && !shouldHonorQuotaRedirect) return;
     if (allowedPath) return;
@@ -100,15 +127,27 @@ export function useTrialExpiryRedirect(isMounted) {
           ? "/checkout?trial=quota"
           : "/checkout?trial=expired"
     );
-  }, [isMounted, token, trialHasEnded, trialQuotaExhausted, quotaRedirectRequested, trialStillActive, allowedPath, router, isClient]);
+  }, [
+    isMounted,
+    token,
+    sessionInvalid,
+    effectiveUser,
+    trialHasEnded,
+    trialQuotaExhausted,
+    quotaRedirectRequested,
+    trialStillActive,
+    allowedPath,
+    router,
+    isClient,
+  ]);
 
   useEffect(() => {
-    if (!isMounted || !token) return;
+    if (!isMounted || !token || sessionInvalid) return;
     const onQuotaRequired = () => {
       if (trialStillActive) return;
       setQuotaRedirectRequested(true);
     };
     window.addEventListener("nesti:subscription-quota-required", onQuotaRequired);
     return () => window.removeEventListener("nesti:subscription-quota-required", onQuotaRequired);
-  }, [isMounted, token, trialStillActive]);
+  }, [isMounted, token, sessionInvalid, trialStillActive]);
 }

@@ -1,5 +1,6 @@
 import { STOREFRONT_BLOCK_TYPES, normalizeStorefrontRole } from '../storefrontPresets';
 import { FIRST_HOME_ROADMAP_LIMIT } from '../storefrontLimits';
+import { SERVICE_BENEFIT_FIELDS } from '../renderers/variants/broker/classic/brokerClassicServiceBenefits';
 
 export const BLOCK_LIBRARY = {
   shared: [
@@ -40,8 +41,15 @@ export const BLOCK_LIBRARY = {
     STOREFRONT_BLOCK_TYPES.SELLER_CREDENTIALS,
   ],
   mortgage_broker: [
-    STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR,
     STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS,
+    STOREFRONT_BLOCK_TYPES.MORTGAGE_RATES,
+    STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR,
+    STOREFRONT_BLOCK_TYPES.LENDER_NETWORK,
+    STOREFRONT_BLOCK_TYPES.ALTERNATIVE_LENDING,
+    STOREFRONT_BLOCK_TYPES.BROKER_COMPENSATION,
+    STOREFRONT_BLOCK_TYPES.PRACTICE_SNAPSHOT,
+    STOREFRONT_BLOCK_TYPES.CREDENTIALS,
+    STOREFRONT_BLOCK_TYPES.FAQ,
   ],
   lawyer: [
     STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS,
@@ -118,12 +126,26 @@ export const LAWYER_NEWCOMER_CANONICAL_BLOCK_ORDER = [
   STOREFRONT_BLOCK_TYPES.FOOTER,
 ];
 
+export const BROKER_CLASSIC_CANONICAL_BLOCK_ORDER = [
+  STOREFRONT_BLOCK_TYPES.HERO,
+  STOREFRONT_BLOCK_TYPES.ABOUT,
+  STOREFRONT_BLOCK_TYPES.PRACTICE_SNAPSHOT,
+  STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS,
+  STOREFRONT_BLOCK_TYPES.SERVICES,
+  STOREFRONT_BLOCK_TYPES.ROLE_DETAILS,
+  STOREFRONT_BLOCK_TYPES.BROKER_COMPENSATION,
+  STOREFRONT_BLOCK_TYPES.FAQ,
+  STOREFRONT_BLOCK_TYPES.CTA,
+  STOREFRONT_BLOCK_TYPES.FOOTER,
+];
+
 function canonicalBlockOrderForTemplate(templateKey = '') {
   const key = String(templateKey || '').trim().toLowerCase();
   if (key === 'lawyer-classic') return LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER;
   if (key === 'lawyer-first-home-closing') return LAWYER_FIRST_HOME_CANONICAL_BLOCK_ORDER;
   if (key === 'lawyer-investor') return LAWYER_INVESTOR_CANONICAL_BLOCK_ORDER;
   if (key === 'lawyer-newcomer') return LAWYER_NEWCOMER_CANONICAL_BLOCK_ORDER;
+  if (key === 'mortgage_broker-classic') return BROKER_CLASSIC_CANONICAL_BLOCK_ORDER;
   return null;
 }
 
@@ -186,6 +208,11 @@ export function labelForBlock(type) {
     'practice-snapshot': 'Snapshot',
     'practice-logistics': 'Access',
     'consultation-options': 'How to start',
+    'mortgage-rates': 'Mortgage rates',
+    'mortgage-calculator': 'Calculator',
+    'lender-network': 'Lender network',
+    'broker-compensation': 'Compensation',
+    'alternative-lending': 'Alternative lending',
   };
   const key = String(type || 'block').toLowerCase();
   if (overrides[key]) return overrides[key];
@@ -278,6 +305,10 @@ export function coerceCollectionItems(collection, items = []) {
           id: uniqueId(item.id, 'fallback-service', index),
           title: item.title ?? item.name ?? '',
           description: item.description ?? item.text ?? '',
+          rate: item.rate ?? item.value ?? '',
+          category: item.category ?? item.group ?? '',
+          domain: item.domain ?? item.website ?? '',
+          website: item.website ?? item.domain ?? '',
           icon: item.icon || '',
           background: item.background ?? item.card_background ?? '',
           text_color: item.text_color ?? item.card_text_color ?? '',
@@ -286,7 +317,7 @@ export function coerceCollectionItems(collection, items = []) {
         };
       })
       .filter((item) => item && (item.title || item.label))
-      .slice(0, 8);
+      .slice(0, 24);
   }
 
   if (collection === 'highlights') {
@@ -430,16 +461,27 @@ export function updateContentItem(content = {}, selection, patch) {
       if (index !== resolved.index) return item;
       const next = { ...item, ...patch };
       if (isServiceCollection) {
+        const benefitPatch = SERVICE_BENEFIT_FIELDS.reduce((acc, key) => {
+          if (next[key] != null) acc[key] = next[key];
+          else if (item[key] != null) acc[key] = item[key];
+          return acc;
+        }, {});
         return {
           ...next,
+          ...benefitPatch,
           id: next.id || createContentItemId(),
           title: next.title ?? '',
           description: next.description ?? '',
+          rate: next.rate ?? '',
+          category: next.category ?? '',
+          domain: next.domain ?? next.website ?? '',
+          website: next.website ?? next.domain ?? '',
           icon: next.icon || '',
           background: next.background ?? '',
           text_color: next.text_color ?? '',
           icon_background: next.icon_background ?? '',
           icon_color: next.icon_color ?? '',
+          url: next.url ?? next.href ?? '',
         };
       }
       if (isHighlightCollection) {
@@ -495,7 +537,65 @@ const DEFAULT_CONTENT = {
     secondary_cta_label: 'Send detailed inquiry',
     helper_text: '',
   },
-  [STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR]: { heading: 'Affordability calculator', body: 'Estimate purchasing power before you tour homes.' },
+  [STOREFRONT_BLOCK_TYPES.MORTGAGE_CALCULATOR]: {
+    heading: 'Estimate your payment, then get options',
+    eyebrow: 'Mortgage calculator',
+    body: 'Use this planner to explore an illustrative payment range, then request a personalized mortgage review.',
+    cta_label: 'Get My Mortgage Options',
+  },
+  [STOREFRONT_BLOCK_TYPES.MORTGAGE_RATES]: {
+    eyebrow: 'Current rate ranges',
+    heading: 'Explore starting mortgage rates',
+    body: 'Compare common rate categories, then request a personalized review based on your file.',
+    cta_label: 'Get My Personalized Rate',
+    items: [
+      { id: 'rate-5y-fixed', title: '5-Year Fixed', rate: 'Starting from —%', description: 'Popular fixed term for purchase and refinance planning.' },
+      { id: 'rate-3y-fixed', title: '3-Year Fixed', rate: 'Starting from —%', description: 'Shorter fixed term when flexibility matters.' },
+      { id: 'rate-variable', title: 'Variable', rate: 'Starting from —%', description: 'Variable options for borrowers comfortable with rate movement.' },
+      { id: 'rate-alternative', title: 'Alternative', rate: 'Starting from —%', description: 'Solutions when A-lender criteria are not the best fit.' },
+      { id: 'rate-private', title: 'Private', rate: 'Custom', description: 'Short-term and private options reviewed case by case.' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.LENDER_NETWORK]: {
+    eyebrow: 'Lender network',
+    heading: 'Access to Canada’s leading lenders',
+    body: 'A curated network across major banks, credit unions, and alternative lenders — matched to your file, not a one-size product.',
+    disclaimer: 'Lender availability varies by province, product, and borrower profile. Logos identify institutions for reference only.',
+    items: [
+      { id: 'lender-rbc', title: 'RBC', category: 'Major Banks', domain: 'rbcroyalbank.com', website: 'rbcroyalbank.com', description: '' },
+      { id: 'lender-td', title: 'TD', category: 'Major Banks', domain: 'td.com', website: 'td.com', description: '' },
+      { id: 'lender-scotia', title: 'Scotiabank', category: 'Major Banks', domain: 'scotiabank.com', website: 'scotiabank.com', description: '' },
+      { id: 'lender-bmo', title: 'BMO', category: 'Major Banks', domain: 'bmo.com', website: 'bmo.com', description: '' },
+      { id: 'lender-cibc', title: 'CIBC', category: 'Major Banks', domain: 'cibc.com', website: 'cibc.com', description: '' },
+      { id: 'lender-national', title: 'National Bank', category: 'Major Banks', domain: 'nbc.ca', website: 'nbc.ca', description: '' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.BROKER_COMPENSATION]: {
+    eyebrow: '',
+    heading: 'Transparent broker compensation',
+    body: 'Clear disclosures help clients understand lender compensation, brokerage fees, and private-mortgage costs.',
+    disclaimer: 'Compensation structures vary by lender, product, and transaction type.',
+    items: [
+      { id: 'comp-lender', title: 'Lender compensation', description: 'In many cases, compensation is paid by the lender when a mortgage funds — so you may not pay a separate brokerage fee for standard A-lender solutions.', icon: 'building' },
+      { id: 'comp-percentage', title: 'How compensation is typically structured', description: 'Lender compensation can vary by product, term, and lender. Your advisor can explain the structure that applies to your file before you proceed.', icon: 'percent' },
+      { id: 'comp-brokerage', title: 'Brokerage or arrangement fees', description: 'Some private, alternative, or complex files may include an arrangement or brokerage fee. Any fee is disclosed clearly before you commit.', icon: 'briefcase' },
+      { id: 'comp-private', title: 'Private mortgage fees', description: 'Private lending may involve lender fees, brokerage fees, or legal costs depending on the structure. Details are reviewed case by case.', icon: 'home' },
+    ],
+  },
+  [STOREFRONT_BLOCK_TYPES.ALTERNATIVE_LENDING]: {
+    eyebrow: 'Private & alternative lending',
+    heading: 'Options beyond the traditional bank path',
+    body: 'Help visitors explore potential solutions for complex income, credit, investment, and short-term financing needs.',
+    cta_label: 'Explore My Mortgage Options',
+    items: [
+      { id: 'alt-self-employed', title: 'Self-employed borrowers', description: 'Present business income and documentation through suitable lender programs.', icon: 'briefcase' },
+      { id: 'alt-non-traditional', title: 'Non-traditional income', description: 'Explore options when income is commission-based, contract, or otherwise non-standard.', icon: 'target' },
+      { id: 'alt-credit', title: 'Credit challenges', description: 'Review alternative and private paths when A-lender credit criteria are difficult to meet.', icon: 'shield' },
+      { id: 'alt-refinance', title: 'Refinance & debt consolidation', description: 'Restructure debt, access equity, or simplify payments with a clear comparison of options.', icon: 'percent' },
+      { id: 'alt-investor', title: 'Investment properties', description: 'Structure financing around rental income, cash flow, and portfolio goals.', icon: 'building' },
+      { id: 'alt-private', title: 'Private & short-term financing', description: 'Bridge, construction, and private mortgage options for time-sensitive or complex files.', icon: 'home' },
+    ],
+  },
   [STOREFRONT_BLOCK_TYPES.FEATURED_LISTINGS]: { heading: 'Featured listings', eyebrow: 'Available properties', body: 'Hand-picked opportunities ready for private showings.' },
   [STOREFRONT_BLOCK_TYPES.TOP_LISTINGS]: { heading: 'Top listings', eyebrow: 'Top picks', body: 'Properties drawing the strongest interest right now.' },
   [STOREFRONT_BLOCK_TYPES.SOLD_LISTINGS]: { heading: 'Recently sold', eyebrow: 'Recently sold', body: 'Proof of pricing strategy and market timing.' },
@@ -681,6 +781,7 @@ export const SECTION_SETTINGS = {
 
 const DEFAULT_LAYOUT = {
   alignment: 'left',
+  contentAlignment: 'left',
   padding: 'medium',
   width: 'full',
   variant: 'standard',
@@ -870,6 +971,7 @@ export function normalizeBlock(block, index = 0) {
       content: withContentItemIds(content),
       layout: {
         alignment: rawLayout.alignment || DEFAULT_LAYOUT.alignment,
+        contentAlignment: rawLayout.contentAlignment || DEFAULT_LAYOUT.contentAlignment,
         padding: rawLayout.padding || DEFAULT_LAYOUT.padding,
         width: rawLayout.width || DEFAULT_LAYOUT.width,
         variant: rawLayout.variant || DEFAULT_LAYOUT.variant,

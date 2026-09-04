@@ -35,7 +35,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer'].includes(templateKey)
+    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -93,6 +93,10 @@ export default function StorefrontRenderedBlock({
     onInlineContentChange,
   });
 
+  const isBrokerClassicHero = templateKey === 'mortgage_broker-classic' && isHero;
+  const skipPreviewBandChrome = (templateKey === 'lawyer-classic' && isHero) || isBrokerClassicHero;
+  const isSelectedBand = preview && selectedBlockId === block.id;
+
   return (
     <section
       data-storefront-block={block.type}
@@ -112,12 +116,12 @@ export default function StorefrontRenderedBlock({
         'storefront-public-band relative w-full max-w-none',
         sectionTextOverrideClass,
         preview
-          ? `z-[1] cursor-pointer ${
-              templateKey === 'lawyer-classic' && isHero
+          ? `cursor-pointer ${
+              skipPreviewBandChrome
                 ? ''
-                : selectedBlockId === block.id
-                  ? 'outline outline-2 outline-primary outline-offset-[-2px]'
-                  : 'hover:outline hover:outline-1 hover:outline-primary/40 hover:outline-offset-[-1px]'
+                : isSelectedBand
+                  ? 'z-[2] ring-2 ring-inset ring-primary'
+                  : 'z-[1] hover:z-[2] hover:ring-1 hover:ring-inset hover:ring-primary/35'
             }`
           : '',
       ].filter(Boolean).join(' ') || undefined}

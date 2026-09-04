@@ -17,11 +17,31 @@ export function selectEditableText(node) {
   }
   const selection = window.getSelection();
   selection?.removeAllRanges();
-  if (!textNodes.length) return;
+  if (!textNodes.length) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    range.collapse(true);
+    selection?.addRange(range);
+    return;
+  }
   const range = document.createRange();
   range.setStart(textNodes[0], 0);
   range.setEnd(textNodes[textNodes.length - 1], textNodes[textNodes.length - 1].textContent.length);
   selection?.addRange(range);
+}
+
+function insertTextAtSelection(text) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  range.setStartAfter(textNode);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
 }
 
 export function buildSelectedElementCss({ preview, selectedElement }) {
@@ -78,6 +98,9 @@ export function createInlineEditingHandlers({
       ) return;
       target.dataset.storefrontOriginalValue = target.textContent || '';
       target.dataset.storefrontOriginalHtml = target.innerHTML;
+      if (!String(target.textContent || '').trim() && target.querySelector?.('[data-storefront-placeholder="true"]')) {
+        target.textContent = '';
+      }
       target.contentEditable = 'true';
       target.spellcheck = true;
       target.classList.add('storefront-inline-editing');
@@ -90,6 +113,20 @@ export function createInlineEditingHandlers({
     },
     onKeyDown: (event) => {
       if (!preview || !event.target.matches?.('[data-storefront-field][contenteditable="true"]')) return;
+      if (event.key === ' ') {
+        // Native buttons consume Space as an activation key even while they are
+        // contenteditable. Insert it as text so CTA labels remain editable.
+        event.preventDefault();
+        event.stopPropagation();
+        if (insertTextAtSelection(' ')) {
+          event.target.dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            inputType: 'insertText',
+            data: ' ',
+          }));
+        }
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         event.target.innerHTML = event.target.dataset.storefrontOriginalHtml || '';
@@ -119,7 +156,7 @@ export function createInlineEditingHandlers({
     onBlur: (event) => {
       const target = event.target;
       if (!preview || !target.matches?.('[data-storefront-field][contenteditable="true"]')) return;
-      const value = String(target.textContent || '');
+      const value = String(target.textContent || '').replace(/\u00a0/g, ' ');
       const originalValue = target.dataset.storefrontOriginalValue || '';
       target.contentEditable = 'false';
       target.spellcheck = false;

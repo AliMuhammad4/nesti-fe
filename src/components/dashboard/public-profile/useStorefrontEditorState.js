@@ -11,6 +11,7 @@ import {
   insertBlockAtTemplateRank,
   isProtectedBlockType,
   isSingletonBlockType,
+  BROKER_CLASSIC_CANONICAL_BLOCK_ORDER,
   LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER,
   normalizeBlocks,
 } from '@/components/storefront/builder/storefrontBuilderState';
@@ -25,6 +26,10 @@ import {
   migrateLawyerNewcomerBlocks,
   migrateLawyerNewcomerBrandKit,
 } from '@/components/storefront/templates/lawyer/newcomerMigration';
+import {
+  migrateBrokerClassicBlocks,
+  migrateBrokerClassicBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/classicMigration';
 import { normalizeRole } from './editorConstants';
 import {
   blockLayoutStyleSignature,
@@ -835,12 +840,28 @@ function needsLawyerNewcomerMigration(templateKey, blocks = [], profileSeed = {}
   return JSON.stringify(source) !== JSON.stringify(migrated);
 }
 
+function migrateBrokerBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'mortgage_broker-classic') return blocks;
+  const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+  return migrateBrokerClassicBlocks(blocks, defaults);
+}
+
+function needsBrokerClassicMigration(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'mortgage_broker-classic') return false;
+  const source = normalizeBlocks(blocks);
+  const migrated = normalizeBlocks(migrateBrokerBlocks(templateKey, blocks, profileSeed));
+  return JSON.stringify(source) !== JSON.stringify(migrated);
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
-  return migrateLawyerNewcomerBrandKit(
+  return migrateBrokerClassicBrandKit(
     templateKey,
-    migrateCommunityHubBrandKit(
+    migrateLawyerNewcomerBrandKit(
       templateKey,
-      migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+      migrateCommunityHubBrandKit(
+        templateKey,
+        migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+      ),
     ),
   );
 }
@@ -862,9 +883,13 @@ function applyTemplateBlocksMigrations(templateKey, blocks = [], profileSeed = {
     ),
     profileSeed,
   );
-  return migrateNewcomerBlocks(
+  return migrateBrokerBlocks(
     templateKey,
-    migrateLawyerClassicBlocks(templateKey, migrated, profileSeed),
+    migrateNewcomerBlocks(
+      templateKey,
+      migrateLawyerClassicBlocks(templateKey, migrated, profileSeed),
+      profileSeed,
+    ),
     profileSeed,
   );
 }
@@ -898,7 +923,8 @@ function editorDataFromDraft(
   if (Array.isArray(draft?.blocks) && draft.blocks.length) {
     const migrationApplied = brandMigrationApplied
       || needsLawyerClassicV2Migration(templateKey, draft.blocks)
-      || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed);
+      || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed)
+      || needsBrokerClassicMigration(templateKey, draft.blocks, profileSeed);
     return {
       migrationApplied,
       editorData: {
@@ -1076,6 +1102,10 @@ export default function useStorefrontEditorState({
             recoveredDraft.template_key,
             recoveredDraft.blocks,
           ) || needsLawyerNewcomerMigration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
+          ) || needsBrokerClassicMigration(
             recoveredDraft.template_key,
             recoveredDraft.blocks,
             profileSeed,
@@ -1421,6 +1451,12 @@ export default function useStorefrontEditorState({
     if (
       editorData.template_key === 'lawyer-classic'
       && !LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type)
+    ) {
+      return;
+    }
+    if (
+      editorData.template_key === 'mortgage_broker-classic'
+      && !BROKER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type)
     ) {
       return;
     }

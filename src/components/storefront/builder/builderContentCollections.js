@@ -83,18 +83,125 @@ const CONTENT_COLLECTIONS = {
   },
   [STOREFRONT_BLOCK_TYPES.MORTGAGE_PROGRAMS]: {
     label: 'Mortgage programs',
-    parse: (raw) => raw.split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [name = '', description = '', min_credit_score = '', down_payment_min = ''] = line.split('|').map((part) => part.trim());
-        return { name, description, min_credit_score, down_payment_min };
-      })
-      .filter((item) => item.name),
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', description = '', icon = ''] = line.split('|').map((part) => part.trim());
+          return { title: title || '', name: title || '', description, icon };
+        })
+        .filter((item) => item.title)
+        .slice(0, 12),
+      existingItems,
+      ['title'],
+    ),
     format: (items) => (items || [])
-      .map((item) => [item.name, item.description, item.min_credit_score, item.down_payment_min].filter(Boolean).join(' | '))
+      .map((item) => joinTuple([item?.title || item?.name, item?.description, item?.icon]))
+      .filter(Boolean)
       .join('\n'),
-    hint: 'One per line: Name | Description | Min Credit | Down Payment',
+    hint: 'One per line: Title | Description | Icon',
+    maxItems: 12,
+  },
+  [STOREFRONT_BLOCK_TYPES.MORTGAGE_RATES]: {
+    label: 'Mortgage rates',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', rate = '', description = ''] = line.split('|').map((part) => part.trim());
+          return { title, rate, description };
+        })
+        .filter((item) => item.title)
+        .slice(0, 8),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.rate, item?.description]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Title | Rate | Description',
+    maxItems: 8,
+  },
+  [STOREFRONT_BLOCK_TYPES.LENDER_NETWORK]: {
+    label: 'Banks & lenders',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', domainOrUrl = ''] = line.split('|').map((part) => part.trim());
+          const domain = String(domainOrUrl || '')
+            .toLowerCase()
+            .replace(/^https?:\/\//, '')
+            .replace(/^www\./, '')
+            .split('/')[0]
+            .split('?')[0]
+            .split('#')[0];
+          return {
+            title,
+            domain,
+            website: domainOrUrl || domain,
+            description: '',
+          };
+        })
+        .filter((item) => item.title)
+        .slice(0, 24),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.domain || item?.website]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Bank or lender name | Website',
+    maxItems: 24,
+  },
+  [STOREFRONT_BLOCK_TYPES.BROKER_COMPENSATION]: {
+    label: 'Compensation items',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', description = '', icon = ''] = line.split('|').map((part) => part.trim());
+          return { title, description, icon };
+        })
+        .filter((item) => item.title)
+        .slice(0, 8),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.description, item?.icon]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Title | Description | Icon',
+    maxItems: 8,
+  },
+  [STOREFRONT_BLOCK_TYPES.ALTERNATIVE_LENDING]: {
+    label: 'Alternative lending options',
+    parse: (raw, existingItems) => withStableItemIds(
+      raw.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [title = '', description = ''] = line.split('|').map((part) => part.trim());
+          return { title, description };
+        })
+        .filter((item) => item.title)
+        .slice(0, 12),
+      existingItems,
+      ['title'],
+    ),
+    format: (items) => (items || [])
+      .map((item) => joinTuple([item?.title, item?.description]))
+      .filter(Boolean)
+      .join('\n'),
+    hint: 'One per line: Title | Description',
+    maxItems: 12,
   },
   [STOREFRONT_BLOCK_TYPES.PRACTICE_AREAS]: {
     label: 'Practice areas',

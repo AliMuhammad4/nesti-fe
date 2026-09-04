@@ -261,6 +261,7 @@ const lawyerClassic = {
         { label: 'Practice areas', target: '#services' },
         { label: 'Documents', target: '#documents' },
         { label: 'Closing guide', target: '#guidance' },
+        { label: 'Contact', target: '/contact' },
       ],
     }, {
       animationType: 'fade',

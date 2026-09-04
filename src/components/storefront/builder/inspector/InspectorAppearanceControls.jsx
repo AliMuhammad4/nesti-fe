@@ -83,11 +83,13 @@ export function FaqCardControls({ content, onChange, blockId, onReset }) {
   );
 }
 
-export function ServicesIconControls({ content, onChange, blockId, onReset, isSellerCaseStudy }) {
+export function ServicesIconControls({ content, onChange, blockId, onReset, isSellerCaseStudy, isBrokerClassic = false }) {
   return (
     <AppearancePanel
       title="Icon appearance"
-      description={`Shared default icon colors for ${isSellerCaseStudy ? 'success story cards' : 'service cards'}. Card-level icon colors can override these.`}
+      description={isBrokerClassic
+        ? 'Shared icon colors for all cards in this section.'
+        : `Shared default icon colors for ${isSellerCaseStudy ? 'success story cards' : 'service cards'}. Card-level icon colors can override these.`}
       showReset={Boolean(content.icon_background || content.icon_color)}
       onReset={onReset}
       resetLabel="Reset icon colors"
