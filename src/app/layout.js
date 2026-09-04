@@ -20,6 +20,7 @@ const poppins = Poppins({
 });
 
 export const metadata = {
+  metadataBase: new URL("https://nesti.ca"),
   title: "Nesti AI - AI Intelligence Platform for Real Estate",
   description: "Transform your real estate business with AI intelligence",
 };

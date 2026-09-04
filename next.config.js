@@ -133,7 +133,7 @@ const nextConfig = {
         ],
       },
       {
-        source: "/:publicPage(about|mission|blog|faq|privacy|terms|refund-policy)",
+        source: "/:publicPage(about|mission|blog|faq|privacy|privacy-policy|terms|terms-of-use|refund-policy)",
         headers: [
           {
             key: "Cache-Control",
@@ -149,6 +149,16 @@ const nextConfig = {
       {
         source: "/landingPage",
         destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/privacy",
+        destination: "/privacy-policy",
+        permanent: true,
+      },
+      {
+        source: "/terms",
+        destination: "/terms-of-use",
         permanent: true,
       },
     ];

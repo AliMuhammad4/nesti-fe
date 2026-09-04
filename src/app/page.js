@@ -10,6 +10,12 @@ import CEOFeaturesSection from "@/components/sections/CEOFeaturesSection";
 import OnboardingSection from "@/components/sections/OnboardingSection";
 import { PageCta } from "@/components/public-pages/shared/PublicPageShared";
 
+export const metadata = {
+  alternates: {
+    canonical: "https://nesti.ca",
+  },
+};
+
 export default function Home() {
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-white via-primary/[0.08] to-white">

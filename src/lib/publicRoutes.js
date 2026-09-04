@@ -4,7 +4,9 @@ export const PUBLIC_MARKETING_ROUTES = [
   "/blog",
   "/faq",
   "/privacy",
+  "/privacy-policy",
   "/terms",
+  "/terms-of-use",
   "/refund-policy",
 ];
 

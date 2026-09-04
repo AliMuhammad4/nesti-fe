@@ -101,10 +101,10 @@ export default function RefundPolicyPage() {
               <div className="max-w-4xl">
                 <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary">
                   <Sparkles size={13} aria-hidden />
-                  Service & Refund Terms
+                  Refund Policy
                 </span>
                 <h1 className="text-3xl font-black leading-tight tracking-tight text-text-heading md:text-4xl">
-                  Nesti Terms of Service & Refund Policy
+                  Nesti Refund Policy
                 </h1>
                 <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-primary">
                   Last Updated: June 2, 2026
