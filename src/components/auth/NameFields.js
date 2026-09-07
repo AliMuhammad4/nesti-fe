@@ -14,6 +14,7 @@ export default function NameFields({
   firstNameError,
   lastNameError,
   focusedField,
+  disabled = false,
 }) {
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -28,7 +29,10 @@ export default function NameFields({
           onChange={onFirstNameChange}
           onFocus={onFirstNameFocus}
           onBlur={onFirstNameBlur}
-          className={`h-11 w-full rounded-xl border bg-white/80 px-3 text-sm transition-all duration-200 hover:bg-white hover:shadow-sm cursor-text ${firstNameError
+          disabled={disabled}
+          className={`h-11 w-full rounded-xl border bg-white/80 px-3 text-sm transition-all duration-200 ${
+            disabled ? "!cursor-not-allowed !bg-gray-100 opacity-60" : "cursor-text hover:bg-white hover:shadow-sm"
+          } ${firstNameError
               ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
               : "border-border hover:border-primary/45 focus:border-primary focus:ring-2 focus:ring-primary/15"
             }`}
@@ -50,7 +54,10 @@ export default function NameFields({
           onChange={onLastNameChange}
           onFocus={onLastNameFocus}
           onBlur={onLastNameBlur}
-          className={`h-11 w-full rounded-xl border bg-white/80 px-3 text-sm transition-all duration-200 hover:bg-white hover:shadow-sm cursor-text ${lastNameError
+          disabled={disabled}
+          className={`h-11 w-full rounded-xl border bg-white/80 px-3 text-sm transition-all duration-200 ${
+            disabled ? "!cursor-not-allowed !bg-gray-100 opacity-60" : "cursor-text hover:bg-white hover:shadow-sm"
+          } ${lastNameError
               ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
               : "border-border hover:border-primary/45 focus:border-primary focus:ring-2 focus:ring-primary/15"
             }`}

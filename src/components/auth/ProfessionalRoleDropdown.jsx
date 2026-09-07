@@ -12,6 +12,7 @@ export default function ProfessionalRoleDropdown({
   onBlur,
   error,
   required = false,
+  disabled = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -40,10 +41,17 @@ export default function ProfessionalRoleDropdown({
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) setIsOpen(!isOpen);
+          }}
           onFocus={onFocus}
           onBlur={onBlur}
-          className={`flex h-11 w-full cursor-pointer items-center rounded-xl border bg-white/80 px-3 pr-10 text-left text-sm transition-all duration-200 hover:bg-white hover:shadow-sm focus:ring-2 ${
+          className={`flex h-11 w-full items-center rounded-xl border bg-white/80 px-3 pr-10 text-left text-sm transition-all duration-200 ${
+            disabled
+              ? "cursor-not-allowed !bg-gray-100 opacity-60"
+              : "cursor-pointer hover:bg-white hover:shadow-sm"
+          } focus:ring-2 ${
             error
               ? "border-red-400 focus:border-red-500 focus:ring-red-200"
               : "border-border hover:border-primary/45 focus:border-primary focus:ring-primary/15"
