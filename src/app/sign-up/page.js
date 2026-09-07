@@ -39,24 +39,27 @@ function SignUpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useAppSelector((state) => state.auth.token);
+  const userRole = useAppSelector((state) => state.auth.user?.role);
   const [inviteToken, setInviteToken] = useState("");
 
   useEffect(() => {
     if (token) {
-      // If already logged in, redirect to appropriate dashboard based on stored role
-      const storedRole = localStorage.getItem('nesti_signup_data');
-      let role = null;
-      try {
-        if (storedRole) {
-          const data = JSON.parse(storedRole);
-          role = data.role;
-        }
-      } catch (e) {}
+      // If already logged in, redirect to appropriate dashboard based on user role or stored role
+      let role = userRole || null;
+      if (!role) {
+        try {
+          const storedRole = localStorage.getItem('nesti_signup_data');
+          if (storedRole) {
+            const data = JSON.parse(storedRole);
+            role = data.role;
+          }
+        } catch (e) {}
+      }
       
-      const dashboardRoute = role ? getDashboardRoute(role) : '/dashboard';
+      const dashboardRoute = getDashboardRoute(role);
       router.replace(dashboardRoute);
     }
-  }, [token, router]);
+  }, [token, userRole, router]);
 
   useEffect(() => {
     const wantsGoogleFlow = String(searchParams?.get("google") || "").trim() === "1";
