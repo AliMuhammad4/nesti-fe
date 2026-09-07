@@ -263,10 +263,7 @@ export function migrateBrokerClassicBlocks(blocks = [], defaults = []) {
               || 'Real clients sharing how clear guidance and fast service made financing easier.';
           }
           if (Array.isArray(content.items) && content.items.length) {
-            const staleIds = new Set(['testimonial-1', 'testimonial-2', 'testimonial-3']);
             const isStale = (item) => {
-              const id = String(item?.id || '').trim();
-              if (staleIds.has(id)) return true;
               const name = String(item?.client_name || item?.name || '').trim().toLowerCase();
               const text = String(item?.text || item?.description || '').trim().toLowerCase();
               return (

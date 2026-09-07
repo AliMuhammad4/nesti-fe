@@ -1,6 +1,7 @@
 import { BuilderSelect, Field, inputClass } from '../builderUiPrimitives';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { BROKER_CLASSIC_FOOTER_ITEMS } from '../../renderers/variants/broker/classic/brokerClassicDefaults';
+import { FIRST_HOME_FOOTER_ITEMS } from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
 import {
   ExpertiseProcessEditor,
   GuidanceFaqsEditor,
@@ -13,8 +14,10 @@ import {
   RoleProofEditor,
   ServiceCardsEditor,
   InvestorFooterLinksEditor,
+  TestimonialCardsEditor,
 } from './InspectorCollectionEditors';
 import { HeroCopyFields, HeroMediaFields } from './content/HeroContentFields';
+import { HeroSlidesEditor } from './content/HeroSlidesEditor';
 import { AboutContentFields, CtaContentFields } from './content/SectionContentFields';
 import { ExpertiseContentFields, GuidanceContentFields } from './content/GuidanceContentFields';
 import {
@@ -55,8 +58,10 @@ export default function InspectorContentTab({
     isLawyerInvestor,
     isLawyerNewcomer,
     isBrokerClassic,
+    isBrokerFirstHome,
     isLawyerClassic,
     isFooter,
+    isTestimonials,
     investorCapabilities,
     newcomerCapabilities,
     brokerCapabilities,
@@ -97,6 +102,14 @@ export default function InspectorContentTab({
           profile={profile}
           onMediaUpload={onMediaUpload}
           onBrandKitChange={onBrandKitChange}
+        />
+      ) : null}
+      {isHero && isBrokerFirstHome && !isElementSelection ? (
+        <HeroSlidesEditor
+          block={block}
+          model={model}
+          onChange={onChange}
+          onMediaUpload={onMediaUpload}
         />
       ) : null}
       {!isHero && !isElementSelection ? (
@@ -273,7 +286,10 @@ export default function InspectorContentTab({
           <InvestorFooterLinksEditor
             block={block}
             onChange={onChange}
-            resolvedItems={isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
+            itemLimit={isBrokerFirstHome ? 10 : 8}
+            resolvedItems={isBrokerFirstHome
+              ? FIRST_HOME_FOOTER_ITEMS
+              : isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
           />
         </div>
       ) : null}
@@ -283,6 +299,10 @@ export default function InspectorContentTab({
         profile={profile}
         templateKey={templateKey}
         onChange={onChange}
+        media={media}
+        brandKit={brandKit}
+        onMediaUpload={onMediaUpload}
+        onBrandKitChange={onBrandKitChange}
       />
       <CtaContentFields block={block} model={model} onChange={onChange} />
       {isLawyerClassicStatement && !isElementSelection ? (
@@ -298,6 +318,17 @@ export default function InspectorContentTab({
         <InspectorNote tone="plain-amber">
           Preview is using fallback copy until you save a heading here.
         </InspectorNote>
+      ) : null}
+      {isBrokerClassic && block.type === T.MORTGAGE_CALCULATOR && !isElementSelection ? (
+        <InspectorInput
+          label="Calculator button"
+          value={contentValue('cta_label') || contentValue('primary_cta_label')}
+          onChange={setContent('cta_label')}
+          placeholder={isBrokerFirstHome ? 'Talk through my numbers' : 'Get My Mortgage Options'}
+        />
+      ) : null}
+      {isBrokerClassic && isTestimonials && !isElementSelection ? (
+        <TestimonialCardsEditor block={block} model={model} />
       ) : null}
       {hasEditableCards && (block.type === T.MORTGAGE_RATES || block.type === T.ALTERNATIVE_LENDING) && !isElementSelection ? (
         <InspectorInput
@@ -363,6 +394,7 @@ export default function InspectorContentTab({
       {collection
         && !hasEditableCards
         && !isLawyerClassicItemCards
+        && !(isBrokerClassic && isTestimonials)
         && !(isLayeredLawyerTemplate && isCredentials)
             && !(isFooter && templateCapabilities?.content?.links) ? (
         <Field label={collection.label}>

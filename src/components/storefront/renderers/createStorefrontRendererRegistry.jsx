@@ -144,6 +144,24 @@ import {
   BrokerClassicTestimonials,
 } from './variants/broker/classic';
 import {
+  BrokerFirstHomeAbout,
+  BrokerFirstHomeAlternativeLending,
+  BrokerFirstHomeCalculator,
+  BrokerFirstHomeCompensation,
+  BrokerFirstHomeCredentials,
+  BrokerFirstHomeCta,
+  BrokerFirstHomeFaq,
+  BrokerFirstHomeFooter,
+  BrokerFirstHomeGuidance,
+  BrokerFirstHomeHero,
+  BrokerFirstHomeLenders,
+  BrokerFirstHomePrograms,
+  BrokerFirstHomeRates,
+  BrokerFirstHomeServices,
+  BrokerFirstHomeSnapshot,
+  BrokerFirstHomeTestimonials,
+} from './variants/broker/firstHome';
+import {
   LawyerNewcomerAbout,
   LawyerNewcomerCredentials,
   LawyerNewcomerCta,
@@ -713,6 +731,24 @@ const experienceOverrides = {
 };
 
 const templateOverrides = {
+  'mortgage_broker-first-home': {
+    [T.HERO]: ({ profile, actions, block }) => <BrokerFirstHomeHero profile={profile} actions={actions} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerFirstHomeSnapshot profile={profile} block={block} />,
+    [T.MORTGAGE_PROGRAMS]: ({ profile, actions, block }) => <BrokerFirstHomePrograms profile={profile} actions={actions} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <BrokerFirstHomeServices profile={profile} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <BrokerFirstHomeAbout profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <BrokerFirstHomeGuidance profile={profile} block={block} />,
+    [T.MORTGAGE_RATES]: ({ profile, actions, block }) => <BrokerFirstHomeRates profile={profile} actions={actions} block={block} />,
+    [T.MORTGAGE_CALCULATOR]: ({ profile, actions, block }) => <BrokerFirstHomeCalculator profile={profile} actions={actions} block={block} />,
+    [T.LENDER_NETWORK]: ({ profile, block }) => <BrokerFirstHomeLenders profile={profile} block={block} />,
+    [T.BROKER_COMPENSATION]: ({ profile, block }) => <BrokerFirstHomeCompensation profile={profile} block={block} />,
+    [T.ALTERNATIVE_LENDING]: ({ profile, actions, block }) => <BrokerFirstHomeAlternativeLending profile={profile} actions={actions} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <BrokerFirstHomeCredentials profile={profile} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => <BrokerFirstHomeTestimonials profile={profile} block={block} />,
+    [T.FAQ]: ({ profile, block }) => <BrokerFirstHomeFaq profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <BrokerFirstHomeCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <BrokerFirstHomeFooter profile={profile} actions={actions} block={block} />,
+  },
   'mortgage_broker-classic': {
     [T.HERO]: ({ profile, actions, block }) => <BrokerClassicHero profile={profile} actions={actions} block={block} />,
     [T.ABOUT]: ({ profile, block }) => <BrokerClassicAbout profile={profile} block={block} />,

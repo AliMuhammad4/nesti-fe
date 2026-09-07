@@ -85,9 +85,10 @@ function minimumDownPayment(purchasePrice) {
   return price * 0.2;
 }
 
-export function BrokerClassicCalculator({ actions = {}, block }) {
+export function BrokerClassicCalculator({ actions = {}, block, appearance = 'classic' }) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '1');
+  const isFirstHome = appearance === 'first-home';
   const [purchasePrice, setPurchasePrice] = useState('750000');
   const [downPayment, setDownPayment] = useState('150000');
   const [rate, setRate] = useState('4.79');
@@ -138,7 +139,14 @@ export function BrokerClassicCalculator({ actions = {}, block }) {
     setDownPayment(String(Math.round(price * (Number(percent) / 100))));
   };
 
-  const ctaLabel = brokerContentValue(content, 'cta_label', 'Get My Mortgage Options');
+  const defaultCtaLabel = isFirstHome
+    ? 'Talk through my numbers'
+    : 'Get My Mortgage Options';
+  const ctaLabel = brokerContentValue(
+    content,
+    'cta_label',
+    brokerContentValue(content, 'primary_cta_label', defaultCtaLabel),
+  );
   const paymentLabel = frequency.accelerated
     ? `Estimated ${frequency.label.toLowerCase()} payment`
     : `Estimated ${frequency.label.toLowerCase()} payment`;
@@ -150,16 +158,25 @@ export function BrokerClassicCalculator({ actions = {}, block }) {
       style={{ backgroundColor: presentation.background, color: presentation.color }}
     >
       <div
-        className={`w-full max-w-none overflow-hidden ${presentation.cardVisualClass}`}
-        style={cardSurfaceStyle(presentation)}
+        className={
+          isFirstHome
+            ? 'w-full max-w-none'
+            : `w-full max-w-none overflow-hidden ${presentation.cardVisualClass}`
+        }
+        style={isFirstHome ? undefined : cardSurfaceStyle(presentation)}
       >
         <div className="grid lg:grid-cols-[1.12fr_.88fr] lg:items-stretch">
-          <div className="flex h-full flex-col border-b border-slate-100 p-6 sm:p-8 lg:border-b-0 lg:border-r lg:border-slate-100">
+          <div className={`flex h-full flex-col p-6 sm:p-8 ${
+            isFirstHome
+              ? 'lg:border-r lg:border-[#102A43]/10'
+              : 'border-b border-slate-100 lg:border-b-0 lg:border-r lg:border-slate-100'
+          }`}
+          >
             <div
               className={`space-y-3 ${brokerAlignmentClass(presentation.headingAlignment)} ${brokerAlignmentMarginClass(presentation.headingAlignment)}`}
               data-storefront-anim-item="true"
             >
-              <div className={`flex items-center gap-3 ${
+              <div className={`flex items-start gap-3 ${
                 presentation.headingAlignment === 'center'
                   ? 'justify-center'
                   : presentation.headingAlignment === 'right'
@@ -175,7 +192,7 @@ export function BrokerClassicCalculator({ actions = {}, block }) {
                   field="content.heading"
                   label="Calculator heading"
                   source={lawyerContentSource(content, 'heading')}
-                  className="min-w-0 text-xl font-bold tracking-tight text-[color:var(--storefront-primary,#0c2139)] sm:text-2xl sm:leading-tight"
+                  className="min-w-0 flex-1 text-xl font-bold tracking-tight text-[color:var(--storefront-primary,#0c2139)] sm:text-2xl sm:leading-tight"
                 >
                   {brokerContentValue(content, 'heading', 'Estimate your payment, then get options')}
                 </EditableText>
@@ -186,7 +203,7 @@ export function BrokerClassicCalculator({ actions = {}, block }) {
                 label="Calculator description"
                 source={lawyerContentSource(content, 'body')}
                 className={`text-sm leading-6 text-slate-600 ${
-                  presentation.headingAlignment === 'left' ? 'sm:pl-14 sm:whitespace-nowrap' : ''
+                  !isFirstHome && presentation.headingAlignment === 'left' ? 'sm:pl-14 sm:whitespace-nowrap' : ''
                 }`}
               >
                 {brokerContentValue(content, 'body', 'Use this planner to explore an illustrative payment range, then request a personalized mortgage review.')}

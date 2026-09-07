@@ -6,7 +6,8 @@ import PublicStorefrontPage from './PublicStorefrontPage';
 
 export default function PublicStorefrontPageClient({ profile }) {
   useEffect(() => {
-    if (profile?.storefront_template_key !== 'lawyer-newcomer') return undefined;
+    const templateKey = profile?.storefront_template_key;
+    if (!['lawyer-newcomer', 'mortgage_broker-first-home'].includes(templateKey)) return undefined;
 
     const alignHashTarget = () => {
       const hash = decodeURIComponent(window.location.hash.slice(1));

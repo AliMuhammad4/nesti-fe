@@ -1,7 +1,7 @@
 function hasStoryContent(item) {
   if (!item || typeof item !== 'object') return false;
   const name = String(item.client_name || item.name || '').trim();
-  const text = String(item.text || item.review || item.testimonial || '').trim();
+  const text = String(item.text || item.review || item.testimonial || item.description || '').trim();
   return Boolean(name && text);
 }
 

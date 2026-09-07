@@ -35,7 +35,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic'].includes(templateKey)
+    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic', 'mortgage_broker-first-home'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -93,8 +93,8 @@ export default function StorefrontRenderedBlock({
     onInlineContentChange,
   });
 
-  const isBrokerClassicHero = templateKey === 'mortgage_broker-classic' && isHero;
-  const skipPreviewBandChrome = (templateKey === 'lawyer-classic' && isHero) || isBrokerClassicHero;
+  const isDedicatedBrokerHero = ['mortgage_broker-classic', 'mortgage_broker-first-home'].includes(templateKey) && isHero;
+  const skipPreviewBandChrome = (templateKey === 'lawyer-classic' && isHero) || isDedicatedBrokerHero;
   const isSelectedBand = preview && selectedBlockId === block.id;
 
   return (

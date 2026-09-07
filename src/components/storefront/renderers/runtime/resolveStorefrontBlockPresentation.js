@@ -102,7 +102,9 @@ export function resolveStorefrontBlockPresentation({
       && TEMPLATE_NEUTRAL_BANDS.has(storedBackground.toLowerCase())
     );
   const sectionBackground = (
-    (templateKey === 'lawyer-newcomer' || templateKey === 'mortgage_broker-classic')
+    (templateKey === 'lawyer-newcomer'
+      || templateKey === 'mortgage_broker-classic'
+      || templateKey === 'mortgage_broker-first-home')
     && useTemplateBand
     && !isHero
   )

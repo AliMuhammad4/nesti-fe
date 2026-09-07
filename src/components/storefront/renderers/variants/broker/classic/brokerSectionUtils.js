@@ -61,6 +61,8 @@ const LEGACY_BROKER_SECTION_BACKGROUNDS = new Set([
   '#ffffff',
   '#f8fafc',
   '#eff2f6',
+  '#eef3f7',
+  '#f7f9fb',
   '#0c2139',
   '#008fd5',
 ]);

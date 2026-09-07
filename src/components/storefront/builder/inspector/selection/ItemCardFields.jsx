@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../../storefrontPresets';
 import { labelForBlock } from '../../storefrontBuilderState';
 import { lawyerClassicIconDefault } from '../../../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import { resolveServiceBenefits, withServiceBenefitPatch } from '../../../renderers/variants/broker/classic/brokerClassicServiceBenefits';
+import { applyLenderPreset, LENDER_BANK_CUSTOM_KEY } from '../../../renderers/variants/broker/classic/lenderBankPresets';
 import { resolveServiceIconKey, SERVICE_ICON_DEFAULTS, ServiceIconDropdown } from '../../storefrontServiceIcons';
-import { BuilderSelect, ColorField, Field } from '../../builderUiPrimitives';
+import { BuilderSelect, ColorField, Field, MediaPicker, ImageAdjustmentControls, inputClass } from '../../builderUiPrimitives';
+import LenderBankFields from '../LenderBankFields';
 import {
   DashedAddButton,
   InspectorEyebrow,
@@ -96,11 +99,18 @@ export function LawyerCardItemFields({ block, model, selection, onItemChange, on
 }
 
 export function ServiceCardItemFields({ model, selection, onItemChange, onItemAdd }) {
-  const { isSellerCaseStudy, serviceCards, block, serviceCardLimit = 6, isBrokerClassic } = model;
+  const {
+    isSellerCaseStudy,
+    serviceCards,
+    block,
+    serviceCardLimit = 6,
+    isBrokerClassic,
+    isBrokerFirstHome,
+  } = model;
   const isBrokerRates = block?.type === T.MORTGAGE_RATES;
   const isBrokerLenders = block?.type === T.LENDER_NETWORK;
   const isBrokerCompensation = block?.type === T.BROKER_COMPENSATION;
-  const isBrokerClassicServices = isBrokerClassic && block?.type === T.SERVICES;
+  const isBrokerClassicServices = isBrokerClassic && !isBrokerFirstHome && block?.type === T.SERVICES;
   const showIcon = !isBrokerRates && !isBrokerLenders;
   const cardLimit = serviceCardLimit;
   const serviceBenefitValues = isBrokerClassicServices
@@ -129,35 +139,25 @@ export function ServiceCardItemFields({ model, selection, onItemChange, onItemAd
                   ? 'Success story card'
                   : 'Service card'}
       </InspectorEyebrow>
-      <InspectorInput
-        label={isBrokerRates ? 'Product name' : isBrokerLenders ? 'Bank name' : 'Title'}
-        value={selection.item?.title || ''}
-        onChange={(title) => updateItem({ title })}
-      />
+      {!isBrokerLenders ? (
+        <InspectorInput
+          label={isBrokerRates ? 'Product name' : 'Title'}
+          value={selection.item?.title || ''}
+          onChange={(title) => updateItem({ title })}
+        />
+      ) : null}
+      {isBrokerLenders ? (
+        <LenderBankFields
+          item={selection.item || {}}
+          onChange={(patch) => updateItem(patch)}
+        />
+      ) : null}
       {isBrokerRates ? (
         <InspectorInput
           label="Rate"
           value={selection.item?.rate || ''}
           onChange={(rate) => updateItem({ rate })}
           placeholder="Starting from 4.29%"
-        />
-      ) : null}
-      {isBrokerLenders ? (
-        <InspectorInput
-          label="Website / logo URL"
-          value={selection.item?.domain || selection.item?.website || ''}
-          onChange={(value) => {
-            const trimmed = String(value || '').trim();
-            const domain = trimmed
-              .toLowerCase()
-              .replace(/^https?:\/\//, '')
-              .replace(/^www\./, '')
-              .split('/')[0]
-              .split('?')[0]
-              .split('#')[0];
-            updateItem({ domain, website: trimmed });
-          }}
-          placeholder="td.com or https://www.td.com"
         />
       ) : null}
       {!isBrokerLenders ? (
@@ -244,7 +244,7 @@ export function ServiceCardItemFields({ model, selection, onItemChange, onItemAd
           title: isBrokerRates
             ? 'New rate'
             : isBrokerLenders
-              ? 'New bank'
+              ? ''
               : block?.type === T.BROKER_COMPENSATION
                 ? 'New compensation item'
                 : block?.type === T.ALTERNATIVE_LENDING
@@ -258,8 +258,10 @@ export function ServiceCardItemFields({ model, selection, onItemChange, onItemAd
               ? 'Add the challenge, strategy, or result for this success story.'
               : 'Add a clear one-line summary visitors can scan quickly.',
           rate: isBrokerRates ? 'Starting from X.XX%' : '',
-          domain: '',
-          website: '',
+          ...(isBrokerLenders ? applyLenderPreset(LENDER_BANK_CUSTOM_KEY) : {
+            domain: '',
+            website: '',
+          }),
           icon: showIcon ? SERVICE_ICON_DEFAULTS[serviceCards.length % SERVICE_ICON_DEFAULTS.length] : '',
           background: '',
           text_color: '',
@@ -394,6 +396,90 @@ export function HighlightItemFields({ block, model, selection, onItemChange, onI
       >
         {roleHighlights.length >= 6 ? 'Max 6 highlights reached' : 'Add highlight'}
       </DashedAddButton>
+    </>
+  );
+}
+
+export function HeroSlideItemFields({ selection, onItemChange, onMediaUpload }) {
+  const [uploading, setUploading] = useState(false);
+  const item = selection.item || {};
+  const slideNumber = Number.isInteger(selection.itemIndex)
+    ? selection.itemIndex + 1
+    : null;
+  const imageUrl = item.image_url || item.image || item.src || '';
+  const uploadImage = async (file) => {
+    if (!file || !onMediaUpload) return;
+    setUploading(true);
+    try {
+      const url = await onMediaUpload('gallery', file);
+      if (url) onItemChange?.({ image_url: url });
+    } finally {
+      setUploading(false);
+    }
+  };
+  return (
+    <>
+      <InspectorEyebrow>Hero slide{slideNumber ? ` · ${slideNumber}` : ''}</InspectorEyebrow>
+      <MediaPicker
+        label="Slide image"
+        hint={uploading ? 'Uploading image…' : 'Full-bleed background photo for this slide'}
+        image={imageUrl}
+        uploading={uploading}
+        onUpload={uploadImage}
+        tall
+      />
+      <input
+        value={imageUrl}
+        onChange={(event) => onItemChange?.({ image_url: event.target.value })}
+        className={inputClass}
+        placeholder="Or paste an image URL"
+        aria-label="Slide image URL"
+      />
+      {imageUrl ? (
+        <ImageAdjustmentControls
+          image={imageUrl}
+          kind="cover"
+          editorKind="hero-first-home"
+          fieldPrefix="image"
+          label="slide image"
+          values={{
+            image_position_x: item.image_position_x,
+            image_position_y: item.image_position_y,
+            image_zoom: item.image_zoom,
+          }}
+          onChange={(patch) => onItemChange?.(patch)}
+        />
+      ) : null}
+      <Field label="Image fit">
+        <BuilderSelect
+          value={item.image_fit === 'contain' ? 'contain' : 'cover'}
+          options={[
+            { value: 'cover', label: 'Fill frame (crop edges)' },
+            { value: 'contain', label: 'Fit full image (no crop)' },
+          ]}
+          onChange={(value) => onItemChange?.({ image_fit: value })}
+          ariaLabel="Slide image fit"
+        />
+      </Field>
+      <InspectorInput
+        label="Eyebrow"
+        value={item.eyebrow || ''}
+        onChange={(eyebrow) => onItemChange?.({ eyebrow })}
+        placeholder="First-home financing"
+      />
+      <InspectorInput
+        label="Heading"
+        value={item.heading || item.title || ''}
+        onChange={(heading) => onItemChange?.({ heading })}
+        placeholder="Your first home starts here"
+      />
+      <InspectorTextarea
+        label="Description"
+        value={item.body || item.text || ''}
+        onChange={(body) => onItemChange?.({ body })}
+        placeholder="Add a short supporting line."
+        className="min-h-24 resize-y"
+      />
     </>
   );
 }

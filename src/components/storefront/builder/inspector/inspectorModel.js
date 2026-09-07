@@ -45,6 +45,11 @@ import {
 import { lawyerInvestorCapabilities } from './investorCapabilities';
 import { lawyerNewcomerCapabilities } from './newcomerCapabilities';
 import { brokerClassicCapabilities } from '../../renderers/variants/broker/classic/brokerClassicCapabilities';
+import {
+  FIRST_HOME_FAQS,
+  brokerFirstHomeCollectionFallback,
+} from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import { brokerFirstHomeCapabilities } from '../../renderers/variants/broker/firstHome/brokerFirstHomeCapabilities';
 import { readContentPath } from '../contentPath';
 
 function mapProfileServiceCards(profile) {
@@ -112,7 +117,9 @@ export function buildInspectorModel({
   const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
   const isLawyerInvestor = templateKey === 'lawyer-investor';
   const isLawyerNewcomer = templateKey === 'lawyer-newcomer';
-  const isBrokerClassic = templateKey === 'mortgage_broker-classic';
+  const isBrokerClassicTemplate = templateKey === 'mortgage_broker-classic';
+  const isBrokerFirstHome = templateKey === 'mortgage_broker-first-home';
+  const isBrokerClassic = isBrokerClassicTemplate || isBrokerFirstHome;
   const investorCapabilities = isLawyerInvestor
     ? lawyerInvestorCapabilities(block?.type)
     : null;
@@ -120,7 +127,11 @@ export function buildInspectorModel({
     ? lawyerNewcomerCapabilities(block?.type)
     : null;
   const brokerCapabilities = isBrokerClassic
-    ? brokerClassicCapabilities(block?.type)
+    ? (
+        isBrokerFirstHome
+          ? brokerFirstHomeCapabilities(block?.type)
+          : brokerClassicCapabilities(block?.type)
+      )
     : null;
   // Keep the story-warm Newcomer Hero on its established generic control path.
   const isLayeredLawyerTemplate = isLawyerClassic
@@ -148,12 +159,17 @@ export function buildInspectorModel({
   const allowHeroContentTabForSelection = isHero
     && isProfileSelection
     && ['brandKit.cover_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
+  const allowAboutContentTabForSelection = block?.type === T.ABOUT
+    && isProfileSelection
+    && selectedField === 'brandKit.profile_photo_url';
+  const allowContentTabForElementSelection = allowHeroContentTabForSelection
+    || allowAboutContentTabForSelection;
 
   const { content, layout, style } = block.data;
   const isSellerExpertTemplate = templateKey === 'agent-seller-expert';
   const isCommunityTemplate = templateKey === 'agent-community-expert';
   const selectedItemField = selection?.itemField || '';
-  const availableTabs = (isElementSelection && !allowHeroContentTabForSelection)
+  const availableTabs = (isElementSelection && !allowContentTabForElementSelection)
     ? ['layout', 'style']
     : ['content', 'layout', 'style'];
   const showSectionDesignTabs = !isItemSelection;
@@ -279,6 +295,10 @@ export function buildInspectorModel({
     if (isBrokerPrograms) {
       const templateItems = templateDefaultBlock?.data?.content?.items;
       if (Array.isArray(templateItems) && templateItems.length) return templateItems;
+      if (isBrokerFirstHome) {
+        const firstHomeFallback = brokerFirstHomeCollectionFallback(block.type, 'items');
+        if (firstHomeFallback?.length) return firstHomeFallback;
+      }
       if (block.type === T.BROKER_COMPENSATION) return BROKER_CLASSIC_COMPENSATION_ITEMS;
       if (block.type === T.MORTGAGE_PROGRAMS) return BROKER_CLASSIC_PROGRAM_ITEMS;
       const brokerFallback = brokerClassicCollectionFallback(block.type, 'items');
@@ -288,6 +308,7 @@ export function buildInspectorModel({
     if (isBrokerClassic && isServices) {
       const templateItems = templateDefaultBlock?.data?.content?.items;
       if (Array.isArray(templateItems) && templateItems.length) return templateItems;
+      if (isBrokerFirstHome) return brokerFirstHomeCollectionFallback(block.type, 'items');
       return BROKER_CLASSIC_SERVICE_ITEMS;
     }
     return profileServiceCards;
@@ -321,6 +342,21 @@ export function buildInspectorModel({
         && String(item.text || item.review || '').trim()
       )).slice(0, 8).length
     : 0;
+  const commitTestimonials = (next) => {
+    onChange(block.id, {
+      content: {
+        items: next.slice(0, 8).map((item, index) => ({
+          ...item,
+          id: item?.id || createContentItemId(),
+          client_name: item?.client_name || item?.name || '',
+          text: item?.text || item?.review || item?.description || '',
+          role: item?.role || 'Verified client',
+          rating: Math.min(5, Math.max(1, Number(item?.rating) || 5)),
+          name: item?.client_name || item?.name || '',
+        })),
+      },
+    });
+  };
   const commitServiceCards = (next) => {
     const normalized = next.slice(0, serviceCardLimit).map((item) => ({
       ...item,
@@ -338,7 +374,7 @@ export function buildInspectorModel({
       icon_color: item?.icon_color || '',
       url: item?.url || item?.href || '',
       link_disabled: item?.link_disabled === true,
-      ...(isBrokerClassic && block.type === T.SERVICES ? {
+      ...(isBrokerClassicTemplate && block.type === T.SERVICES ? {
         benefit_0: item?.benefit_0 ?? '',
         benefit_1: item?.benefit_1 ?? '',
         benefit_2: item?.benefit_2 ?? '',
@@ -370,21 +406,33 @@ export function buildInspectorModel({
       },
     });
   };
-  const guidanceStepsSource = Array.isArray(content.steps)
-    && (content.steps.length || isLawyerClassicGuidance)
-    ? content.steps.map((item) => (
+  const guidanceStepsSource = (() => {
+    if (Array.isArray(content.steps) && content.steps.length) {
+      return content.steps.map((item) => (
         item && typeof item === 'object'
           ? { ...item, text: item.text ?? item.description ?? '' }
           : item
-      ))
-    : getGuidanceCollectionFallback(profile?.professional_type, 'steps');
+      ));
+    }
+    if (isBrokerFirstHome && block.type === T.GUIDANCE) {
+      return brokerFirstHomeCollectionFallback('guidance', 'steps');
+    }
+    if (Array.isArray(content.steps) && isLawyerClassicGuidance) {
+      return content.steps.map((item) => (
+        item && typeof item === 'object'
+          ? { ...item, text: item.text ?? item.description ?? '' }
+          : item
+      ));
+    }
+    return getGuidanceCollectionFallback(profile?.professional_type, 'steps');
+  })();
   const guidanceSteps = coerceCollectionItems('steps', guidanceStepsSource)
     .slice(0, guidanceStepLimit);
   const guidanceFaqs = Object.prototype.hasOwnProperty.call(content, 'faqs')
     && Array.isArray(content.faqs)
     ? coerceCollectionItems('faqs', content.faqs)
     : (isBrokerClassic && isFaq
-      ? coerceCollectionItems('faqs', BROKER_CLASSIC_FAQS)
+      ? coerceCollectionItems('faqs', isBrokerFirstHome ? FIRST_HOME_FAQS : BROKER_CLASSIC_FAQS)
       : getGuidanceCollectionFallback(profile?.professional_type, 'faqs'));
   const commitGuidanceSteps = (next) => {
     onChange(block.id, {
@@ -395,6 +443,7 @@ export function buildInspectorModel({
           title: item?.title || '',
           icon: item?.icon || '',
           text: item?.text ?? item?.description ?? '',
+          description: item?.description ?? item?.text ?? '',
         })),
       },
     });
@@ -534,6 +583,7 @@ export function buildInspectorModel({
     isLawyerInvestor,
     isLawyerNewcomer,
     isBrokerClassic,
+    isBrokerFirstHome,
     investorCapabilities,
     newcomerCapabilities,
     brokerCapabilities,
@@ -545,6 +595,8 @@ export function buildInspectorModel({
     isThemeDrivenAgentHero,
     heroUsesProfilePhoto,
     allowHeroContentTabForSelection,
+    allowAboutContentTabForSelection,
+    allowContentTabForElementSelection,
     isSellerExpertTemplate,
     isCommunityTemplate,
     selectedItemField,
@@ -587,6 +639,7 @@ export function buildInspectorModel({
     clearRolePanelStyles,
     serviceCards,
     testimonialItemCount,
+    commitTestimonials,
     commitServiceCards,
     lawyerClassicCards,
     commitLawyerClassicCards,

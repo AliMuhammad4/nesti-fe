@@ -87,13 +87,22 @@ function ProgramDescription({
   );
 }
 
-export function BrokerClassicPrograms({ profile, block }) {
+export function BrokerClassicPrograms({
+  profile,
+  block,
+  fallbackItems = BROKER_CLASSIC_PROGRAM_ITEMS,
+  headingDefaults = {
+    eyebrow: 'Mortgage programs',
+    heading: 'Financing paths for every stage',
+    body: 'Purchase, refinance, renewal, and first-time buyer guidance with clear next steps.',
+  },
+}) {
   const content = blockContent(block);
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
   const { items, hasPersisted } = normalizedItems(
     content,
-    BROKER_CLASSIC_PROGRAM_ITEMS,
+    fallbackItems,
     'items',
     12,
   );
@@ -108,9 +117,9 @@ export function BrokerClassicPrograms({ profile, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Mortgage programs"
-          heading="Financing paths for every stage"
-          body="Purchase, refinance, renewal, and first-time buyer guidance with clear next steps."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {items.length ? (

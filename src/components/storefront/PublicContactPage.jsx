@@ -12,6 +12,8 @@ import { LawyerInvestorFooter } from './renderers/variants/lawyer/investor';
 import { LawyerNewcomerFooter } from './renderers/variants/lawyer/newcomer';
 import { BrokerClassicFooter } from './renderers/variants/broker/classic/BrokerClassicFooter';
 import { BROKER_CLASSIC_FOOTER_ITEMS } from './renderers/variants/broker/classic/brokerClassicDefaults';
+import { BrokerFirstHomeFooter } from './renderers/variants/broker/firstHome/BrokerFirstHomeAdapters';
+import { FIRST_HOME_FOOTER_ITEMS } from './renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
 import { submitPublicLead } from '@/lib/publicProfileClient';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontInlineStyle from './StorefrontInlineStyle';
@@ -46,13 +48,25 @@ const BROKER_PURPOSE_OPTIONS = [
 
 function resolveSectionVariant(templateKey = '') {
   const key = String(templateKey || '').toLowerCase();
+  if (key === 'mortgage_broker-classic') return 'brokerClassic';
+  if (key === 'mortgage_broker-first-home') return 'brokerClassic';
   if (key.includes('luxury')) return 'luxury';
-  if (key.includes('first-home')) return 'firstHome';
+  if (key === 'agent-first-home') return 'firstHome';
   if (key.includes('seller')) return 'seller';
   if (key.includes('community')) return 'community';
   if (key.includes('investor')) return 'investor';
-  if (key === 'mortgage_broker-classic') return 'brokerClassic';
   return undefined;
+}
+
+function mapFooterItems(items, profileHref) {
+  return items.map((item) => ({
+    ...item,
+    url: item.target === '/contact'
+      ? `${profileHref}/contact`
+      : item.target?.startsWith('#')
+        ? `${profileHref}${item.target}`
+        : item.target,
+  }));
 }
 
 function TemplateSelect({
@@ -148,7 +162,9 @@ export default function PublicContactPage({ profile }) {
   const isLawyerNewcomer = templateKey === 'lawyer-newcomer';
   const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
   const isBrokerClassic = templateKey === 'mortgage_broker-classic';
-  const isBroker = profile?.professional_type === 'mortgage_broker' || isBrokerClassic;
+  const isBrokerFirstHome = templateKey === 'mortgage_broker-first-home';
+  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome;
+  const isBroker = profile?.professional_type === 'mortgage_broker' || isBrokerTemplate;
   const isLayeredLawyer = isLawyerClassic
     || isLawyerFirstHome
     || isLawyerNewcomer;
@@ -171,16 +187,11 @@ export default function PublicContactPage({ profile }) {
     ...footerBlockContent,
     items: Array.isArray(footerBlockContent?.items) && footerBlockContent.items.length
       ? footerBlockContent.items
-      : isBrokerClassic
-        ? BROKER_CLASSIC_FOOTER_ITEMS.map((item) => ({
-            ...item,
-            url: item.target === '/contact'
-              ? `${profileHref}/contact`
-              : item.target?.startsWith('#')
-                ? `${profileHref}${item.target}`
-                : item.target,
-          }))
-        : [
+      : isBrokerFirstHome
+        ? mapFooterItems(FIRST_HOME_FOOTER_ITEMS, profileHref)
+        : isBrokerClassic
+          ? mapFooterItems(BROKER_CLASSIC_FOOTER_ITEMS, profileHref)
+          : [
           { label: 'Profile', url: profileHref },
           { label: 'Services', url: `${profileHref}#services` },
           ...(isBroker
@@ -256,7 +267,7 @@ export default function PublicContactPage({ profile }) {
       ? 'w-full border border-primary/15 bg-white/80 px-3.5 py-3 text-[13px] text-primary outline-none transition-colors placeholder:text-slate-400 focus:border-accent focus:bg-white'
       : isLawyerNewcomer
         ? 'w-full rounded-2xl border border-primary/15 bg-white/90 px-3.5 py-3 text-[13px] text-text-heading outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/15'
-      : isBrokerClassic
+      : isBrokerTemplate
         ? 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] text-[color:var(--storefront-primary,#0c2139)] outline-none transition placeholder:text-slate-400 focus:border-[color:var(--storefront-accent,#008fd5)] focus:ring-2 focus:ring-[color:var(--storefront-accent,#008fd5)]/15'
       : 'w-full rounded-xl bg-white px-3.5 py-2.5 text-[13px] text-text-heading outline-none ring-1 ring-slate-200 transition-all duration-300 placeholder:text-slate-400 focus:ring-primary';
   const labelClass = isLuxury
@@ -265,7 +276,7 @@ export default function PublicContactPage({ profile }) {
       ? 'mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-primary'
       : isLawyerNewcomer
         ? 'mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-primary'
-      : isBrokerClassic
+      : isBrokerTemplate
         ? 'mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--storefront-primary,#0c2139)]'
       : 'mb-1.5 block text-[11px] font-semibold text-text-heading';
   const firstHomeSelectButtonClass = 'w-full rounded-xl bg-white px-3.5 py-2.5 text-[13px] text-text-heading outline-none ring-1 ring-[#5bd36d]/35 transition-all duration-300 hover:ring-[#5bd36d]/55';
@@ -320,7 +331,7 @@ export default function PublicContactPage({ profile }) {
             <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
               <div className="self-start lg:sticky lg:top-28">
                 <p className={`mt-8 text-[11px] font-bold uppercase tracking-[0.22em] ${
-                  isLuxury || isLawyerClassic || isLawyerFirstHome || isBrokerClassic
+                  isLuxury || isLawyerClassic || isLawyerFirstHome || isBrokerTemplate
                     ? 'text-[color:var(--storefront-accent,#008fd5)]'
                     : 'text-primary'
                 }`}>
@@ -330,7 +341,7 @@ export default function PublicContactPage({ profile }) {
                       ? 'A welcoming place to start'
                       : isLawyerInvestor
                         ? 'Investor legal inquiry'
-                        : isBrokerClassic || isBroker
+                        : isBrokerTemplate
                           ? 'Mortgage consultation'
                           : 'Private inquiry'}
                 </p>
@@ -339,7 +350,7 @@ export default function PublicContactPage({ profile }) {
                     ? 'font-serif font-normal text-[#f5f1e8]'
                     : isLawyerClassic || isLawyerFirstHome
                       ? 'font-semibold uppercase tracking-[-0.025em] text-primary'
-                      : isBrokerClassic || isBroker
+                      : isBrokerTemplate
                         ? 'font-bold tracking-tight text-[color:var(--storefront-primary,#0c2139)]'
                       : 'font-bold text-text-heading'
                 }`}>
@@ -349,7 +360,7 @@ export default function PublicContactPage({ profile }) {
                       ? 'Tell us about your move.'
                       : isLawyerInvestor
                         ? 'Discuss your transaction.'
-                        : isBrokerClassic || isBroker
+                        : isBrokerTemplate
                           ? 'Get your mortgage options.'
                           : 'Begin a direct conversation.'}
                 </h1>
@@ -359,7 +370,7 @@ export default function PublicContactPage({ profile }) {
                 <p className={`mt-5 max-w-lg text-[13px] leading-6 ${
                   isLuxury ? 'text-white/58' : 'text-text-muted'
                 }`}>
-                  {isBrokerClassic || isBroker
+                  {isBrokerTemplate
                     ? `Share your goals, timeline, and preferred way to connect. Your request is delivered directly to ${profile.professional_name}.`
                     : isLawyer
                       ? `Share your objectives, timing, and preferred way to connect. Your request is delivered directly to ${profile.professional_name}.`
@@ -395,7 +406,7 @@ export default function PublicContactPage({ profile }) {
                     ? 'border border-primary/12 bg-white/75 shadow-[0_18px_45px_rgba(15,23,42,.06)]'
                     : isLawyerNewcomer
                       ? 'rounded-[2rem] border border-primary/10 bg-white/85 shadow-[0_22px_60px_rgba(48,77,67,.1)]'
-                    : isBrokerClassic
+                    : isBrokerTemplate
                       ? 'rounded-[1.35rem] border border-slate-200/90 bg-white shadow-[0_14px_40px_rgba(12,33,57,.07)]'
                     : 'rounded-3xl bg-white shadow-xl ring-1 ring-slate-200'
               }`}>
@@ -415,7 +426,7 @@ export default function PublicContactPage({ profile }) {
                         className={`mt-7 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.16em] ${
                           isLuxury
                             ? 'bg-[var(--storefront-accent)] text-[#15110d] hover:brightness-105'
-                            : isBrokerClassic
+                            : isBrokerTemplate
                               ? 'rounded-xl bg-[color:var(--storefront-accent,#008fd5)] text-white hover:brightness-105'
                             : 'rounded-full bg-primary text-white hover:brightness-95'
                         }`}
@@ -429,7 +440,7 @@ export default function PublicContactPage({ profile }) {
                     <h2 className={`mt-2.5 text-3xl sm:text-[2rem] ${isLuxury ? 'font-serif font-normal text-[#f5f1e8]' : 'font-bold text-text-heading'}`}>
                       {isLawyerClassic || isLawyerFirstHome
                         ? 'Tell us about your matter'
-                        : isBrokerClassic || isBroker
+                        : isBrokerTemplate
                           ? 'Tell us about your mortgage goals'
                           : 'How may I assist?'}
                     </h2>
@@ -557,7 +568,7 @@ export default function PublicContactPage({ profile }) {
                           ? 'bg-[var(--storefront-accent)] text-[#15110d] shadow-[0_10px_24px_color-mix(in_srgb,var(--storefront-accent)_12%,transparent)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_30px_color-mix(in_srgb,var(--storefront-accent)_18%,transparent)]'
                           : isLayeredLawyer
                             ? `${isLawyerNewcomer ? 'rounded-full' : ''} bg-accent text-accent-contrast hover:-translate-y-0.5 hover:brightness-105`
-                            : isBrokerClassic
+                            : isBrokerTemplate
                               ? 'rounded-xl bg-[color:var(--storefront-accent,#008fd5)] text-white shadow-[0_10px_24px_rgba(0,143,213,.2)] hover:-translate-y-0.5 hover:brightness-105'
                             : 'rounded-full bg-primary text-white hover:brightness-95'
                       }`}
@@ -598,6 +609,8 @@ export default function PublicContactPage({ profile }) {
             <LawyerNewcomerFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isLayeredLawyer ? (
             <LawyerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
+          ) : isBrokerFirstHome ? (
+            <BrokerFirstHomeFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerClassic ? (
             <BrokerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : (

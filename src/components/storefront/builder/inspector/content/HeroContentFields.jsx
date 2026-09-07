@@ -22,20 +22,42 @@ export function HeroMediaFields({
     isLayeredLawyerTemplate,
     isLawyerInvestor,
     isBrokerClassic,
+    isBrokerFirstHome,
     heroUsesProfilePhoto,
     layout,
   } = model;
   const investorMediaPosition = layout?.mediaPosition || 'portrait';
   const brokerMediaPosition = layout?.mediaPosition || 'right';
-  const showCoverPicker = isBrokerClassic
-    ? brokerMediaPosition !== 'none'
-    : !isLawyerInvestor || investorMediaPosition === 'cover';
+  const showCoverPicker = isBrokerFirstHome
+    ? false
+    : isBrokerClassic
+      ? brokerMediaPosition !== 'none'
+      : !isLawyerInvestor || investorMediaPosition === 'cover';
   const showProfilePicker = heroUsesProfilePhoto
+    && !isBrokerFirstHome
     && (
       isBrokerClassic
       || !isLawyerInvestor
       || investorMediaPosition === 'portrait'
     );
+  if (isBrokerFirstHome) {
+    return (
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+          Site media
+        </p>
+        <MediaPicker
+          label="Navbar logo"
+          hint="Fits automatically into the top navigation"
+          image={brandKit?.logo_url || profile?.storefront_logo_url}
+          onUpload={(file) => onMediaUpload?.('logo', file)}
+        />
+        <p className="text-[10px] leading-4 text-slate-400">
+          Hero photos are managed per slide below.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
@@ -85,6 +107,8 @@ export function HeroMediaFields({
             <ImageAdjustmentControls
               image={media?.profile || brandKit?.profile_photo_url}
               kind="profile"
+              editorKind="about-portrait"
+              label="about photo"
               values={brandKit}
               onChange={onBrandKitChange}
             />
@@ -109,6 +133,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
     isLawyerInvestor,
     isLawyerNewcomer,
     isBrokerClassic,
+    isBrokerFirstHome,
     isThemeDrivenAgentHero,
     contentValue,
     placeholders,
@@ -117,8 +142,10 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
   const setContent = bindContent(onChange, block.id);
   return (
     <>
-      <InspectorInput label="Hero eyebrow" value={contentValue('eyebrow')} onChange={setContent('eyebrow')} placeholder="Full-service real estate" />
-      {isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic ? (
+      {!isBrokerFirstHome ? (
+        <InspectorInput label="Hero eyebrow" value={contentValue('eyebrow')} onChange={setContent('eyebrow')} placeholder="Full-service real estate" />
+      ) : null}
+      {(isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic) && !isBrokerFirstHome ? (
         <>
           <InspectorInput label="Hero heading" value={contentValue('heading')} onChange={setContent('heading')} placeholder={placeholders.heading} />
           <InspectorTextarea
@@ -160,7 +187,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
           <InspectorInput label="Hero card subtitle" value={contentValue('hero_subtitle')} onChange={setContent('hero_subtitle')} placeholder={profile?.headline || 'Your trusted real estate partner'} />
         </>
       ) : null}
-      {!isLayeredLawyerTemplate ? (
+      {!isLayeredLawyerTemplate && !isBrokerFirstHome ? (
         <InspectorInput
           label="Company badge text"
           value={contentValue('hero_company_badge')}

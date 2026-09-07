@@ -48,11 +48,20 @@ export function BrokerClassicFooter({
   actions = {},
   block,
   absoluteHashes = false,
+  fallbackItems = BROKER_CLASSIC_FOOTER_ITEMS,
+  itemLimit = 8,
 }) {
   const content = blockContent(block);
   const identity = resolveProfessionalIdentity(profile);
   const presentation = sectionPresentation(block, BROKER_INK, '#ffffff');
-  const { items: rawItems, hasPersisted } = normalizedItems(content, BROKER_CLASSIC_FOOTER_ITEMS, 'items', 8);
+  const persistedItems = Array.isArray(content.items) ? content.items : null;
+  const useFallback = !persistedItems || !persistedItems.length;
+  const { items: rawItems, hasPersisted } = normalizedItems(
+    useFallback ? {} : content,
+    fallbackItems,
+    'items',
+    itemLimit,
+  );
   const items = rawItems
     .map((item) => ({ ...item, safeTarget: safeFooterTarget(item.target || item.url) }))
     .filter((item) => {

@@ -13,6 +13,7 @@ const MULTILINE_FIELDS = new Set([
   'description',
   'text',
   'about_note',
+  'trust_statement',
   'helper_text',
   'process_body',
   'faq_footer_body',

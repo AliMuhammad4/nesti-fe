@@ -5,10 +5,24 @@ import {
   migrateLawyerNewcomerBlocks,
   migrateLawyerNewcomerBrandKit,
 } from '@/components/storefront/templates/lawyer/newcomerMigration';
+import {
+  migrateBrokerClassicBlocks,
+  migrateBrokerClassicBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/classicMigration';
+import {
+  migrateBrokerFirstHomeBlocks,
+  migrateBrokerFirstHomeBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/firstHomeMigration';
 
 export function resolvePublishedStorefrontBrandKit(templateKey, brandKit = {}) {
   if (templateKey === 'lawyer-newcomer') {
     return migrateLawyerNewcomerBrandKit(templateKey, brandKit);
+  }
+  if (templateKey === 'mortgage_broker-classic') {
+    return migrateBrokerClassicBrandKit(templateKey, brandKit);
+  }
+  if (templateKey === 'mortgage_broker-first-home') {
+    return migrateBrokerFirstHomeBrandKit(templateKey, brandKit);
   }
   if (templateKey !== 'agent-community-expert') return brandKit;
 
@@ -66,12 +80,6 @@ export function canonicalPublishedStorefrontBlocks({
   brandKit,
 }) {
   const normalized = normalizePublishedStorefrontBlocks(blocks);
-  if (![
-    'lawyer-investor',
-    'lawyer-first-home-closing',
-    'lawyer-newcomer',
-  ].includes(templateKey)) return normalized;
-
   const defaults = materializeTemplate(templateKey, profile, brandKit)?.blocks || [];
   if (templateKey === 'lawyer-investor') {
     return migrateLawyerInvestorBlocks(normalized, defaults);
@@ -79,5 +87,14 @@ export function canonicalPublishedStorefrontBlocks({
   if (templateKey === 'lawyer-newcomer') {
     return migrateLawyerNewcomerBlocks(normalized, defaults);
   }
-  return migrateLawyerFirstHomeBlocks(normalized, defaults);
+  if (templateKey === 'lawyer-first-home-closing') {
+    return migrateLawyerFirstHomeBlocks(normalized, defaults);
+  }
+  if (templateKey === 'mortgage_broker-classic') {
+    return migrateBrokerClassicBlocks(normalized, defaults);
+  }
+  if (templateKey === 'mortgage_broker-first-home') {
+    return migrateBrokerFirstHomeBlocks(normalized, defaults, profile);
+  }
+  return normalized;
 }

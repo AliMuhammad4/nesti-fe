@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
-import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
 import {
   isProtectedBlockType,
   isSingletonBlockType,
@@ -33,15 +32,7 @@ export default function Inspector({
   const [tab, setTab] = useState('content');
   const [collectionDraft, setCollectionDraft] = useState(null);
   const isElementSelection = Boolean(selection?.kind && selection.kind !== 'block');
-  const selectedField = selection?.field || '';
-  const selectedSource = selection?.source || '';
   const isItemSelection = selection?.kind === 'item';
-  const isProfileSelection = selectedSource === 'profile' && !isItemSelection;
-  const isHero = block?.type === STOREFRONT_BLOCK_TYPES.HERO;
-  const heroUsesProfilePhoto = templateKey !== 'agent-classic';
-  const allowHeroContentTabForSelection = isHero
-    && isProfileSelection
-    && ['brandKit.cover_url', 'brandKit.cover_photo_url', 'brandKit.logo_url', ...(heroUsesProfilePhoto ? ['brandKit.profile_photo_url'] : [])].includes(selectedField);
   const model = block
     ? buildInspectorModel({
         block,
@@ -57,9 +48,11 @@ export default function Inspector({
     setCollectionDraft(null);
   }, [block?.id]);
 
+  const allowContentTabForElementSelection = model?.allowContentTabForElementSelection ?? false;
+
   useEffect(() => {
-    if (isElementSelection && tab === 'content' && !allowHeroContentTabForSelection) setTab('layout');
-  }, [isElementSelection, tab, allowHeroContentTabForSelection]);
+    if (isElementSelection && tab === 'content' && !allowContentTabForElementSelection) setTab('layout');
+  }, [isElementSelection, tab, allowContentTabForElementSelection]);
 
   if (!block || !model) {
     return (

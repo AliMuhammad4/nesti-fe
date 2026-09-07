@@ -12,6 +12,7 @@ import {
   isProtectedBlockType,
   isSingletonBlockType,
   BROKER_CLASSIC_CANONICAL_BLOCK_ORDER,
+  BROKER_FIRST_HOME_CANONICAL_BLOCK_ORDER,
   LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER,
   normalizeBlocks,
 } from '@/components/storefront/builder/storefrontBuilderState';
@@ -30,6 +31,10 @@ import {
   migrateBrokerClassicBlocks,
   migrateBrokerClassicBrandKit,
 } from '@/components/storefront/templates/mortgage-broker/classicMigration';
+import {
+  migrateBrokerFirstHomeBlocks,
+  migrateBrokerFirstHomeBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/firstHomeMigration';
 import { normalizeRole } from './editorConstants';
 import {
   blockLayoutStyleSignature,
@@ -841,6 +846,10 @@ function needsLawyerNewcomerMigration(templateKey, blocks = [], profileSeed = {}
 }
 
 function migrateBrokerBlocks(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey === 'mortgage_broker-first-home') {
+    const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+    return migrateBrokerFirstHomeBlocks(blocks, defaults, profileSeed);
+  }
   if (templateKey !== 'mortgage_broker-classic') return blocks;
   const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
   return migrateBrokerClassicBlocks(blocks, defaults);
@@ -853,14 +862,24 @@ function needsBrokerClassicMigration(templateKey, blocks = [], profileSeed = {})
   return JSON.stringify(source) !== JSON.stringify(migrated);
 }
 
+function needsBrokerFirstHomeMigration(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'mortgage_broker-first-home') return false;
+  const source = normalizeBlocks(blocks);
+  const migrated = normalizeBlocks(migrateBrokerBlocks(templateKey, blocks, profileSeed));
+  return JSON.stringify(source) !== JSON.stringify(migrated);
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
-  return migrateBrokerClassicBrandKit(
+  return migrateBrokerFirstHomeBrandKit(
     templateKey,
-    migrateLawyerNewcomerBrandKit(
+    migrateBrokerClassicBrandKit(
       templateKey,
-      migrateCommunityHubBrandKit(
+      migrateLawyerNewcomerBrandKit(
         templateKey,
-        migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+        migrateCommunityHubBrandKit(
+          templateKey,
+          migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+        ),
       ),
     ),
   );
@@ -924,7 +943,8 @@ function editorDataFromDraft(
     const migrationApplied = brandMigrationApplied
       || needsLawyerClassicV2Migration(templateKey, draft.blocks)
       || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed)
-      || needsBrokerClassicMigration(templateKey, draft.blocks, profileSeed);
+      || needsBrokerClassicMigration(templateKey, draft.blocks, profileSeed)
+      || needsBrokerFirstHomeMigration(templateKey, draft.blocks, profileSeed);
     return {
       migrationApplied,
       editorData: {
@@ -1106,6 +1126,10 @@ export default function useStorefrontEditorState({
             recoveredDraft.blocks,
             profileSeed,
           ) || needsBrokerClassicMigration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
+          ) || needsBrokerFirstHomeMigration(
             recoveredDraft.template_key,
             recoveredDraft.blocks,
             profileSeed,
@@ -1401,19 +1425,25 @@ export default function useStorefrontEditorState({
   };
 
   const uploadStorefrontMedia = async (kind, file) => {
-    if (!file) return;
+    if (!file) return '';
     try {
       const response = await uploadMedia.mutateAsync({ kind, file, scope: 'storefront' });
       const url = response?.url || '';
       if (!url) throw new Error('Upload did not return an image URL');
+      if (kind === 'gallery') {
+        toast.success('Slide image uploaded');
+        return url;
+      }
       if (kind === 'logo') updateBrandKit({ logo_url: url });
       if (kind === 'cover') updateBrandKit({ cover_url: url });
       if (kind === 'profile') updateBrandKit({ profile_photo_url: url });
       toast.success(
         `${kind === 'profile' ? 'Page profile photo' : kind === 'cover' ? 'Page cover photo' : 'Logo'} updated for this storefront only`,
       );
+      return url;
     } catch (error) {
       toast.error(error?.message || 'Image upload failed');
+      return '';
     }
   };
 
@@ -1457,6 +1487,12 @@ export default function useStorefrontEditorState({
     if (
       editorData.template_key === 'mortgage_broker-classic'
       && !BROKER_CLASSIC_CANONICAL_BLOCK_ORDER.includes(type)
+    ) {
+      return;
+    }
+    if (
+      editorData.template_key === 'mortgage_broker-first-home'
+      && !BROKER_FIRST_HOME_CANONICAL_BLOCK_ORDER.includes(type)
     ) {
       return;
     }

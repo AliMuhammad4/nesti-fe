@@ -26,6 +26,7 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
   const isLawyerFirstHome = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-first-home-closing';
   const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
   const isBrokerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
+  const isBrokerFirstHome = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-first-home';
   const showReviews = Boolean(profile?.storefront_builder_preview)
     || hasPublicClientStories(profile);
   const availableLinks = (links) => links.filter(
@@ -45,6 +46,21 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
       { href: `${hashBase}#about`, label: 'About' },
       { href: `${hashBase}#programs`, label: 'Programs' },
       { href: `${hashBase}#services`, label: 'Services' },
+      { href: `${hashBase}#faq`, label: 'FAQ' },
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact' }]),
+    ]);
+  }
+
+  if (isBrokerFirstHome) {
+    return availableLinks([
+      { href: `${hashBase}#about`, label: 'About' },
+      { href: `${hashBase}#programs`, label: 'Programs' },
+      { href: `${hashBase}#services`, label: 'Services' },
+      { href: `${hashBase}#guidance`, label: 'Roadmap' },
+      { href: `${hashBase}#rates`, label: 'Rates' },
+      { href: `${hashBase}#calculator`, label: 'Calculator' },
       { href: `${hashBase}#faq`, label: 'FAQ' },
       ...(slug
         ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
@@ -131,6 +147,9 @@ export default function PublicStorefrontHeader({
   const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
   const isBrokerClassic = variant === 'brokerClassic'
     || String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
+  const isBrokerFirstHome = variant === 'brokerFirstHome'
+    || String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-first-home';
+  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome;
   const isDarkEditorial = isLuxury || isLawyerFirstHome || isLawyerInvestor;
   const hasBrandLogo = Boolean(profile?.storefront_logo_url || profile?.storefront_logo_dark_url);
   const hasDedicatedDarkLogo = Boolean(profile?.storefront_logo_dark_url);
@@ -180,7 +199,7 @@ export default function PublicStorefrontHeader({
       className={`${positionClass} z-[1000] backdrop-blur ${navOpenClass} ${
         isLawyerFirstHome
           ? 'border-b border-white/10 bg-primary/90 text-primary-contrast shadow-none'
-          : isBrokerClassic
+          : isBrokerTemplate
             ? 'border-b border-slate-200 bg-white text-[#0c2139] shadow-sm'
           : isLawyerInvestor
             ? 'border-b border-white/10 bg-[#12171c]/90 text-white shadow-none'
@@ -244,7 +263,7 @@ export default function PublicStorefrontHeader({
                 : `font-bold text-slate-900 ${forceMobilePreview ? 'text-[18px]' : 'text-sm sm:text-[15px]'}`
             }`}
             >
-              {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerClassic
+              {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerTemplate
                 ? (profile.professional_name || 'Nesti Professional')
                 : 'Nesti AI'}
             </span>
@@ -253,7 +272,7 @@ export default function PublicStorefrontHeader({
                 isDarkEditorial ? 'text-white/55' : 'text-slate-500'
               }`}
               >
-                {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerClassic ? roleLabel : 'Real Estate Intelligence'}
+                {hasBrandLogo || isLawyerFirstHome || isLawyerInvestor || isLawyerNewcomer || isBrokerTemplate ? roleLabel : 'Real Estate Intelligence'}
               </span>
             ) : null}
           </span>

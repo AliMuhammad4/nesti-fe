@@ -71,7 +71,7 @@ export function PropertyModal({ property, profile, onClose, onInquire }) {
                   imageLoading ? 'opacity-0' : 'opacity-100'
                 }`}
                 sizes="(max-width: 672px) 100vw, 672px"
-                onLoadingComplete={() => setImageLoading(false)}
+                onLoad={() => setImageLoading(false)}
               />
               {imageLoading ? (
                 <div className="absolute inset-0 z-[15] bg-slate-950/60">

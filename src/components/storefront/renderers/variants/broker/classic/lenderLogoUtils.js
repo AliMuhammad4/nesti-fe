@@ -32,6 +32,12 @@ const LENDER_DOMAIN_BY_KEY = {
   simplii: 'simplii.com',
   vancity: 'vancity.com',
   'coast capital': 'coastcapitalsavings.com',
+  chase: 'chase.com',
+  'wells fargo': 'wellsfargo.com',
+  'bank of america': 'bankofamerica.com',
+  citibank: 'citibank.com',
+  'u.s. bank': 'usbank.com',
+  'us bank': 'usbank.com',
 };
 
 export function normalizeLenderDomain(value = '') {

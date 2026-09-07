@@ -2,6 +2,7 @@ import { ImageAdjustmentControls, MediaPicker } from '../../builderUiPrimitives'
 
 export default function ProfileSelectionFields({
   selectedField,
+  block,
   media,
   brandKit,
   profile,
@@ -29,13 +30,28 @@ export default function ProfileSelectionFields({
     );
   }
   if (selectedField === 'brandKit.profile_photo_url') {
+    const isAboutPhoto = block?.type === 'about';
     return (
-      <MediaPicker
-        label="Page profile"
-        image={media?.profile || brandKit?.profile_photo_url}
-        onUpload={(file) => onMediaUpload?.('profile', file)}
-        circle
-      />
+      <>
+        <MediaPicker
+          label="About advisor photo"
+          hint="Displayed in the About section portrait"
+          image={media?.profile || brandKit?.profile_photo_url}
+          onUpload={(file) => onMediaUpload?.('profile', file)}
+          tall={isAboutPhoto}
+          circle={!isAboutPhoto}
+        />
+        {(media?.profile || brandKit?.profile_photo_url) ? (
+          <ImageAdjustmentControls
+            image={media?.profile || brandKit?.profile_photo_url}
+            kind="profile"
+            editorKind={isAboutPhoto ? 'about-portrait' : undefined}
+            label={isAboutPhoto ? 'about photo' : undefined}
+            values={brandKit}
+            onChange={onBrandKitChange}
+          />
+        ) : null}
+      </>
     );
   }
   if (selectedField === 'brandKit.logo_url') {

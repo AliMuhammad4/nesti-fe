@@ -2,7 +2,8 @@ import { ArrowDown, ArrowUp, Copy, Trash2 } from 'lucide-react';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { createContentItemId, labelForBlock } from '../storefrontBuilderState';
 import { lawyerClassicIconDefault } from '../../renderers/variants/lawyer/shared/lawyerSectionUtils';
-import { normalizeLenderDomain } from '../../renderers/variants/broker/classic/lenderLogoUtils';
+import { applyLenderPreset, LENDER_BANK_CUSTOM_KEY } from '../../renderers/variants/broker/classic/lenderBankPresets';
+import LenderBankFields from './LenderBankFields';
 import {
   getServiceIconEntry,
   resolveServiceIconKey,
@@ -278,20 +279,9 @@ export function LenderCardsEditor({ block, model }) {
                 <Trash2 size={12} />
               </button>
             </div>
-            <InspectorInput
-              label="Bank name"
-              value={item?.title || ''}
-              onChange={(title) => updateLender(index, { title })}
-              placeholder="TD"
-            />
-            <InspectorInput
-              label="Website / logo URL"
-              value={item?.domain || item?.website || ''}
-              onChange={(value) => {
-                const domain = normalizeLenderDomain(value);
-                updateLender(index, { domain, website: value.trim() });
-              }}
-              placeholder="td.com or https://www.td.com"
+            <LenderBankFields
+              item={item}
+              onChange={(patch) => updateLender(index, patch)}
             />
           </div>
         ))}
@@ -299,10 +289,7 @@ export function LenderCardsEditor({ block, model }) {
           disabled={serviceCards.length >= serviceCardLimit}
           onClick={() => commitServiceCards([...serviceCards, {
             id: createContentItemId(),
-            title: 'New bank',
-            domain: '',
-            website: '',
-            description: '',
+            ...applyLenderPreset(LENDER_BANK_CUSTOM_KEY),
           }])}
         >
           {serviceCards.length >= serviceCardLimit
@@ -311,7 +298,7 @@ export function LenderCardsEditor({ block, model }) {
         </DashedAddButton>
       </div>
       <InspectorHint>
-        Logos load automatically from the website domain. Click a bank in the preview to edit it there too.
+        Choose a preset bank or add a custom one with name and website. Logos load automatically from the domain.
       </InspectorHint>
     </Field>
   );
@@ -697,12 +684,96 @@ export function GuidanceStepsEditor({ block, model }) {
   );
 }
 
-export function InvestorFooterLinksEditor({ block, onChange, resolvedItems = [] }) {
+export function TestimonialCardsEditor({ block, model }) {
+  const { profile } = model;
+  const persisted = Array.isArray(block?.data?.content?.items) ? block.data.content.items : null;
+  const source = persisted?.length
+    ? persisted
+    : (Array.isArray(profile?.testimonials) ? profile.testimonials : []);
+  const items = source
+    .filter((item) => item && typeof item === 'object')
+    .map((item, index) => ({
+      ...item,
+      id: item.id || item._id || `client-story-${index}`,
+      client_name: item.client_name || item.name || '',
+      text: item.text || item.review || item.description || '',
+      role: item.role || 'Verified client',
+      rating: Math.min(5, Math.max(1, Number(item.rating) || 5)),
+    }))
+    .slice(0, 8);
+  const commit = (next) => model.commitTestimonials
+    ? model.commitTestimonials(next)
+    : null;
+
+  if (!model.commitTestimonials) return null;
+
+  return (
+    <Field label={`Client stories (${items.length}/8)`}>
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <StackedCollectionRow
+            key={item?.id || `${block.id}-testimonial-${index}`}
+            index={index}
+            title={item?.client_name}
+            fallback="Untitled story"
+            onDelete={() => commit(items.filter((_, itemIndex) => itemIndex !== index))}
+            deleteLabel={`Delete testimonial ${index + 1}`}
+            onMoveUp={index > 0 ? () => commit(moveCollectionItem(items, index, -1)) : null}
+            onMoveDown={index < items.length - 1 ? () => commit(moveCollectionItem(items, index, 1)) : null}
+            onDuplicate={items.length < 8 ? () => commit(duplicateCollectionItem(items, index, 8)) : null}
+          >
+            <InspectorInput
+              label="Client name"
+              value={item?.client_name || ''}
+              onChange={(client_name) => commit(items.map((entry, itemIndex) => (
+                itemIndex === index ? { ...entry, id: entry.id || createContentItemId(), client_name } : entry
+              )))}
+              placeholder="Verified client"
+            />
+            <InspectorInput
+              label="Client detail"
+              value={item?.role || ''}
+              onChange={(role) => commit(items.map((entry, itemIndex) => (
+                itemIndex === index ? { ...entry, id: entry.id || createContentItemId(), role } : entry
+              )))}
+              placeholder="First-home buyer"
+            />
+            <InspectorInput
+              label="Testimonial"
+              value={item?.text || ''}
+              onChange={(text) => commit(items.map((entry, itemIndex) => (
+                itemIndex === index ? { ...entry, id: entry.id || createContentItemId(), text } : entry
+              )))}
+              placeholder="Clear guidance helped us buy with confidence."
+            />
+          </StackedCollectionRow>
+        ))}
+        <DashedAddButton
+          disabled={items.length >= 8}
+          onClick={() => commit([...items, {
+            id: createContentItemId(),
+            client_name: 'New client',
+            role: 'Verified client',
+            text: 'Add a concise first-home experience.',
+            rating: 5,
+          }])}
+        >
+          {items.length >= 8 ? 'Max 8 testimonials reached' : 'Add testimonial'}
+        </DashedAddButton>
+      </div>
+      <InspectorHint>
+        Stories saved here appear on the published page. Leave empty to show profile testimonials.
+      </InspectorHint>
+    </Field>
+  );
+}
+
+export function InvestorFooterLinksEditor({ block, onChange, resolvedItems = [], itemLimit = 8 }) {
   const persisted = Array.isArray(block?.data?.content?.items) ? block.data.content.items : [];
   const items = persisted.length ? persisted : resolvedItems;
   const commit = (next) => onChange(block.id, { content: { items: next } });
   return (
-    <Field label={`Footer links (${items.length}/8)`}>
+    <Field label={`Footer links (${items.length}/${itemLimit})`}>
       <div className="space-y-2">
         {items.map((item, index) => (
           <StackedCollectionRow
@@ -714,7 +785,7 @@ export function InvestorFooterLinksEditor({ block, onChange, resolvedItems = [] 
             deleteLabel={`Delete footer link ${index + 1}`}
             onMoveUp={index > 0 ? () => commit(moveCollectionItem(items, index, -1)) : null}
             onMoveDown={index < items.length - 1 ? () => commit(moveCollectionItem(items, index, 1)) : null}
-            onDuplicate={items.length < 8 ? () => commit(duplicateCollectionItem(items, index, 8)) : null}
+            onDuplicate={items.length < itemLimit ? () => commit(duplicateCollectionItem(items, index, itemLimit)) : null}
           >
             <InspectorInput
               label="Link label"
@@ -735,14 +806,14 @@ export function InvestorFooterLinksEditor({ block, onChange, resolvedItems = [] 
           </StackedCollectionRow>
         ))}
         <DashedAddButton
-          disabled={items.length >= 8}
+          disabled={items.length >= itemLimit}
           onClick={() => commit([...items, {
             id: createContentItemId(),
             label: 'New link',
             target: '#about',
           }])}
         >
-          {items.length >= 8 ? 'Max 8 links reached' : 'Add footer link'}
+          {items.length >= itemLimit ? `Max ${itemLimit} links reached` : 'Add footer link'}
         </DashedAddButton>
       </div>
       <InspectorHint>Hash, relative, mail, phone, and secure external links are supported.</InspectorHint>

@@ -16,6 +16,11 @@ import {
   cardSurfaceStyle,
   transparentSectionPresentation,
 } from './brokerSectionUtils';
+import {
+  curatedBrokerTestimonials,
+  hasBrokerReviewContent,
+  isBrokerPlaceholderTestimonial,
+} from './brokerTestimonialItems';
 
 const emptyForm = {
   client_name: '',
@@ -25,18 +30,8 @@ const emptyForm = {
   website: '',
 };
 
-const STALE_PLACEHOLDER_IDS = new Set(['testimonial-1', 'testimonial-2', 'testimonial-3']);
-
 function isStalePlaceholder(item = {}) {
-  const id = String(item.id || item._id || '').trim();
-  if (STALE_PLACEHOLDER_IDS.has(id)) return true;
-  const name = String(item.client_name || item.name || item.title || '').trim().toLowerCase();
-  const text = String(item.text || item.description || item.review || '').trim().toLowerCase();
-  return (
-    (name === 'verified client' && text.includes('quick loan approval'))
-    || (name === 'repeat client' && text.includes('flexible repayment'))
-    || (name === 'business owner' && text.includes('secured a business loan'))
-  );
+  return isBrokerPlaceholderTestimonial(item);
 }
 
 function feedbackKey(item = {}) {
@@ -79,14 +74,12 @@ export function BrokerClassicTestimonials({ profile, block }) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
   const isPreview = Boolean(profile?.storefront_builder_preview);
-  const hasPersistedItems = Object.prototype.hasOwnProperty.call(content, 'items')
-    && Array.isArray(content.items);
-  const curated = (
-    hasPersistedItems
-      ? content.items
-      : (profile?.testimonials || [])
-  )
-    .filter((item) => !isStalePlaceholder(item))
+  const curatedSource = curatedBrokerTestimonials(content, [
+    ...(Array.isArray(profile?.testimonials) ? profile.testimonials : []),
+    ...(Array.isArray(profile?.client_feedback) ? profile.client_feedback : []),
+  ]);
+  const hasPersistedItems = Array.isArray(content.items) && content.items.some(hasBrokerReviewContent);
+  const curated = curatedSource
     .map((item, index) => normalizeReview(item, index))
     .filter(Boolean);
 
@@ -215,7 +208,7 @@ export function BrokerClassicTestimonials({ profile, block }) {
                   collection="items"
                   itemId={item.id}
                   itemIndex={index}
-                  itemField="description"
+                  itemField="text"
                   className="mt-4 flex-1 text-sm leading-7 text-slate-600"
                 >
                   {item.text}
@@ -228,7 +221,7 @@ export function BrokerClassicTestimonials({ profile, block }) {
                   collection="items"
                   itemId={item.id}
                   itemIndex={index}
-                  itemField="title"
+                  itemField="client_name"
                   className="mt-5 text-base font-bold text-[color:var(--storefront-primary,#0c2139)]"
                 >
                   {item.client_name}

@@ -16,6 +16,10 @@ import {
   migrateBrokerClassicBlocks,
   migrateBrokerClassicBrandKit,
 } from './templates/mortgage-broker/classicMigration';
+import {
+  migrateBrokerFirstHomeBlocks,
+  migrateBrokerFirstHomeBrandKit,
+} from './templates/mortgage-broker/firstHomeMigration';
 
 const PROOF_TEMPLATE_KEYS = new Set([
   'agent-luxury-advisor',
@@ -100,6 +104,14 @@ export default function PublicStorefrontPage({ profile }) {
       )?.blocks || [];
       return migrateBrokerClassicBlocks(savedBlocks, defaults);
     }
+    if (profile.storefront_template_key === 'mortgage_broker-first-home') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateBrokerFirstHomeBlocks(savedBlocks, defaults, profile);
+    }
     if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
     const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
       ? migrateCommunityPublishedBlocks(savedBlocks)
@@ -120,9 +132,14 @@ export default function PublicStorefrontPage({ profile }) {
     return next;
   }, [profile]);
   const canonicalProfile = useMemo(() => {
-    const storefrontBrandKit = migrateBrokerClassicBrandKit(
+    const sourceBrandKit = profile.storefront_brand_kit || profile.brand_kit || {};
+    const classicBrandKit = migrateBrokerClassicBrandKit(
       profile.storefront_template_key,
-      profile.storefront_brand_kit || profile.brand_kit || {},
+      sourceBrandKit,
+    );
+    const storefrontBrandKit = migrateBrokerFirstHomeBrandKit(
+      profile.storefront_template_key,
+      classicBrandKit,
     );
     return {
       ...profile,
@@ -157,6 +174,19 @@ export default function PublicStorefrontPage({ profile }) {
     setLeadModalOpen(true);
   };
 
+  const scrollToSection = (sectionId) => {
+    const target = document.getElementById(String(sectionId || '').trim());
+    if (!target) return false;
+    const header = document.querySelector('header');
+    const headerHeight = header?.getBoundingClientRect().height || 64;
+    const top = target.getBoundingClientRect().top
+      + window.scrollY
+      - headerHeight
+      - 16;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    return true;
+  };
+
   // Same source as PublicHero / PublicCTA: professional profile Calendly URL.
   const calendlyUrl = buildTrackedCalendlyUrl(
     resolvePublicCalendlySource(profile),
@@ -165,14 +195,19 @@ export default function PublicStorefrontPage({ profile }) {
 
   const actions = {
     onCtaClick: (ctaType = 'storefront_cta') => {
-      if (String(ctaType) === 'book_consultation' && calendlyUrl) {
+      const type = String(ctaType);
+      if (type === 'book_consultation' && calendlyUrl) {
         window.open(calendlyUrl, '_blank', 'noopener,noreferrer');
-        void track('cta_click', { cta_type: String(ctaType) });
+        void track('cta_click', { cta_type: type });
+        return;
+      }
+      if (type === 'calculator' && scrollToSection('calculator')) {
+        void track('cta_click', { cta_type: type });
         return;
       }
       // Default: keep published pages non-intrusive and open the lead form.
       openLeadModal();
-      void track('cta_click', { cta_type: String(ctaType) });
+      void track('cta_click', { cta_type: type });
     },
     onDirectLeadClick: () => {
       openLeadModal();

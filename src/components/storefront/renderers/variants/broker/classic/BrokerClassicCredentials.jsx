@@ -20,9 +20,12 @@ import {
 } from './brokerSectionUtils';
 import { resolveBrokerCredentialItems } from './brokerCredentialMetrics';
 
-export function BrokerClassicCredentials({ profile, block }) {
+import { FIRST_HOME_PALETTE as P } from '../firstHome/brokerFirstHomePalette';
+
+export function BrokerClassicCredentials({ profile, block, appearance = 'classic' }) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '4');
+  const isFirstHome = appearance === 'first-home';
   const defaultOrder = ['pipeline', 'experience', 'clients', 'cases'];
   const requestedOrder = Array.isArray(content.metric_order)
     ? content.metric_order.filter((kind) => defaultOrder.includes(kind))
@@ -50,11 +53,19 @@ export function BrokerClassicCredentials({ profile, block }) {
   const cardBackground = content.card_background || '';
   const cardTextColor = content.card_text_color || '';
   const hasCustomMetricCards = Boolean(cardBackground || cardTextColor);
-  const sectionBackground = presentation.background && presentation.background !== 'transparent'
-    ? presentation.background
-    : 'var(--storefront-primary, #0c2139)';
-  const sectionColor = presentation.color || '#ffffff';
-  const hasCustomSectionText = Boolean(
+  const sectionBackground = isFirstHome
+    ? P.primary
+    : (presentation.background && presentation.background !== 'transparent'
+      ? presentation.background
+      : 'var(--storefront-primary, #0c2139)');
+  const sectionColor = isFirstHome
+    ? P.white
+    : (presentation.color || '#ffffff');
+  const usesDarkBand = isFirstHome
+    || sectionBackground === 'var(--storefront-primary, #0c2139)'
+    || String(sectionBackground).toLowerCase() === P.primary.toLowerCase()
+    || String(sectionBackground).toLowerCase() === '#0c2139';
+  const hasCustomSectionText = !isFirstHome && Boolean(
     (block?.data?.style || block?.style || {}).textColor,
   );
 
@@ -74,7 +85,9 @@ export function BrokerClassicCredentials({ profile, block }) {
               as="p"
               field="content.eyebrow"
               label="Credentials eyebrow"
-              className="text-[10px] font-bold uppercase tracking-[0.24em] text-[color:var(--storefront-accent,#008fd5)]"
+              className={`text-[10px] font-bold uppercase tracking-[0.24em] ${
+                isFirstHome ? 'text-white/70' : 'text-[color:var(--storefront-accent,#008fd5)]'
+              }`}
             >
               {content.eyebrow || 'Professional standing'}
             </EditableText>
@@ -83,7 +96,7 @@ export function BrokerClassicCredentials({ profile, block }) {
               field="content.heading"
               label="Credentials heading"
               className={`mt-2 text-2xl font-semibold leading-tight tracking-[-0.025em] sm:text-3xl ${
-                hasCustomSectionText ? 'text-current' : 'text-white'
+                usesDarkBand ? 'text-white' : (hasCustomSectionText ? 'text-current' : 'text-white')
               }`}
             >
               {content.heading || 'Mortgage experience you can verify'}
@@ -93,7 +106,7 @@ export function BrokerClassicCredentials({ profile, block }) {
               field="content.body"
               label="Credentials description"
               className={`mt-3 max-w-2xl text-sm leading-6 ${
-                hasCustomSectionText ? 'text-current opacity-65' : 'text-white/65'
+                usesDarkBand ? 'text-white/75' : (hasCustomSectionText ? 'text-current opacity-65' : 'text-white/65')
               }`}
             >
               {content.body || 'A transparent view of financing activity, responsiveness, and professional experience.'}
@@ -119,22 +132,27 @@ export function BrokerClassicCredentials({ profile, block }) {
           <article
             key={item.id}
             data-storefront-anim-item="true"
-            className={`group relative min-w-0 overflow-hidden px-4 py-4 text-left transition duration-300 hover:-translate-y-0.5 ${
-              hasCustomMetricCards
-                ? presentation.cardVisualClass
-                : brokerDarkSurfaceClass(presentation)
+            className={`group relative min-w-0 overflow-hidden px-5 py-5 text-left transition duration-300 hover:-translate-y-0.5 ${
+              isFirstHome
+                ? 'rounded-sm border border-white/20 bg-white/12 backdrop-blur-sm'
+                : hasCustomMetricCards
+                  ? presentation.cardVisualClass
+                  : brokerDarkSurfaceClass(presentation)
             }`}
             style={{
-              ...cardSurfaceStyle(presentation),
+              ...(isFirstHome ? { borderRadius: presentation.controlRadius } : cardSurfaceStyle(presentation)),
               ...(cardBackground ? { background: cardBackground } : {}),
               ...(cardTextColor ? { color: cardTextColor } : {}),
             }}
           >
-            <span className="absolute inset-y-4 left-0 w-0.5 rounded-full bg-[color:var(--storefront-accent,#008fd5)]/75" />
+            <span className={`absolute inset-y-4 left-0 w-0.5 rounded-full ${
+              isFirstHome ? 'bg-white/50' : 'bg-[color:var(--storefront-accent,#008fd5)]/75'
+            }`}
+            />
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className={`text-[10px] font-semibold uppercase tracking-[0.13em] ${
-                  hasCustomMetricCards ? 'text-current opacity-45' : 'text-white/45'
+                  hasCustomMetricCards ? 'text-current opacity-45' : (usesDarkBand ? 'text-white/65' : 'text-white/45')
                 }`}
                 >
                   {item.title}
@@ -147,14 +165,16 @@ export function BrokerClassicCredentials({ profile, block }) {
                 </p>
               </div>
               <span
-                className="grid h-8 w-8 shrink-0 place-items-center bg-[color:var(--storefront-accent,#008fd5)] text-white transition duration-300 group-hover:brightness-110"
+                className={`grid shrink-0 place-items-center bg-[color:var(--storefront-accent,#1B4B73)] text-white shadow-[0_8px_18px_rgba(0,0,0,0.22)] transition duration-300 group-hover:brightness-110 ${
+                  isFirstHome ? 'h-10 w-10' : 'h-8 w-8'
+                }`}
                 style={{ borderRadius: presentation.controlRadius }}
               >
-                <Icon size={14} strokeWidth={2} />
+                <Icon size={isFirstHome ? 18 : 14} strokeWidth={2.2} />
               </span>
             </div>
             <p className={`mt-2.5 text-xs leading-5 ${
-              hasCustomMetricCards ? 'text-current opacity-45' : 'text-white/45'
+              hasCustomMetricCards ? 'text-current opacity-45' : (usesDarkBand ? 'text-white/70' : 'text-white/45')
             }`}
             >
               {item.description}

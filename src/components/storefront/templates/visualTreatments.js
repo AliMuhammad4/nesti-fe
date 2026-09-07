@@ -107,16 +107,26 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'none',
     },
     'mortgage_broker-first-home': {
-      bg: index % 2 === 0 ? '#eff6ff' : '#fff7ed',
-      align: isHero || isTool ? 'center' : 'left',
-      padding: isHero || isTool ? 'large' : 'medium',
-      radius: 'large',
-      variant: isHero ? 'editorial' : isTool ? 'lead-magnet' : 'standard',
-      cardStyle: 'glass',
-      columns: '2',
-      mediaPosition: isHero ? 'background' : 'none',
-      width: isTool ? 'narrow' : 'contained',
-      shadow: 'medium',
+      bg: type === T.HERO
+        ? '#102A43'
+        : type === T.FOOTER
+          ? '#081A2D'
+          : type === T.CTA
+            ? '#102A43'
+            : index % 2 === 0 ? '#EEF3F7' : '#F7F9FB',
+      align: 'left',
+      padding: 'large',
+      radius: 'default',
+      variant: isHero ? 'premium' : isTool ? 'lead-magnet' : 'standard',
+      cardStyle: isTool ? 'elevated' : type === T.GUIDANCE ? 'flat' : 'bordered',
+      columns: type === T.PRACTICE_SNAPSHOT || type === T.BROKER_COMPENSATION || type === T.TESTIMONIALS
+        ? '3'
+        : type === T.SERVICES || type === T.GUIDANCE || type === T.MORTGAGE_PROGRAMS || type === T.CREDENTIALS
+          ? '4'
+          : '1',
+      mediaPosition: isHero ? 'right' : 'none',
+      width: 'full',
+      shadow: isTool ? 'medium' : 'none',
     },
     'mortgage_broker-wealth': {
       bg: index % 2 === 0 ? '#f5f3ff' : '#fff7ed',

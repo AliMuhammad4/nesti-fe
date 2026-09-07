@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown, Crop } from 'lucide-react';
+import { Check, ChevronDown, Crop, Loader2 } from 'lucide-react';
 import StorefrontImageEditor from './StorefrontImageEditor';
 
 export const inputClass = 'w-full rounded-lg border border-primary/20 bg-primary/[0.025] px-3 py-2 text-sm text-text-heading outline-none transition hover:border-primary/35 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10';
@@ -275,35 +275,77 @@ export function ColorField({ label, value, onChange, onReset = null, showReset =
   );
 }
 
-export function MediaPicker({ label, hint, image, onUpload, tall = false, circle = false }) {
+export function MediaPicker({
+  label,
+  hint,
+  image,
+  onUpload,
+  tall = false,
+  circle = false,
+  uploading = false,
+}) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-white p-2.5 transition hover:border-slate-400 hover:bg-slate-50">
-      <span className={`grid shrink-0 place-items-center overflow-hidden bg-slate-100 text-[9px] font-bold text-slate-400 ${circle ? 'h-11 w-11 rounded-full' : tall ? 'h-11 w-16 rounded-lg' : 'h-11 w-11 rounded-lg'}`}>
-        {image ? <img src={image} alt="" className={`h-full w-full ${circle || !tall ? 'object-cover object-top' : 'object-cover object-[center_30%]'}`} /> : 'IMG'}
+    <label className={`flex cursor-pointer items-center gap-2.5 rounded-xl border border-dashed bg-white p-2.5 transition hover:border-slate-400 hover:bg-slate-50 ${uploading ? 'border-primary/40 bg-primary/[0.03]' : 'border-slate-300'}`}>
+      <span className={`relative grid shrink-0 place-items-center overflow-hidden bg-slate-100 text-[9px] font-bold text-slate-400 ${circle ? 'h-11 w-11 rounded-full' : tall ? 'h-11 w-16 rounded-lg' : 'h-11 w-11 rounded-lg'}`}>
+        {uploading ? (
+          <Loader2 size={16} className="animate-spin text-primary" aria-hidden />
+        ) : image ? (
+          <img src={image} alt="" className={`h-full w-full ${circle || !tall ? 'object-cover object-top' : 'object-cover object-[center_30%]'}`} />
+        ) : (
+          'IMG'
+        )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-semibold text-slate-700">{label}</span>
-        <span className="block text-[10px] text-slate-400">{hint || 'Upload or replace'}</span>
+        <span className={`block text-[10px] ${uploading ? 'text-primary' : 'text-slate-400'}`}>
+          {uploading ? 'Uploading…' : (hint || 'Upload or replace')}
+        </span>
       </span>
-      <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => onUpload(event.target.files?.[0])} />
+      <input
+        className="sr-only"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        disabled={uploading}
+        onChange={(event) => onUpload(event.target.files?.[0])}
+      />
     </label>
   );
 }
 
-export function ImageAdjustmentControls({ image, kind, values, onChange }) {
+export function ImageAdjustmentControls({
+  image,
+  kind,
+  values,
+  onChange,
+  fieldPrefix,
+  label,
+  editorKind,
+}) {
   const [editorOpen, setEditorOpen] = useState(false);
-  const isCover = kind === 'cover';
-  const prefix = isCover ? 'cover' : 'profile';
-  const minZoom = 1;
+  const resolvedEditorKind = editorKind || kind;
+  const isHeroSlide = resolvedEditorKind === 'hero-slide' || resolvedEditorKind === 'hero-first-home';
+  const isAboutPortrait = resolvedEditorKind === 'about-portrait';
+  const isCover = kind === 'cover' || isHeroSlide;
+  const prefix = fieldPrefix || (isCover ? 'cover' : 'profile');
+  const minZoom = (isHeroSlide || isAboutPortrait) ? 0.6 : 1;
   const x = Number(values?.[`${prefix}_position_x`] ?? 50);
-  const y = Number(values?.[`${prefix}_position_y`] ?? (isCover ? 50 : 25));
+  const y = Number(values?.[`${prefix}_position_y`] ?? (isCover ? 50 : (isAboutPortrait ? 50 : 25)));
   const zoom = Math.max(minZoom, Number(values?.[`${prefix}_zoom`] ?? 1));
+  const adjustLabel = label || (
+    isHeroSlide
+      ? 'slide image'
+      : isAboutPortrait
+        ? 'about photo'
+        : isCover
+          ? 'cover'
+          : 'profile photo'
+  );
 
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-2.5">
       <div>
         <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">
-          Adjust {isCover ? 'cover' : 'profile photo'}
+          Adjust {adjustLabel}
         </p>
       </div>
       <button
@@ -317,7 +359,7 @@ export function ImageAdjustmentControls({ image, kind, values, onChange }) {
       {editorOpen && image ? createPortal(
         <StorefrontImageEditor
           image={image}
-          kind={kind}
+          kind={resolvedEditorKind}
           initialX={x}
           initialY={y}
           initialZoom={zoom}

@@ -1,4 +1,6 @@
 import { labelForBlock } from '../storefrontBuilderState';
+import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
+import { normalizeFirstHomeHeroSlides } from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
 import ProfileSelectionFields from './selection/ProfileSelectionFields';
 import ElementFieldEditor from './selection/ElementFieldEditor';
 import ItemSelectionFields from './selection/ItemSelectionFields';
@@ -27,7 +29,14 @@ export default function InspectorSelectionPanel({
     isSellerCaseStudy,
     isLawyerClassicItemCards,
     isRoleDetails,
+    isBrokerFirstHome,
+    content,
   } = model;
+
+  const heroSlideCount = isBrokerFirstHome && block?.type === T.HERO
+    ? normalizeFirstHomeHeroSlides(content?.slides).length
+    : 0;
+  const showDeleteButton = !(selection?.collection === 'slides' && heroSlideCount <= 1);
 
   if (!selection?.kind || selection.kind === 'block') return null;
 
@@ -66,6 +75,7 @@ export default function InspectorSelectionPanel({
           <p>This comes from your professional profile and is protected from deletion.</p>
           <ProfileSelectionFields
             selectedField={selectedField}
+            block={block}
             media={media}
             brandKit={brandKit}
             profile={profile}
@@ -81,7 +91,9 @@ export default function InspectorSelectionPanel({
             selection={selection}
             onItemChange={onItemChange}
             onItemAdd={onItemAdd}
+            onMediaUpload={onMediaUpload}
           />
+          {showDeleteButton ? (
           <button
             type="button"
             onClick={onItemDelete}
@@ -89,6 +101,7 @@ export default function InspectorSelectionPanel({
           >
             {deleteLabel}
           </button>
+          ) : null}
         </div>
       ) : (
         <ElementFieldEditor block={block} model={model} onChange={onChange} />

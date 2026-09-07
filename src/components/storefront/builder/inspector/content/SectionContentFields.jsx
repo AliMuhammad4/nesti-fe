@@ -1,7 +1,55 @@
 import { STOREFRONT_BLOCK_TYPES as T } from '../../../storefrontPresets';
+import { ImageAdjustmentControls, MediaPicker } from '../../builderUiPrimitives';
 import { InspectorInput, InspectorTextarea, bindContent } from '../inspectorUi';
 
-export function AboutContentFields({ block, model, profile, templateKey, onChange }) {
+function AboutMediaFields({
+  block,
+  model,
+  media,
+  brandKit,
+  onMediaUpload,
+  onBrandKitChange,
+}) {
+  const { isBrokerClassic, isElementSelection } = model;
+  if (block.type !== T.ABOUT || !isBrokerClassic || isElementSelection) return null;
+
+  const profileImage = media?.profile || brandKit?.profile_photo_url || '';
+
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">About photo</p>
+      <MediaPicker
+        label="Advisor portrait"
+        hint="Displayed in the About section. Also used in the footer where applicable."
+        image={profileImage}
+        onUpload={(file) => onMediaUpload?.('profile', file)}
+        tall
+      />
+      {profileImage ? (
+        <ImageAdjustmentControls
+          image={profileImage}
+          kind="profile"
+          editorKind="about-portrait"
+          label="about photo"
+          values={brandKit}
+          onChange={onBrandKitChange}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function AboutContentFields({
+  block,
+  model,
+  profile,
+  templateKey,
+  onChange,
+  media,
+  brandKit,
+  onMediaUpload,
+  onBrandKitChange,
+}) {
   const {
     isSellerExpertTemplate,
     isLawyerInvestor,
@@ -9,6 +57,7 @@ export function AboutContentFields({ block, model, profile, templateKey, onChang
     isLayeredLawyerTemplate,
     isLawyerFirstHome,
     isBrokerClassic,
+    isBrokerFirstHome,
     isElementSelection,
     contentValue,
   } = model;
@@ -16,6 +65,23 @@ export function AboutContentFields({ block, model, profile, templateKey, onChang
   const setContent = bindContent(onChange, block.id);
   return (
     <>
+      <AboutMediaFields
+        block={block}
+        model={model}
+        media={media}
+        brandKit={brandKit}
+        onMediaUpload={onMediaUpload}
+        onBrandKitChange={onBrandKitChange}
+      />
+      {isBrokerFirstHome ? (
+        <InspectorTextarea
+          label="Trust statement"
+          value={contentValue('trust_statement')}
+          onChange={setContent('trust_statement')}
+          placeholder="Advice shaped around your budget, timeline, and long-term comfort."
+          className="min-h-24 resize-y"
+        />
+      ) : null}
       {isLayeredLawyerTemplate ? (
         <>
           <InspectorInput label="Image name" value={contentValue('image_name')} onChange={setContent('image_name')} placeholder={profile?.professional_name || 'Your lawyer'} />

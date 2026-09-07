@@ -6,6 +6,7 @@ import {
   GuidanceStepItemFields,
 } from './ItemStepFields';
 import {
+  HeroSlideItemFields,
   HighlightItemFields,
   LawyerCardItemFields,
   ProofChipItemFields,
@@ -20,6 +21,7 @@ export default function ItemSelectionFields({
   selection,
   onItemChange,
   onItemAdd,
+  onMediaUpload,
 }) {
   const {
     isLayeredLawyerTemplate,
@@ -33,6 +35,15 @@ export default function ItemSelectionFields({
     selectedItemField,
   } = model;
 
+  if (model.isBrokerFirstHome && block?.type === T.HERO && selection?.collection === 'slides') {
+    return (
+      <HeroSlideItemFields
+        selection={selection}
+        onItemChange={onItemChange}
+        onMediaUpload={onMediaUpload}
+      />
+    );
+  }
   if ((isLayeredLawyerTemplate || model.isBrokerClassic) && isFooter && selection?.collection === 'items') {
     return <FooterLinkItemFields selection={selection} onItemChange={onItemChange} />;
   }
