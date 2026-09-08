@@ -2,6 +2,7 @@ import { BuilderSelect, Field, inputClass } from '../builderUiPrimitives';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { BROKER_CLASSIC_FOOTER_ITEMS } from '../../renderers/variants/broker/classic/brokerClassicDefaults';
 import { FIRST_HOME_FOOTER_ITEMS } from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import { RENEWAL_FOOTER_ITEMS } from '../../renderers/variants/broker/renewal/brokerRenewalDefaults';
 import {
   ExpertiseProcessEditor,
   GuidanceFaqsEditor,
@@ -59,6 +60,7 @@ export default function InspectorContentTab({
     isLawyerNewcomer,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerRenewal,
     isLawyerClassic,
     isFooter,
     isTestimonials,
@@ -82,6 +84,7 @@ export default function InspectorContentTab({
     || block.type === T.TESTIMONIALS
     || block.type === T.SELLER_PERFORMANCE
     || block.type === T.CTA
+    || block.type === T.FAQ
     || isListings
     || (hasEditableCards && block.type !== T.BROKER_COMPENSATION)
     || isRoleDetails
@@ -289,7 +292,9 @@ export default function InspectorContentTab({
             itemLimit={isBrokerFirstHome ? 10 : 8}
             resolvedItems={isBrokerFirstHome
               ? FIRST_HOME_FOOTER_ITEMS
-              : isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
+              : isBrokerRenewal
+                ? RENEWAL_FOOTER_ITEMS
+                : isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
           />
         </div>
       ) : null}

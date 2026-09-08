@@ -17,7 +17,7 @@ import {
 } from './brokerSectionUtils';
 import { BROKER_CLASSIC_FAQS } from './brokerClassicDefaults';
 
-export function BrokerClassicFaq({ profile, block }) {
+export function BrokerClassicFaq({ profile, block, fallbackFaqs = BROKER_CLASSIC_FAQS }) {
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '1');
@@ -25,7 +25,7 @@ export function BrokerClassicFaq({ profile, block }) {
   const faqCardTextColor = content.faq_card_text_color || '';
   const hasPersistedFaqs = Object.prototype.hasOwnProperty.call(content, 'faqs')
     && Array.isArray(content.faqs);
-  const faqs = (hasPersistedFaqs ? content.faqs : BROKER_CLASSIC_FAQS)
+  const faqs = (hasPersistedFaqs ? content.faqs : fallbackFaqs)
     .map((item, index) => {
       if (!item) return null;
       if (typeof item === 'string') {

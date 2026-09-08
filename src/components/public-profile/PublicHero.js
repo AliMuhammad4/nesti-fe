@@ -84,7 +84,8 @@ export default function PublicHero({
   const forceMobilePreview = isBuilderPreview && previewMode === 'mobile';
   const professionalProfile = profile.professional_profile || {};
   const companyName = professionalProfile.company_name || '';
-  const usesCanonicalHeroCopy = profile.storefront_template_key === 'lawyer-newcomer';
+  const usesCanonicalHeroCopy = ['lawyer-newcomer', 'mortgage_broker-renewal']
+    .includes(String(profile.storefront_template_key || '').toLowerCase());
   const heroName = content.hero_name || profile.professional_name || 'Professional';
   const heroSubtitle = (usesCanonicalHeroCopy ? content.heading : content.hero_subtitle)
     || profile.headline
@@ -103,6 +104,7 @@ export default function PublicHero({
         ? 'Real Estate Lawyer'
         : 'Real Estate Agent';
   const inviteShareUrl = String(profile.invite_link?.share_url || '').trim();
+  const joinHref = inviteShareUrl || '/sign-up';
   const calendlyLink = profile.professional_profile?.calendly_link || '';
   const trackedCalendlyLink = buildTrackedCalendlyUrl(calendlyLink, profile);
   const handleConsultationClick = () => {
@@ -116,8 +118,25 @@ export default function PublicHero({
   const heroCardBackground = content.hero_card_background || '';
   const heroCardTextColor = content.hero_card_text_color || '';
   const heroStripBackground = content.hero_strip_background || '';
-  const primaryCtaLabel = content.primary_cta_label || 'Submit inquiry';
-  const secondaryCtaLabel = content.cta_label || profile.hero_cta_label || 'Book a Free Consultation';
+  const isBrokerRenewal = String(profile.storefront_template_key || '').toLowerCase() === 'mortgage_broker-renewal';
+  const primaryCtaLabel = String(
+    content.primary_cta_label
+    || (isBrokerRenewal ? 'Review my renewal' : 'Submit inquiry'),
+  ).trim();
+  // Builder secondary field is content.cta_label. Ignore duplicates of the primary label.
+  const rawSecondaryLabel = String(
+    content.cta_label || content.secondary_cta_label || '',
+  ).trim();
+  const secondaryCtaLabel = (
+    rawSecondaryLabel
+    && rawSecondaryLabel.toLowerCase() !== primaryCtaLabel.toLowerCase()
+  )
+    ? rawSecondaryLabel
+    : (isBrokerRenewal
+      ? 'Book a consultation'
+      : (profile.hero_cta_label || 'Book a Free Consultation'));
+  const joinCtaLabel = String(content.join_label || 'Join Nesti').trim() || 'Join Nesti';
+  const showJoinCta = isBrokerRenewal || Boolean(inviteShareUrl);
   const primaryButtonBackground = content.primary_button_background || '';
   const primaryButtonTextColor = content.primary_button_text_color || '';
   const secondaryButtonBackground = content.secondary_button_background || '';
@@ -152,8 +171,33 @@ export default function PublicHero({
   // Prefer the live brand kit canvas from the renderer theme.
   const pageCanvas = profile?.storefront_theme?.canvas || '#ffffff';
   const rawHeroBand = String(sectionStyle.background || '').trim();
-  // Behind the profile card follows Design → Page background unless an explicit override is set.
-  const heroBandBackground = rawHeroBand || pageCanvas;
+  const rawHeroBandNormalized = rawHeroBand.toLowerCase();
+  // Canonical agent/lawyer-style heroes (incl. Renewal) keep the under-card band on the
+  // page background. Template primary fills used to leak as a solid sky/teal/charcoal strip.
+  const templateHeroBandColors = new Set([
+    '',
+    'transparent',
+    '#0e1116',
+    '#07090c',
+    '#155e75',
+    '#0f3d4a',
+    '#0f766e',
+    '#3d2430',
+    '#1f1218',
+    '#4a2536',
+    '#0c2139',
+    '#102a43',
+    '#008fd5',
+    '#1b4b73',
+  ]);
+  const heroBandBackground = usesCanonicalHeroCopy
+    ? (
+      rawHeroBand
+      && !templateHeroBandColors.has(rawHeroBandNormalized)
+        ? rawHeroBand
+        : pageCanvas
+    )
+    : (rawHeroBand || pageCanvas);
   const resolvedHeroStripBackground = heroStripBackground || heroBandBackground;
 
   return (
@@ -289,16 +333,19 @@ export default function PublicHero({
                   >
                     {secondaryCtaLabel}
                   </button>
-                  {inviteShareUrl ? (
+                  {showJoinCta ? (
                     <a
-                      href={inviteShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={joinHref}
+                      target={inviteShareUrl ? '_blank' : undefined}
+                      rel={inviteShareUrl ? 'noopener noreferrer' : undefined}
+                      data-storefront-field="content.join_label"
+                      data-storefront-source={content.join_label ? 'persisted' : 'fallback'}
+                      data-storefront-label="Join Nesti button"
                       className="storefront-btn inline-flex h-10 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-4 text-[13px] font-semibold text-slate-700 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary whitespace-nowrap sm:w-auto"
                       style={{ borderRadius: 'var(--storefront-radius)' }}
                     >
                       <UserPlus size={14} />
-                      Join Nesti
+                      {joinCtaLabel}
                     </a>
                   ) : null}
               </div>

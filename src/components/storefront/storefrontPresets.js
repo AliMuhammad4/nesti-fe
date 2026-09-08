@@ -79,7 +79,7 @@ export function normalizeStorefrontRole(role) {
 
 export const DEFAULT_STOREFRONT_TEMPLATE_BY_ROLE = {
   agent: 'agent-investor',
-  mortgage_broker: 'mortgage_broker-classic',
+  mortgage_broker: 'mortgage_broker-renewal',
   lawyer: 'lawyer-newcomer',
 };
 

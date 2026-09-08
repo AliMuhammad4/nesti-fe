@@ -14,7 +14,7 @@ export function GuidanceContentFields({ block, model, onChange }) {
     contentValue,
     contentPlaceholder,
   } = model;
-  if (!isGuidance) return null;
+  if (!isGuidance && !isFaq) return null;
   const setContent = bindContent(onChange, block.id);
   return (
     <>

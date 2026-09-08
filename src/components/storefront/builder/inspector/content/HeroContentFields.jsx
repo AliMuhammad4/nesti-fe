@@ -23,11 +23,12 @@ export function HeroMediaFields({
     isLawyerInvestor,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerRenewal,
     heroUsesProfilePhoto,
     layout,
   } = model;
   const investorMediaPosition = layout?.mediaPosition || 'portrait';
-  const brokerMediaPosition = layout?.mediaPosition || 'right';
+  const brokerMediaPosition = layout?.mediaPosition || (isBrokerRenewal ? 'background' : 'right');
   const showCoverPicker = isBrokerFirstHome
     ? false
     : isBrokerClassic
@@ -69,9 +70,11 @@ export function HeroMediaFields({
             label="Page cover"
             hint={isLawyerInvestor
               ? 'Displayed in the Investor hero cover panel'
-              : isBrokerClassic
-                ? 'Displayed in the hero right column'
-                : 'Shown behind the hero band'}
+              : isBrokerRenewal
+                ? 'Shown as the hero cover band'
+                : isBrokerClassic
+                  ? 'Displayed in the hero right column'
+                  : 'Shown behind the hero band'}
             image={media?.cover || brandKit?.cover_url}
             onUpload={(file) => onMediaUpload?.('cover', file)}
             tall
@@ -134,6 +137,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
     isLawyerNewcomer,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerRenewal,
     isThemeDrivenAgentHero,
     contentValue,
     placeholders,
@@ -143,7 +147,12 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
   return (
     <>
       {!isBrokerFirstHome ? (
-        <InspectorInput label="Hero eyebrow" value={contentValue('eyebrow')} onChange={setContent('eyebrow')} placeholder="Full-service real estate" />
+        <InspectorInput
+          label="Hero eyebrow"
+          value={contentValue('eyebrow')}
+          onChange={setContent('eyebrow')}
+          placeholder={isBrokerRenewal ? 'Renewal specialist' : 'Full-service real estate'}
+        />
       ) : null}
       {(isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic) && !isBrokerFirstHome ? (
         <>
@@ -152,7 +161,9 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
             label="Hero description"
             value={contentValue('body')}
             onChange={setContent('body')}
-            placeholder={profile?.headline || 'Clear legal guidance for your matter.'}
+            placeholder={isBrokerRenewal
+              ? 'Compare renewal offers, refinance options, and break costs before you sign.'
+              : (profile?.headline || 'Clear legal guidance for your matter.')}
             className="min-h-28 resize-y"
           />
           {isLawyerFirstHome ? (
@@ -195,9 +206,19 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
           placeholder={profile?.professional_profile?.company_name || 'Company name'}
         />
       ) : null}
-      <InspectorInput label="Primary button label" value={contentValue('primary_cta_label')} onChange={setContent('primary_cta_label')} placeholder="Submit inquiry" />
-      <InspectorInput label="Secondary button label" value={contentValue('cta_label')} onChange={setContent('cta_label')} placeholder="Book a Free Consultation" />
-      {isLayeredLawyerTemplate || isBrokerClassic ? (
+      <InspectorInput
+        label="Primary button label"
+        value={contentValue('primary_cta_label')}
+        onChange={setContent('primary_cta_label')}
+        placeholder={isBrokerRenewal ? 'Review my renewal' : 'Submit inquiry'}
+      />
+      <InspectorInput
+        label="Secondary button label"
+        value={contentValue('cta_label')}
+        onChange={setContent('cta_label')}
+        placeholder={isBrokerRenewal ? 'Book a consultation' : 'Book a Free Consultation'}
+      />
+      {(isLayeredLawyerTemplate || isBrokerClassic) ? (
         <InspectorInput label="Join Nesti button label" value={contentValue('join_label')} onChange={setContent('join_label')} placeholder="Join Nesti" />
       ) : null}
       <Field label="Header navigation links">

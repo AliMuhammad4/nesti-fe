@@ -55,5 +55,6 @@ export const CANONICAL_BLOCK_ORDER_TEMPLATES = new Set([
   'lawyer-classic',
   'lawyer-first-home-closing',
   'lawyer-newcomer',
+  'mortgage_broker-renewal',
   'mortgage_broker-first-home',
 ]);

@@ -58,11 +58,17 @@ export function resolveStorefrontBlockPresentation({
     ...(isSellerExpertTemplate ? { width: 'full' } : {}),
     ...(templateKey === 'lawyer-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
     ...(templateKey === 'mortgage_broker-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
+    ...(templateKey === 'mortgage_broker-renewal' && !isHero ? { width: 'full', variant: 'standard' } : {}),
     ...((isLuxuryHero || isLuxuryServices || isLuxuryFooter)
       && (!layout.animationType || layout.animationType === 'none' || isLuxuryHero)
       ? {
           animationType: 'none',
         }
+      : {}),
+    // PublicHero keeps a fixed header inside the hero band — transforms on this
+    // wrapper break fixed positioning and let later sections paint over the nav.
+    ...(isHero && ['mortgage_broker-renewal', 'agent-investor', 'lawyer-newcomer'].includes(templateKey)
+      ? { animationType: 'none' }
       : {}),
   };
 
@@ -72,6 +78,45 @@ export function resolveStorefrontBlockPresentation({
   const variant = bandLayout.variant || 'standard';
   const columns = String(bandLayout.columns || (isListing ? '4' : '3'));
   let storedBackground = String(style.background || '').trim();
+  if (templateKey === 'mortgage_broker-renewal' && block.type === STOREFRONT_BLOCK_TYPES.FOOTER) {
+    storedBackground = '#07090C';
+  }
+  if (templateKey === 'mortgage_broker-renewal' && block.type === STOREFRONT_BLOCK_TYPES.CTA) {
+    const ctaBg = storedBackground.toLowerCase();
+    const legacyCta = !ctaBg
+      || TEMPLATE_NEUTRAL_BANDS.has(ctaBg)
+      || ['#155e75', '#0f3d4a', '#0f766e', '#14b8a6', '#3d2430', '#1f1218', '#4a2536'].includes(ctaBg);
+    storedBackground = legacyCta ? '#0E1116' : storedBackground;
+  }
+  if (
+    templateKey === 'mortgage_broker-renewal'
+    && !isHero
+    && block.type !== STOREFRONT_BLOCK_TYPES.CTA
+    && block.type !== STOREFRONT_BLOCK_TYPES.FOOTER
+  ) {
+    // Content sections always sit on the page canvas unless the broker set a custom band.
+    const bg = storedBackground.toLowerCase();
+    if (
+      !bg
+      || bg === 'transparent'
+      || TEMPLATE_NEUTRAL_BANDS.has(bg)
+      || ['#155e75', '#0f3d4a', '#0f766e', '#14b8a6', '#3d2430', '#1f1218', '#4a2536', '#0e1116', '#07090c'].includes(bg)
+    ) {
+      storedBackground = 'transparent';
+    }
+  }
+  if (templateKey === 'mortgage_broker-renewal' && isHero) {
+    // Outer band stays clear; PublicHero paints the under-card strip from page canvas / custom style.
+    const heroBg = storedBackground.toLowerCase();
+    if (
+      !heroBg
+      || heroBg === 'transparent'
+      || TEMPLATE_NEUTRAL_BANDS.has(heroBg)
+      || ['#155e75', '#0f3d4a', '#0f766e', '#14b8a6', '#3d2430', '#1f1218', '#4a2536', '#0e1116', '#07090c'].includes(heroBg)
+    ) {
+      storedBackground = 'transparent';
+    }
+  }
   if (templateKey === 'lawyer-classic' && !isHero) {
     const hex = storedBackground.toLowerCase();
     const usesThemePrimary = LAWYER_CLASSIC_THEME_PRIMARY_HEX.has(hex)
@@ -104,7 +149,8 @@ export function resolveStorefrontBlockPresentation({
   const sectionBackground = (
     (templateKey === 'lawyer-newcomer'
       || templateKey === 'mortgage_broker-classic'
-      || templateKey === 'mortgage_broker-first-home')
+      || templateKey === 'mortgage_broker-first-home'
+      || templateKey === 'mortgage_broker-renewal')
     && useTemplateBand
     && !isHero
   )

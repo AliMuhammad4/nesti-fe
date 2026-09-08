@@ -13,6 +13,10 @@ import {
   migrateBrokerFirstHomeBlocks,
   migrateBrokerFirstHomeBrandKit,
 } from '@/components/storefront/templates/mortgage-broker/firstHomeMigration';
+import {
+  migrateBrokerRenewalBlocks,
+  migrateBrokerRenewalBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/renewalMigration';
 
 export function resolvePublishedStorefrontBrandKit(templateKey, brandKit = {}) {
   if (templateKey === 'lawyer-newcomer') {
@@ -23,6 +27,9 @@ export function resolvePublishedStorefrontBrandKit(templateKey, brandKit = {}) {
   }
   if (templateKey === 'mortgage_broker-first-home') {
     return migrateBrokerFirstHomeBrandKit(templateKey, brandKit);
+  }
+  if (templateKey === 'mortgage_broker-renewal') {
+    return migrateBrokerRenewalBrandKit(templateKey, brandKit);
   }
   if (templateKey !== 'agent-community-expert') return brandKit;
 
@@ -92,6 +99,9 @@ export function canonicalPublishedStorefrontBlocks({
   }
   if (templateKey === 'mortgage_broker-classic') {
     return migrateBrokerClassicBlocks(normalized, defaults);
+  }
+  if (templateKey === 'mortgage_broker-renewal') {
+    return migrateBrokerRenewalBlocks(normalized, defaults);
   }
   if (templateKey === 'mortgage_broker-first-home') {
     return migrateBrokerFirstHomeBlocks(normalized, defaults, profile);

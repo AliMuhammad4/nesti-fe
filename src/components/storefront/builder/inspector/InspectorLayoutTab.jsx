@@ -17,6 +17,7 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
     isLawyerInvestor,
     isLawyerNewcomer,
     isBrokerClassic,
+    isBrokerRenewal,
     investorCapabilities,
     newcomerCapabilities,
     brokerCapabilities,
@@ -117,8 +118,9 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
         <Field label="Media treatment">
           <BuilderSelect
             value={(() => {
-              const raw = layout.mediaPosition || (isLawyerInvestor ? 'portrait' : isBrokerClassic ? 'right' : 'background');
-              if (isBrokerClassic && raw === 'cover') return 'right';
+              const raw = layout.mediaPosition
+                || (isLawyerInvestor ? 'portrait' : isBrokerRenewal ? 'background' : isBrokerClassic ? 'right' : 'background');
+              if (isBrokerClassic && !isBrokerRenewal && raw === 'cover') return 'right';
               return raw;
             })()}
             options={isLawyerInvestor
@@ -127,6 +129,11 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
                 { value: 'cover', label: 'Cover image panel' },
                 { value: 'none', label: 'No image' },
               ]
+              : isBrokerRenewal
+                ? [
+                  { value: 'background', label: 'Show cover' },
+                  { value: 'none', label: 'Hide cover' },
+                ]
               : isBrokerClassic
                 ? [
                   { value: 'right', label: 'Cover image column' },
@@ -141,7 +148,7 @@ export default function InspectorLayoutTab({ block, model, onChange }) {
           />
         </Field>
       ) : null}
-      {isHero && (layout.mediaPosition || (isLawyerInvestor ? 'portrait' : isBrokerClassic ? 'right' : 'background')) === 'none' ? (
+      {isHero && (layout.mediaPosition || (isLawyerInvestor ? 'portrait' : isBrokerRenewal ? 'background' : isBrokerClassic ? 'right' : 'background')) === 'none' ? (
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
           Hero media is hidden. Choose a media treatment to display the cover image.
         </p>

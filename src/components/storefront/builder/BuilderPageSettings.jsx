@@ -52,7 +52,7 @@ const TEMPLATE_GALLERY_COPY = {
   },
   'mortgage_broker-renewal': {
     title: 'Renewal',
-    tagline: 'Refinance and renewal with a clear plan',
+    tagline: 'Free starter — refinance and renewal with a clear plan',
   },
   'mortgage_broker-commercial': {
     title: 'Commercial',

@@ -5,10 +5,10 @@ import mortgageBrokerRenewal from './renewal';
 import mortgageBrokerCommercial from './commercial';
 
 const mortgageBrokerTemplates = [
+  mortgageBrokerRenewal,
   mortgageBrokerClassic,
   mortgageBrokerFirstHome,
   mortgageBrokerWealth,
-  mortgageBrokerRenewal,
   mortgageBrokerCommercial,
 ];
 

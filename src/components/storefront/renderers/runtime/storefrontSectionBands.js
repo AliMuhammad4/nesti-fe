@@ -21,12 +21,17 @@ export function publicBandBackground(blockType, index, pageBackground) {
 }
 
 export const TEMPLATE_NEUTRAL_BANDS = new Set([
+  'transparent',
   '#fff',
   '#ffffff',
   '#f8fafc',
   '#fafafa',
   '#f9fafb',
   '#f1f5f9',
+  '#f1f2f4',
+  '#e6e8ec',
+  '#efeaed',
+  '#f6f4f5',
   '#faf7ef',
   '#f8f2e4',
   '#fffaf1',

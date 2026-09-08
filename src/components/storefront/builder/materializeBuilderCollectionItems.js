@@ -5,6 +5,7 @@ import {
   brokerFirstHomeCollectionFallback,
   normalizeFirstHomeHeroSlides,
 } from '@/components/storefront/renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import { brokerRenewalCollectionFallback } from '@/components/storefront/renderers/variants/broker/renewal/brokerRenewalDefaults';
 import { LAWYER_CLASSIC_PROCESS_DEFAULTS } from '../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
 import {
@@ -113,6 +114,15 @@ export function materializeBuilderCollectionItems({
         return coerceCollectionItems(collection === 'services' ? 'items' : collection, firstHomeFallback);
       }
     }
+    if (templateKey === 'mortgage_broker-renewal') {
+      const renewalFallback = brokerRenewalCollectionFallback(
+        blockType,
+        collection === 'services' ? 'items' : collection,
+      );
+      if (renewalFallback?.length) {
+        return coerceCollectionItems(collection === 'services' ? 'items' : collection, renewalFallback);
+      }
+    }
     if (templateKey === 'mortgage_broker-classic') {
       const brokerFallback = brokerClassicCollectionFallback(blockType, collection);
       if (brokerFallback?.length) {
@@ -205,6 +215,12 @@ export function materializeBuilderCollectionItems({
       const firstHomeFallback = brokerFirstHomeCollectionFallback(blockType, collection);
       if (firstHomeFallback?.length) {
         return coerceCollectionItems(collection, firstHomeFallback);
+      }
+    }
+    if (templateKey === 'mortgage_broker-renewal') {
+      const renewalFallback = brokerRenewalCollectionFallback(blockType, collection);
+      if (renewalFallback?.length) {
+        return coerceCollectionItems(collection, renewalFallback);
       }
     }
     if (templateKey === 'mortgage_broker-classic' && blockType === STOREFRONT_BLOCK_TYPES.FAQ) {

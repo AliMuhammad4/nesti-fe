@@ -1,3 +1,5 @@
+'use client';
+
 import PublicAboutSection from '@/components/public-profile/PublicAboutSection';
 import PublicCTA from '@/components/public-profile/PublicCTA';
 import PublicExpertiseBand from '@/components/public-profile/PublicExpertiseBand';
@@ -161,6 +163,18 @@ import {
   BrokerFirstHomeSnapshot,
   BrokerFirstHomeTestimonials,
 } from './variants/broker/firstHome';
+import {
+  BrokerRenewalAbout,
+  BrokerRenewalCta,
+  BrokerRenewalFaq,
+  BrokerRenewalFooter,
+  BrokerRenewalGuidance,
+  BrokerRenewalHero,
+  BrokerRenewalPrograms,
+  BrokerRenewalServices,
+  BrokerRenewalSnapshot,
+  BrokerRenewalTestimonials,
+} from './variants/broker/renewal';
 import {
   LawyerNewcomerAbout,
   LawyerNewcomerCredentials,
@@ -731,6 +745,18 @@ const experienceOverrides = {
 };
 
 const templateOverrides = {
+  'mortgage_broker-renewal': {
+    [T.HERO]: ({ profile, actions, block }) => <BrokerRenewalHero profile={profile} actions={actions} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerRenewalSnapshot profile={profile} block={block} />,
+    [T.MORTGAGE_PROGRAMS]: ({ profile, actions, block }) => <BrokerRenewalPrograms profile={profile} actions={actions} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <BrokerRenewalServices profile={profile} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <BrokerRenewalAbout profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <BrokerRenewalGuidance profile={profile} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => <BrokerRenewalTestimonials profile={profile} block={block} />,
+    [T.FAQ]: ({ profile, block }) => <BrokerRenewalFaq profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <BrokerRenewalCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <BrokerRenewalFooter profile={profile} actions={actions} block={block} />,
+  },
   'mortgage_broker-first-home': {
     [T.HERO]: ({ profile, actions, block }) => <BrokerFirstHomeHero profile={profile} actions={actions} block={block} />,
     [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerFirstHomeSnapshot profile={profile} block={block} />,

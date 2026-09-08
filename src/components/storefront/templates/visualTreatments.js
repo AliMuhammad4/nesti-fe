@@ -141,16 +141,24 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'large',
     },
     'mortgage_broker-renewal': {
-      bg: index % 2 === 0 ? '#ecfeff' : '#ffffff',
-      align: isHero ? 'center' : 'left',
-      padding: isHero || isTool ? 'large' : 'medium',
-      radius: 'large',
-      variant: isHero ? 'lead-magnet' : isTool ? 'split' : 'standard',
-      cardStyle: 'elevated',
-      columns: '2',
+      bg: [T.CTA, T.FOOTER].includes(type)
+        ? (type === T.FOOTER ? '#07090C' : '#0E1116')
+        : '',
+      align: 'left',
+      padding: isHero ? 'large' : 'large',
+      radius: 'none',
+      variant: isHero ? 'minimal' : 'standard',
+      cardStyle: 'bordered',
+      columns: type === T.PRACTICE_SNAPSHOT || type === T.TESTIMONIALS || type === T.GUIDANCE
+        ? '3'
+        : type === T.FAQ
+          ? '1'
+          : type === T.MORTGAGE_PROGRAMS || type === T.SERVICES || type === T.ABOUT
+            ? '2'
+            : '2',
       mediaPosition: isHero ? 'background' : 'none',
-      width: isHero || isTool ? 'narrow' : 'contained',
-      shadow: 'medium',
+      width: 'full',
+      shadow: 'none',
     },
     'mortgage_broker-commercial': {
       bg: index % 2 === 0 ? '#f8fafc' : '#fef3c7',

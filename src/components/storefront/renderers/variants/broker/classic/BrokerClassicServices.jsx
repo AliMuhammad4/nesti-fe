@@ -23,10 +23,14 @@ import {
   serviceBenefitsPersisted,
 } from './brokerClassicServiceBenefits';
 
-export function BrokerClassicServices({ profile, block }) {
+export function BrokerClassicServices({
+  profile,
+  block,
+  fallbackItems = BROKER_CLASSIC_SERVICE_ITEMS,
+}) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '2');
-  const { items, hasPersisted } = normalizedItems(content, BROKER_CLASSIC_SERVICE_ITEMS, 'items', 8);
+  const { items, hasPersisted } = normalizedItems(content, fallbackItems, 'items', 8);
   const [activeTab, setActiveTab] = useState(0);
   const builderSelection = profile?.storefront_builder_selection;
   const selectedServiceIndex = (() => {

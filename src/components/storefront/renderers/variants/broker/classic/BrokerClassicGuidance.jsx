@@ -16,17 +16,20 @@ import {
   transparentSectionPresentation,
 } from './brokerSectionUtils';
 
-export function BrokerClassicGuidance({ block }) {
+export function BrokerClassicGuidance({
+  block,
+  fallbackSteps = [
+    { id: 'benefit-team', title: 'Professional team', description: 'Experienced advisors focused on fit, not just the headline rate.' },
+    { id: 'benefit-payments', title: 'Quick payments', description: 'Fast approvals and clear timelines from application to funding.' },
+    { id: 'benefit-process', title: 'Loan process', description: 'A structured process from consultation through closing.' },
+  ],
+}) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
   const processCardBackground = content.process_card_background || '';
   const processCardTextColor = content.process_card_text_color || '';
   const hasCustomCardColors = Boolean(processCardBackground || processCardTextColor);
-  const { items, hasPersisted } = normalizedItems(content, [
-    { id: 'benefit-team', title: 'Professional team', description: 'Experienced advisors focused on fit, not just the headline rate.' },
-    { id: 'benefit-payments', title: 'Quick payments', description: 'Fast approvals and clear timelines from application to funding.' },
-    { id: 'benefit-process', title: 'Loan process', description: 'A structured process from consultation through closing.' },
-  ], 'steps', 6);
+  const { items, hasPersisted } = normalizedItems(content, fallbackSteps, 'steps', 6);
 
   return (
     <section

@@ -14,6 +14,8 @@ import { BrokerClassicFooter } from './renderers/variants/broker/classic/BrokerC
 import { BROKER_CLASSIC_FOOTER_ITEMS } from './renderers/variants/broker/classic/brokerClassicDefaults';
 import { BrokerFirstHomeFooter } from './renderers/variants/broker/firstHome/BrokerFirstHomeAdapters';
 import { FIRST_HOME_FOOTER_ITEMS } from './renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import { BrokerRenewalFooter } from './renderers/variants/broker/renewal/BrokerRenewalFooter';
+import { RENEWAL_FOOTER_ITEMS } from './renderers/variants/broker/renewal/brokerRenewalDefaults';
 import { submitPublicLead } from '@/lib/publicProfileClient';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontInlineStyle from './StorefrontInlineStyle';
@@ -50,6 +52,7 @@ function resolveSectionVariant(templateKey = '') {
   const key = String(templateKey || '').toLowerCase();
   if (key === 'mortgage_broker-classic') return 'brokerClassic';
   if (key === 'mortgage_broker-first-home') return 'brokerClassic';
+  if (key === 'mortgage_broker-renewal') return 'brokerClassic';
   if (key.includes('luxury')) return 'luxury';
   if (key === 'agent-first-home') return 'firstHome';
   if (key.includes('seller')) return 'seller';
@@ -163,7 +166,8 @@ export default function PublicContactPage({ profile }) {
   const isLawyerFirstHome = templateKey === 'lawyer-first-home-closing';
   const isBrokerClassic = templateKey === 'mortgage_broker-classic';
   const isBrokerFirstHome = templateKey === 'mortgage_broker-first-home';
-  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome;
+  const isBrokerRenewal = templateKey === 'mortgage_broker-renewal';
+  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome || isBrokerRenewal;
   const isBroker = profile?.professional_type === 'mortgage_broker' || isBrokerTemplate;
   const isLayeredLawyer = isLawyerClassic
     || isLawyerFirstHome
@@ -189,22 +193,24 @@ export default function PublicContactPage({ profile }) {
       ? footerBlockContent.items
       : isBrokerFirstHome
         ? mapFooterItems(FIRST_HOME_FOOTER_ITEMS, profileHref)
-        : isBrokerClassic
-          ? mapFooterItems(BROKER_CLASSIC_FOOTER_ITEMS, profileHref)
-          : [
-          { label: 'Profile', url: profileHref },
-          { label: 'Services', url: `${profileHref}#services` },
-          ...(isBroker
-            ? [
-                { label: 'Rates', url: `${profileHref}#rates` },
-                { label: 'Calculator', url: `${profileHref}#calculator` },
-              ]
-            : [{ label: 'Properties', url: `${profileHref}/properties` }]),
-          ...(isInvestor ? [] : [
-            ...(isBrokerClassic ? [] : [{ label: 'Reviews', url: `${profileHref}#reviews` }]),
-            { label: 'Contact', url: `${profileHref}/contact` },
-          ]),
-        ],
+        : isBrokerRenewal
+          ? mapFooterItems(RENEWAL_FOOTER_ITEMS, profileHref)
+          : isBrokerClassic
+            ? mapFooterItems(BROKER_CLASSIC_FOOTER_ITEMS, profileHref)
+            : [
+            { label: 'Profile', url: profileHref },
+            { label: 'Services', url: `${profileHref}#services` },
+            ...(isBroker
+              ? [
+                  { label: 'Rates', url: `${profileHref}#rates` },
+                  { label: 'Calculator', url: `${profileHref}#calculator` },
+                ]
+              : [{ label: 'Properties', url: `${profileHref}/properties` }]),
+            ...(isInvestor ? [] : [
+              ...(isBrokerClassic ? [] : [{ label: 'Reviews', url: `${profileHref}#reviews` }]),
+              { label: 'Contact', url: `${profileHref}/contact` },
+            ]),
+          ],
   };
 
   const updateField = (field, value) => {
@@ -611,6 +617,8 @@ export default function PublicContactPage({ profile }) {
             <LawyerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerFirstHome ? (
             <BrokerFirstHomeFooter profile={profile} block={footerBlock} absoluteHashes />
+          ) : isBrokerRenewal ? (
+            <BrokerRenewalFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerClassic ? (
             <BrokerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : (

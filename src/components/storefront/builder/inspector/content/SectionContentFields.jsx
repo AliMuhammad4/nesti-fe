@@ -125,6 +125,7 @@ export function CtaContentFields({ block, model, onChange }) {
     isSellerExpertTemplate,
     isLawyerInvestor,
     isBrokerClassic,
+    isBrokerRenewal,
     contentValue,
   } = model;
   if (block.type !== T.CTA || isElementSelection) return null;
@@ -135,7 +136,13 @@ export function CtaContentFields({ block, model, onChange }) {
         label={isCommunityTemplate || isLawyerInvestor ? 'Primary inquiry button' : isBrokerClassic ? 'Primary button' : 'Appointment button'}
         value={contentValue('cta_label')}
         onChange={setContent('cta_label')}
-        placeholder={isBrokerClassic ? 'Find My Mortgage Options' : isCommunityTemplate ? 'Send detailed inquiry' : 'Ask about availability'}
+        placeholder={isBrokerRenewal
+          ? 'Upload my offer'
+          : isBrokerClassic
+            ? 'Find My Mortgage Options'
+            : isCommunityTemplate
+              ? 'Send detailed inquiry'
+              : 'Ask about availability'}
       />
       {!isSellerExpertTemplate ? (
         <>
@@ -144,7 +151,11 @@ export function CtaContentFields({ block, model, onChange }) {
               label={isLawyerInvestor ? 'Appointment button' : isBrokerClassic ? 'Secondary button' : 'Inquiry button'}
               value={contentValue('secondary_cta_label')}
               onChange={setContent('secondary_cta_label')}
-              placeholder={isBrokerClassic ? 'Book a Consultation' : 'Send detailed inquiry'}
+              placeholder={isBrokerRenewal
+                ? 'Book a consultation'
+                : isBrokerClassic
+                  ? 'Book a Consultation'
+                  : 'Send detailed inquiry'}
             />
           ) : null}
           <InspectorTextarea

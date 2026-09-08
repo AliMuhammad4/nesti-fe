@@ -63,8 +63,10 @@ const LEGACY_BROKER_SECTION_BACKGROUNDS = new Set([
   '#eff2f6',
   '#eef3f7',
   '#f7f9fb',
-  '#0c2139',
-  '#008fd5',
+  '#f1f2f4',
+  '#e6e8ec',
+  '#efeaed',
+  '#f6f4f5',
 ]);
 
 export function transparentSectionPresentation(

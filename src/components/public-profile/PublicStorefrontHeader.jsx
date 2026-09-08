@@ -27,6 +27,7 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
   const isLawyerNewcomer = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-newcomer';
   const isBrokerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
   const isBrokerFirstHome = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-first-home';
+  const isBrokerRenewal = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-renewal';
   const showReviews = Boolean(profile?.storefront_builder_preview)
     || hasPublicClientStories(profile);
   const availableLinks = (links) => links.filter(
@@ -61,6 +62,20 @@ export function buildStorefrontNavLinks(profile, { absoluteHashes = false } = {}
       { href: `${hashBase}#guidance`, label: 'Roadmap' },
       { href: `${hashBase}#rates`, label: 'Rates' },
       { href: `${hashBase}#calculator`, label: 'Calculator' },
+      { href: `${hashBase}#faq`, label: 'FAQ' },
+      ...(slug
+        ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
+        : [{ href: `${hashBase}#contact`, label: 'Contact' }]),
+    ]);
+  }
+
+  if (isBrokerRenewal) {
+    return availableLinks([
+      { href: `${hashBase}#about`, label: 'About' },
+      { href: `${hashBase}#programs`, label: 'Programs' },
+      { href: `${hashBase}#services`, label: 'Services' },
+      { href: `${hashBase}#guidance`, label: 'Checklist' },
+      ...(showReviews ? [{ href: `${hashBase}#reviews`, label: 'Reviews' }] : []),
       { href: `${hashBase}#faq`, label: 'FAQ' },
       ...(slug
         ? [{ href: `/professional/${slug}/contact`, label: 'Contact' }]
@@ -149,7 +164,8 @@ export default function PublicStorefrontHeader({
     || String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-classic';
   const isBrokerFirstHome = variant === 'brokerFirstHome'
     || String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-first-home';
-  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome;
+  const isBrokerRenewal = String(profile?.storefront_template_key || '').toLowerCase() === 'mortgage_broker-renewal';
+  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome || isBrokerRenewal;
   const isDarkEditorial = isLuxury || isLawyerFirstHome || isLawyerInvestor;
   const hasBrandLogo = Boolean(profile?.storefront_logo_url || profile?.storefront_logo_dark_url);
   const hasDedicatedDarkLogo = Boolean(profile?.storefront_logo_dark_url);
@@ -196,7 +212,7 @@ export default function PublicStorefrontHeader({
 
   return (
     <header
-      className={`${positionClass} z-[1000] backdrop-blur ${navOpenClass} ${
+      className={`${positionClass} z-[1000] isolate backdrop-blur ${navOpenClass} ${
         isLawyerFirstHome
           ? 'border-b border-white/10 bg-primary/90 text-primary-contrast shadow-none'
           : isBrokerTemplate

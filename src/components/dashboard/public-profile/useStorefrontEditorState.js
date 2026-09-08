@@ -35,6 +35,10 @@ import {
   migrateBrokerFirstHomeBlocks,
   migrateBrokerFirstHomeBrandKit,
 } from '@/components/storefront/templates/mortgage-broker/firstHomeMigration';
+import {
+  migrateBrokerRenewalBlocks,
+  migrateBrokerRenewalBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/renewalMigration';
 import { normalizeRole } from './editorConstants';
 import {
   blockLayoutStyleSignature,
@@ -850,6 +854,10 @@ function migrateBrokerBlocks(templateKey, blocks = [], profileSeed = {}) {
     const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
     return migrateBrokerFirstHomeBlocks(blocks, defaults, profileSeed);
   }
+  if (templateKey === 'mortgage_broker-renewal') {
+    const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+    return migrateBrokerRenewalBlocks(blocks, defaults);
+  }
   if (templateKey !== 'mortgage_broker-classic') return blocks;
   const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
   return migrateBrokerClassicBlocks(blocks, defaults);
@@ -869,16 +877,26 @@ function needsBrokerFirstHomeMigration(templateKey, blocks = [], profileSeed = {
   return JSON.stringify(source) !== JSON.stringify(migrated);
 }
 
+function needsBrokerRenewalMigration(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'mortgage_broker-renewal') return false;
+  const source = normalizeBlocks(blocks);
+  const migrated = normalizeBlocks(migrateBrokerBlocks(templateKey, blocks, profileSeed));
+  return JSON.stringify(source) !== JSON.stringify(migrated);
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
-  return migrateBrokerFirstHomeBrandKit(
+  return migrateBrokerRenewalBrandKit(
     templateKey,
-    migrateBrokerClassicBrandKit(
+    migrateBrokerFirstHomeBrandKit(
       templateKey,
-      migrateLawyerNewcomerBrandKit(
+      migrateBrokerClassicBrandKit(
         templateKey,
-        migrateCommunityHubBrandKit(
+        migrateLawyerNewcomerBrandKit(
           templateKey,
-          migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+          migrateCommunityHubBrandKit(
+            templateKey,
+            migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+          ),
         ),
       ),
     ),
@@ -944,7 +962,8 @@ function editorDataFromDraft(
       || needsLawyerClassicV2Migration(templateKey, draft.blocks)
       || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed)
       || needsBrokerClassicMigration(templateKey, draft.blocks, profileSeed)
-      || needsBrokerFirstHomeMigration(templateKey, draft.blocks, profileSeed);
+      || needsBrokerFirstHomeMigration(templateKey, draft.blocks, profileSeed)
+      || needsBrokerRenewalMigration(templateKey, draft.blocks, profileSeed);
     return {
       migrationApplied,
       editorData: {
@@ -1130,6 +1149,10 @@ export default function useStorefrontEditorState({
             recoveredDraft.blocks,
             profileSeed,
           ) || needsBrokerFirstHomeMigration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
+          ) || needsBrokerRenewalMigration(
             recoveredDraft.template_key,
             recoveredDraft.blocks,
             profileSeed,

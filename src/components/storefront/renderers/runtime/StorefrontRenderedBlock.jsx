@@ -35,7 +35,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic', 'mortgage_broker-first-home'].includes(templateKey)
+    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic', 'mortgage_broker-first-home', 'mortgage_broker-renewal'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -93,9 +93,20 @@ export default function StorefrontRenderedBlock({
     onInlineContentChange,
   });
 
-  const isDedicatedBrokerHero = ['mortgage_broker-classic', 'mortgage_broker-first-home'].includes(templateKey) && isHero;
+  const isDedicatedBrokerHero = [
+    'mortgage_broker-classic',
+    'mortgage_broker-first-home',
+    'mortgage_broker-renewal',
+  ].includes(templateKey) && isHero;
   const skipPreviewBandChrome = (templateKey === 'lawyer-classic' && isHero) || isDedicatedBrokerHero;
   const isSelectedBand = preview && selectedBlockId === block.id;
+  // PublicHero mounts a fixed header inside the hero band. Keep that stacking
+  // context above animated siblings so section eyebrows cannot paint over the nav.
+  const hostsFixedPublicHeader = isHero && [
+    'mortgage_broker-renewal',
+    'agent-investor',
+    'lawyer-newcomer',
+  ].includes(templateKey);
 
   return (
     <section
@@ -115,6 +126,7 @@ export default function StorefrontRenderedBlock({
       className={[
         'storefront-public-band relative w-full max-w-none',
         sectionTextOverrideClass,
+        !hostsFixedPublicHeader && !isHero ? 'z-0' : '',
         preview
           ? `cursor-pointer ${
               skipPreviewBandChrome
@@ -124,6 +136,7 @@ export default function StorefrontRenderedBlock({
                   : 'z-[1] hover:z-[2] hover:ring-1 hover:ring-inset hover:ring-primary/35'
             }`
           : '',
+        hostsFixedPublicHeader ? 'z-[1000]' : '',
       ].filter(Boolean).join(' ') || undefined}
       style={{
         position: 'relative',
@@ -135,7 +148,7 @@ export default function StorefrontRenderedBlock({
         borderRadius: 0,
         boxShadow: 'none',
         ...(templateKey === 'lawyer-newcomer' ? {} : { backgroundImage: 'none' }),
-        overflow: 'visible',
+        overflow: hostsFixedPublicHeader ? 'visible' : (isHero ? 'visible' : 'hidden'),
         backgroundColor: sectionBackground,
         ...(style.textColor && !isHero ? { color: style.textColor } : {}),
         ...(resolvedAlignment && !isHero ? { textAlign: resolvedAlignment } : {}),
