@@ -1,0 +1,35 @@
+export default function robots() {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: [
+        '/log-in',
+        '/sign-up',
+        '/forgot-password',
+        '/verify-email',
+        '/reset-password',
+        '/verify-reset-otp',
+        '/dashboard',
+        '/leads',
+        '/clients',
+        '/conversations',
+        '/messages',
+        '/call-history',
+        '/calendar',
+        '/nurture-logs',
+        '/referrals',
+        '/notifications',
+        '/analytics',
+        '/settings',
+        '/checkout',
+        '/client-dashboard',
+        '/profile',
+        '/professionals',
+        '/chatbot',
+        '/invite',
+      ],
+    },
+    sitemap: 'https://nesti.ca/sitemap.xml',
+  };
+}

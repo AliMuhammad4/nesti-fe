@@ -133,7 +133,7 @@ const nextConfig = {
         ],
       },
       {
-        source: "/:publicPage(about|mission|blog|faq|privacy|privacy-policy|terms|terms-of-use|refund-policy)",
+        source: "/:publicPage(about|mission|blog|faq|contact|privacy|privacy-policy|terms|terms-of-use|refund-policy)",
         headers: [
           {
             key: "Cache-Control",

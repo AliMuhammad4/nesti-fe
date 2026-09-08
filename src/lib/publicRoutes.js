@@ -1,4 +1,5 @@
 export const PUBLIC_MARKETING_ROUTES = [
+  "/",
   "/about",
   "/mission",
   "/blog",
