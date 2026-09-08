@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Copy, Link2, Loader2, Mail, MessageCircle, RefreshCw, Settings2, Share2, X } from "lucide-react";
+import { Copy, Link2, Loader2, Mail, MessageCircle, RefreshCw, Settings2, Share2, X, ImageIcon } from "lucide-react";
 import DashboardInviteRewardButton from "@/components/dashboard/DashboardInviteRewardButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -579,6 +580,13 @@ export default function DashboardPage() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#8fa9ae] via-[#9eb3b8] to-[#7a959b]" aria-hidden />
                 <div className="pointer-events-none absolute -left-12 top-4 h-[200px] w-[200px] rounded-full border-[32px] border-white/20" aria-hidden />
                 <div className="pointer-events-none absolute -right-6 top-[-15%] h-[180px] w-[180px] rounded-full bg-white/10" aria-hidden />
+                <Link
+                  href="/settings"
+                  className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-primary"
+                >
+                  <ImageIcon size={13} className="text-primary" />
+                  Add cover
+                </Link>
               </>
             )}
           </div>

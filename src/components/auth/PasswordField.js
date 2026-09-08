@@ -19,6 +19,7 @@ export default function PasswordField({
   autoComplete = "current-password",
   showStrengthIndicator = false,
   passwordRequirements = [],
+  disabled = false,
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -62,16 +63,24 @@ export default function PasswordField({
           onChange={onChange}
           onFocus={onFocus}
           onBlur={onBlur}
+          disabled={disabled}
           minLength={8}
-          className={`h-11 w-full rounded-xl border bg-white/80 pl-10 pr-10 text-sm transition-all duration-200 hover:bg-white hover:shadow-sm cursor-text ${getBorderColor()}`}
+          className={`h-11 w-full rounded-xl border bg-white/80 pl-10 pr-10 text-sm transition-all duration-200 ${
+            disabled ? "!cursor-not-allowed !bg-gray-100 opacity-60" : "cursor-text hover:bg-white hover:shadow-sm"
+          } ${getBorderColor()}`}
           type={showPassword ? "text" : "password"}
           placeholder={placeholder}
           autoComplete={autoComplete}
         />
         <button
           type="button"
-          onClick={() => setShowPassword((s) => !s)}
-          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted transition-all duration-200 hover:scale-105 hover:text-primary cursor-pointer"
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) setShowPassword((s) => !s);
+          }}
+          className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted transition-all duration-200 ${
+            disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:scale-105 hover:text-primary"
+          }`}
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
           {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}

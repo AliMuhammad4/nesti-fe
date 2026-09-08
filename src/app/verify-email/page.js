@@ -32,6 +32,8 @@ export default function VerifyEmailPage() {
 
   const otpInputRefs = useRef([]);
   const isVerifyingRef = useRef(false); // prevents duplicate submissions
+  const hasRedirectedRef = useRef(false); // prevents multiple/duplicate redirects
+  const redirectTimeoutRef = useRef(null);
   const {
     getEmail,
     getVerificationToken,
@@ -46,36 +48,54 @@ export default function VerifyEmailPage() {
   const token = useAppSelector((state) => state.auth.token);
   const userRole = useAppSelector((state) => state.auth.user?.role);
 
-  // Once token lands in Redux (set by useVerifyEmail onSuccess), navigate to dashboard
+  // Clear any pending redirect timer on unmount
   useEffect(() => {
-    if (token && verificationStatus === "success") {
-      // Use role from Redux (from API response) or fallback to localStorage
-      const role = userRole || getRole();
-      console.log('🔍 DEBUG - Routing after verification:');
-      console.log('  userRole from Redux:', userRole);
-      console.log('  role from localStorage:', getRole());
-      console.log('  final role used:', role);
-      const dashboardRoute = getDashboardRoute(role);
-      console.log('  dashboard route:', dashboardRoute);
-      router.push(dashboardRoute);
-    }
-  }, [token, verificationStatus, userRole, router, getRole]);
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
 
+  // Initial mount check:
+  // 1. If already authenticated with a valid token, route directly to dashboard
+  // 2. Otherwise load email from signup flow
+  // 3. If neither token nor stored email exists, redirect to sign-up
   useEffect(() => {
+    if (token) {
+      hasRedirectedRef.current = true;
+      const role = userRole || getRole();
+      router.replace(getDashboardRoute(role));
+      return;
+    }
+
     const storedEmail = getEmail();
     if (storedEmail) {
       setEmail(storedEmail);
     } else {
-      router.push("/sign-up");
+      router.replace("/sign-up");
     }
-  }, [getEmail, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fallback watchdog: if token & success land, ensure router transition executes directly
+  useEffect(() => {
+    if (token && verificationStatus === "success" && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      const role = userRole || getRole();
+      const dashboardRoute = getDashboardRoute(role);
+      redirectTimeoutRef.current = setTimeout(() => {
+        router.replace(dashboardRoute);
+      }, 850);
+    }
+  }, [token, verificationStatus, userRole, router, getRole]);
 
   const getOtpString = () => otp.join("").replace(/\D/g, "");
   const isOtpComplete = () => getOtpString().length === 5;
 
   const handleVerifyOTP = async () => {
-    // Guard against duplicate calls (blur + form submit firing together)
-    if (isVerifyingRef.current) return;
+    // Guard against duplicate calls (blur + form submit firing together or already redirected)
+    if (isVerifyingRef.current || verifying || hasRedirectedRef.current) return;
 
     const code = getOtpString();
 
@@ -94,20 +114,37 @@ export default function VerifyEmailPage() {
 
     try {
       const verificationToken = getVerificationToken();
-      await verifyEmailMutation.mutateAsync({
+      const inviteToken = getInviteToken();
+      const storedRole = getRole();
+
+      const data = await verifyEmailMutation.mutateAsync({
         otp: code,
         verificationToken,
-        invite_token: getInviteToken() || undefined,
+        invite_token: inviteToken || undefined,
       });
+
+      // Verification successful! Display inline success indicator immediately
+      hasRedirectedRef.current = true;
+      setVerificationStatus("success");
+
+      // Compute destination route directly from response or stored state
+      const targetRole = data?.user?.role || data?.role || userRole || storedRole;
+      const targetRoute = getDashboardRoute(targetRole);
+
+      // Clean up signup data now that destination route is locked
       clearSignupData();
-      setVerificationStatus("success"); // triggers the useEffect above to navigate
+
+      // Seamless direct transition to dashboard after brief inline success feedback
+      redirectTimeoutRef.current = setTimeout(() => {
+        router.replace(targetRoute);
+      }, 850);
     } catch (error) {
       const msg = error?.message || "Verification failed. Please try again.";
       // If already verified (duplicate key), treat as success and send to login
       if (msg.toLowerCase().includes("already verified")) {
         toast.info("Account already verified. Please log in.");
         clearSignupData();
-        router.push("/log-in");
+        router.replace("/log-in");
         return;
       }
       setVerificationStatus("error");
@@ -265,10 +302,13 @@ export default function VerifyEmailPage() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={verifying || !isOtpComplete()}
-                className="h-14 w-full bg-gradient-to-r from-primary to-primary-dark rounded-md flex flex-col justify-center items-center cursor-pointer text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="h-14 w-full bg-gradient-to-r from-primary to-primary-dark rounded-md flex justify-center items-center gap-2 cursor-pointer text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {verifying ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
                 ) : (
                   "Verify Email"
                 )}
@@ -288,39 +328,63 @@ export default function VerifyEmailPage() {
             </form>
           )}
 
-          {/* Success */}
+          {/* Success - Inline checkmark & loader */}
           {verificationStatus === "success" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center py-8">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                  className="text-primary"
-                >
-                  <CheckCircle2 size={80} />
-                </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-5 text-center"
+            >
+              <div className="flex items-center justify-center pt-4 pb-2">
+                <div className="relative flex h-24 w-24 items-center justify-center">
+                  <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/20 duration-1000" />
+                  <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-emerald-500/30 to-primary/30 blur-sm" />
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.15, type: "spring", stiffness: 220, damping: 15 }}
+                    className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/80 shadow-sm"
+                  >
+                    <CheckCircle2 size={52} className="stroke-[2.2]" />
+                  </motion.div>
+                </div>
               </div>
 
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-700 text-center">
-                  Your email has been successfully verified! Redirecting to your dashboard...
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-text-heading">
+                  Email Verified Successfully!
+                </h3>
+                <p className="text-sm text-text-body">
+                  Setting up your workspace and redirecting to your dashboard...
                 </p>
               </div>
 
+              {/* Progress loader bar */}
+              <div className="overflow-hidden rounded-full bg-gray-100 p-0.5 border border-border/60">
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 0.85, ease: "easeInOut" }}
+                  className="h-1.5 rounded-full bg-gradient-to-r from-primary via-primary-dark to-emerald-500"
+                />
+              </div>
+
               <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+                type="button"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => {
+                  if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
                   const role = userRole || getRole();
-                  const dashboardRoute = getDashboardRoute(role);
-                  router.push(dashboardRoute);
+                  router.replace(getDashboardRoute(role));
                 }}
-                className="h-14 w-full bg-gradient-to-r from-primary to-primary-dark rounded-md flex flex-col justify-center items-center cursor-pointer text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300"
+                className="h-14 w-full bg-gradient-to-r from-primary to-primary-dark rounded-md flex items-center justify-center gap-2.5 cursor-pointer text-white font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300"
               >
-                Go to Dashboard
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Redirecting to Dashboard...</span>
               </motion.button>
-            </div>
+            </motion.div>
           )}
 
           {/* Error */}
@@ -363,7 +427,7 @@ export default function VerifyEmailPage() {
                   <motion.button
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => router.push("/sign-up")}
+                    onClick={() => router.replace("/sign-up")}
                     className="h-14 w-full bg-background border-2 border-border rounded-md flex justify-center items-center cursor-pointer hover:border-primary hover:shadow-lg hover:bg-background-light/50 transition-all duration-300"
                   >
                     <span className="text-sm font-semibold text-text-heading">

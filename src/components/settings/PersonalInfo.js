@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { User, Mail, Calendar, Pencil, ImageIcon, MapPin, CheckCircle2, Building2, Globe, Link2 } from "lucide-react";
+import { User, Mail, Calendar, Pencil, ImageIcon, MapPin, CheckCircle2, Building2, Globe, Link2, Camera, UploadCloud, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { notifyClientProfileUpdated } from "@/lib/clientProfileEvents";
 import FormField from "@/components/auth/FormField";
@@ -504,6 +504,8 @@ export default function PersonalInfo({ onSaveSuccess, clientSettingsSection = "a
     }
     if (coverImage && /^https?:\/\//i.test(String(coverImage))) {
       payload.cover_image = String(coverImage).trim();
+    } else if (!coverImage) {
+      payload.cover_image = "";
     }
 
     setLoading(true);
@@ -675,6 +677,13 @@ export default function PersonalInfo({ onSaveSuccess, clientSettingsSection = "a
     }
   };
 
+  const handleRemoveCover = (e) => {
+    e.stopPropagation();
+    setCoverImage("");
+    dispatch(setPersonalInfo({ coverImage: "" }));
+    toast.info("Cover photo removed. Remember to save changes.");
+  };
+
   const displayName =
     [form.firstName, form.lastName].filter(Boolean).join(" ").trim() || "Your profile";
   const fieldSizeClass = isClient ? "!h-10 text-xs" : "!h-12 text-[13px]";
@@ -696,31 +705,117 @@ export default function PersonalInfo({ onSaveSuccess, clientSettingsSection = "a
       {/* Cover + profile card */}
       {!isClient || showClientBasicSection ? (
       <div className="overflow-hidden rounded-xl border border-border/60 bg-white shadow-sm">
-        {/* Cover — fixed 16:5 aspect */}
-        <div className="relative aspect-[16/5] w-full min-h-[8rem] sm:min-h-0">
+        {/* Cover — optimized height: compact when empty to preserve above-the-fold space, expansive when photo is set */}
+        <div
+          className={`relative w-full overflow-hidden transition-all duration-300 ${
+            coverImage
+              ? "aspect-[16/5] min-h-[9rem] max-h-72"
+              : "h-36 sm:h-44 md:h-48 border-b border-border/40"
+          }`}
+        >
           {coverImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={coverImage}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImage}
+                alt="Profile cover"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent"
+                aria-hidden
+              />
+            </>
           ) : (
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-primary/10"
-              aria-hidden
-            />
+            <>
+              {/* Branded default placeholder gradient & ambient pattern */}
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-slate-50 via-emerald-50/40 to-primary/10"
+                aria-hidden
+              >
+                {/* Subtle radial dot grid */}
+                <div
+                  className="absolute inset-0 opacity-[0.35]"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 1px 1px, rgba(42, 168, 74, 0.45) 1px, transparent 0)",
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                {/* Ambient glow effects */}
+                <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-primary/15 blur-3xl" />
+                <div className="pointer-events-none absolute -right-12 -bottom-12 h-44 w-44 rounded-full bg-emerald-500/15 blur-3xl" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-72 rounded-full bg-white/40 blur-2xl" />
+                {/* Decorative architectural rings matching Nesti branding */}
+                <div className="pointer-events-none absolute -left-10 top-2 h-40 w-40 rounded-full border-[20px] border-primary/[0.06]" />
+                <div className="pointer-events-none absolute -right-8 top-[-20%] h-36 w-36 rounded-full bg-primary/[0.04]" />
+              </div>
+
+              {/* Centered clickable placeholder prompt */}
+              <div
+                onClick={() => coverInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    coverInputRef.current?.click();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className="group absolute inset-0 flex flex-col items-center justify-center cursor-pointer px-4 text-center select-none transition-colors hover:bg-primary/[0.02] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-inset"
+                aria-label="Add a cover photo to personalize your profile"
+              >
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-white/90 text-primary shadow-sm backdrop-blur-sm transition-all duration-200 group-hover:scale-105 group-hover:bg-white group-hover:border-primary/50 group-hover:shadow-md">
+                  <Camera size={20} className="stroke-[2.2] text-primary" aria-hidden />
+                  <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white ring-2 ring-white shadow">
+                    +
+                  </div>
+                </div>
+                <p className="mt-2.5 text-xs sm:text-sm font-bold tracking-tight text-slate-800 group-hover:text-primary transition-colors">
+                  Add a cover image to personalize your profile
+                </p>
+                <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                  Recommended: 1600 × 500px • JPG, PNG, or WebP up to 16MB
+                </p>
+              </div>
+            </>
           )}
-          <div className="absolute inset-x-0 top-0 flex justify-end p-3 sm:p-3.5">
-            <button
-              type="button"
-              disabled={uploadMedia.isPending}
-              onClick={() => coverInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/90 px-3 py-1 text-[10px] font-semibold text-text-heading shadow-sm backdrop-blur-md transition hover:bg-white disabled:opacity-50"
-            >
-              <ImageIcon size={13} className="text-primary" aria-hidden />
-              {uploadMedia.isPending ? "Uploading…" : "Change cover"}
-            </button>
+
+          {/* Top-right action controls */}
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-end gap-1.5 p-3 sm:p-3.5">
+            {coverImage ? (
+              <>
+                <button
+                  type="button"
+                  disabled={uploadMedia.isPending}
+                  onClick={() => coverInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/60 bg-white/90 px-3 py-1 text-[11px] font-semibold text-text-heading shadow-sm backdrop-blur-md transition hover:bg-white disabled:opacity-50"
+                >
+                  <ImageIcon size={13} className="text-primary" aria-hidden />
+                  {uploadMedia.isPending ? "Uploading…" : "Change cover"}
+                </button>
+                <button
+                  type="button"
+                  disabled={uploadMedia.isPending}
+                  onClick={handleRemoveCover}
+                  className="inline-flex items-center gap-1 rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-rose-600 shadow-sm backdrop-blur-md transition hover:bg-rose-50 disabled:opacity-50"
+                  title="Remove cover photo"
+                >
+                  <Trash2 size={12} aria-hidden />
+                  <span>Remove</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={uploadMedia.isPending}
+                onClick={() => coverInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-white/95 px-3 py-1 text-[11px] font-semibold text-text-heading shadow-sm backdrop-blur-md transition hover:bg-white hover:border-primary/50 hover:text-primary disabled:opacity-50"
+              >
+                <UploadCloud size={13} className="text-primary" aria-hidden />
+                {uploadMedia.isPending ? "Uploading…" : "Upload cover"}
+              </button>
+            )}
             <input
               ref={coverInputRef}
               type="file"
