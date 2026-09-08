@@ -27,6 +27,7 @@ import {
   Send,
   MessageSquare,
   PhoneCall,
+  Lock,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -35,6 +36,18 @@ import LeadsPipelineSidebarNav from "@/components/leads/LeadsPipelineSidebarNav"
 import { PUBLIC_HOME_PATH, navigateToPublicHome } from "@/lib/workspaceNavigation";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
+import { useProfileQuery } from "@/hooks/useAuthApi";
+import {
+  isRouteAllowedDuringSetup,
+  isProfileSetupLocked,
+  notifyProfileSetupLocked,
+} from "@/lib/profileSetupGate";
+import {
+  isAllowedAfterTrial,
+  isTrialExpiredOrLocked,
+  openTrialExpiredModal,
+  notifyTrialExpired,
+} from "@/lib/trialSubscriptionGate";
 
 const REFERRAL_DIRECTION_ITEMS = [
   { id: "referral-inbound", label: "Inbound", href: "/referrals?direction=inbound", icon: Inbox },
@@ -65,9 +78,10 @@ const SETTINGS_ITEMS = [
 ];
 
 /** Sidebar nav icon: gradient tile, depth, hover lift on idle state */
-function NavIconTile({ Icon, variant = "idle" }) {
-  const wrap =
-    variant === "active"
+function NavIconTile({ Icon, variant = "idle", locked = false }) {
+  const wrap = locked
+    ? "bg-slate-100/90 text-text-muted/40 shadow-none ring-1 ring-border/45"
+    : variant === "active"
       ? "bg-gradient-to-br from-primary via-primary to-primary-dark text-white shadow-[0_4px_14px_rgba(52,199,89,0.38)] ring-1 ring-white/35"
       : variant === "soft"
         ? "bg-gradient-to-br from-primary/35 to-primary/12 text-primary-dark shadow-[inset_0_-1px_0_rgba(42,168,74,0.14)] ring-1 ring-primary/28"
@@ -82,9 +96,11 @@ function NavIconTile({ Icon, variant = "idle" }) {
         size={variant === "active" ? 16 : 15}
         strokeWidth={2}
         className={
-          variant === "idle"
-            ? "transition-transform duration-200 ease-out group-hover:scale-110 group-hover:-translate-y-px"
-            : "drop-shadow-[0_1px_1px_rgba(0,0,0,0.06)]"
+          locked
+            ? "text-text-muted/40"
+            : variant === "idle"
+              ? "transition-transform duration-200 ease-out group-hover:scale-110 group-hover:-translate-y-px"
+              : "drop-shadow-[0_1px_1px_rgba(0,0,0,0.06)]"
         }
       />
     </span>
@@ -157,10 +173,33 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
   const isCalendarRoute = pathname === "/calendar" || pathname.startsWith("/calendar/");
   const isReferralsRoute = pathname === "/referrals" || pathname.startsWith("/referrals/");
 
+  const { data: profileData, isSuccess: isProfileSuccess } = useProfileQuery();
+  const isProfileLocked = useMemo(
+    () => isProfileSetupLocked(user, profileData, isProfileSuccess),
+    [user, profileData, isProfileSuccess]
+  );
+  const isTrialLocked = useMemo(
+    () => isTrialExpiredOrLocked(user, profileData),
+    [user, profileData]
+  );
+  const isAnyLocked = isProfileLocked || isTrialLocked;
+
+  const handleLockedItemClick = (e, label) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isProfileLocked) {
+      notifyProfileSetupLocked(label);
+    } else if (isTrialLocked) {
+      openTrialExpiredModal(label);
+      notifyTrialExpired(label);
+    }
+  };
+
   useEffect(() => {
     // In dev, aggressive prefetch can trigger on-demand route compilation storms
     // and make navigation feel slower. Keep eager prefetch for production only.
     if (process.env.NODE_ENV !== "production") return;
+    if (isProfileLocked || isTrialLocked) return;
     const hrefs = [
       "/dashboard",
       "/leads",
@@ -180,7 +219,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
         // best-effort prefetch only
       }
     });
-  }, [router]);
+  }, [router, isProfileLocked, isTrialLocked]);
 
   useEffect(() => {
     if (isSettingsActive) setSettingsOpen(true);
@@ -344,86 +383,242 @@ setReferralsOpen(false);
             const Icon = item.icon;
             const active = primaryItemActive(item);
             const leadsHere = leadsNavInWorkspace(item);
+            const isItemLocked =
+              (isProfileLocked && !isRouteAllowedDuringSetup(item.href)) ||
+              (isTrialLocked && !isAllowedAfterTrial(item.href));
+
             return (
               <Fragment key={item.id}>
                 {item.id !== "referrals" ? (
-                  <Link
-                    href={item.href}
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setPipelineNavOpen(false);
-                      setReferralsOpen(false);
-                      onCloseMobile?.();
-                    }}
-                    className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold transition-all duration-200 ${
-                      active
-                        ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                        : leadsHere
-                          ? "bg-primary/[0.08] text-primary-dark ring-1 ring-primary/10"
-                          : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
-                    }`}
-                    aria-current={active || leadsHere ? "page" : undefined}
-                    onMouseEnter={() => {
-                      if (!shouldPrefetch) return;
-                      router.prefetch(item.href);
-                    }}
-                  >
-                    {(active || leadsHere) && (
-                      <span
-                        className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
-                        aria-hidden
+                  isItemLocked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleLockedItemClick(e, item.label)}
+                      className="group relative flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-medium text-text-muted/65 opacity-65 cursor-not-allowed transition-all duration-200 hover:bg-slate-50/70"
+                      title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                      aria-disabled="true"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <NavIconTile Icon={Icon} variant="idle" locked />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </span>
+                      <Lock size={12} className="shrink-0 text-text-muted/60" />
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setPipelineNavOpen(false);
+                        setReferralsOpen(false);
+                        onCloseMobile?.();
+                      }}
+                      className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold transition-all duration-200 ${
+                        active
+                          ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                          : leadsHere
+                            ? "bg-primary/[0.08] text-primary-dark ring-1 ring-primary/10"
+                            : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                      }`}
+                      aria-current={active || leadsHere ? "page" : undefined}
+                      onMouseEnter={() => {
+                        if (!shouldPrefetch) return;
+                        router.prefetch(item.href);
+                      }}
+                    >
+                      {(active || leadsHere) && (
+                        <span
+                          className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                          aria-hidden
+                        />
+                      )}
+                      <NavIconTile
+                        Icon={Icon}
+                        variant={active ? "active" : leadsHere ? "soft" : "idle"}
                       />
-                    )}
-                    <NavIconTile
-                      Icon={Icon}
-                      variant={active ? "active" : leadsHere ? "soft" : "idle"}
-                    />
-                    <span className="min-w-0 truncate">{item.label}</span>
-                  </Link>
+                      <span className="min-w-0 truncate">{item.label}</span>
+                    </Link>
+                  )
                 ) : null}
 
                 {item.id === "leads" ? (
                   <>
                     <div className="space-y-0.5">
+                      {isAnyLocked ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleLockedItemClick(e, "Pipeline")}
+                          className="group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-medium text-text-muted/65 opacity-65 cursor-not-allowed transition-all duration-200 hover:bg-slate-50/70"
+                          title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                          aria-disabled="true"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <NavIconTile Icon={GitBranch} variant="idle" locked />
+                            <span className="truncate">Pipeline</span>
+                          </span>
+                          <Lock size={12} className="shrink-0 text-text-muted/60" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSettingsOpen(false);
+                            setReferralsOpen(false);
+                            if (!isLeadsArea) {
+                              setPipelineNavOpen(true);
+                              navigateFast("/leads");
+                              onCloseMobile?.();
+                              return;
+                            }
+                            setPipelineNavOpen((prev) => !prev);
+                          }}
+                          className={`group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
+                            pipelineExpandedUI
+                              ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                              : pipelineRowInLeadsWorkspace
+                                ? "bg-white/90 text-text-heading ring-1 ring-border/60"
+                                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                          }`}
+                          aria-expanded={pipelineExpandedUI}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <NavIconTile
+                              Icon={GitBranch}
+                              variant={pipelineExpandedUI ? "active" : "idle"}
+                            />
+                            <span className="truncate">Pipeline</span>
+                          </span>
+                          <ChevronDown
+                            size={15}
+                            className={`shrink-0 text-text-muted transition-transform duration-200 ${
+                              pipelineExpandedUI ? "rotate-180 text-primary-dark" : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+
+                      {!isAnyLocked && (
+                        <AnimatePresence initial={false}>
+                          {pipelineExpandedUI ? (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.16 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="ml-2 mt-0.5 space-y-0.5 rounded-lg border border-border/60 bg-white/80 py-1.5 pl-2 pr-1">
+                                <LeadsPipelineSidebarNav
+                                  embedded
+                                  variant="settings"
+                                  skipRouteCheck
+                                  onNavigate={() => onCloseMobile?.()}
+                                />
+                              </div>
+                            </motion.div>
+                          ) : null}
+                        </AnimatePresence>
+                      )}
+                    </div>
+                    {showCalendarNav ? (
+                      isAnyLocked ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleLockedItemClick(e, "Calendar")}
+                          className="group relative flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-medium text-text-muted/65 opacity-65 cursor-not-allowed transition-all duration-200 hover:bg-slate-50/70"
+                          title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                          aria-disabled="true"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <NavIconTile Icon={CalendarDays} variant="idle" locked />
+                            <span className="truncate">Calendar</span>
+                          </span>
+                          <Lock size={12} className="shrink-0 text-text-muted/60" />
+                        </button>
+                      ) : (
+                        <Link
+                          href="/calendar"
+                          onClick={() => {
+                            setSettingsOpen(false);
+                            setPipelineNavOpen(false);
+                            setReferralsOpen(false);
+                            onCloseMobile?.();
+                          }}
+                          className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
+                            isCalendarRoute
+                              ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                              : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                          }`}
+                          aria-current={isCalendarRoute ? "page" : undefined}
+                        >
+                          {isCalendarRoute ? (
+                            <span
+                              className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                              aria-hidden
+                            />
+                          ) : null}
+                          <NavIconTile Icon={CalendarDays} variant={isCalendarRoute ? "active" : "idle"} />
+                          <span className="truncate">Calendar</span>
+                        </Link>
+                      )
+                    ) : null}
+                  </>
+                ) : null}
+                {item.id === "referrals" ? (
+                  <div className="space-y-0.5">
+                    {isAnyLocked ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleLockedItemClick(e, "Referrals")}
+                        className="group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-medium text-text-muted/65 opacity-65 cursor-not-allowed transition-all duration-200 hover:bg-slate-50/70"
+                        title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                        aria-disabled="true"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <NavIconTile Icon={Handshake} variant="idle" locked />
+                          <span className="truncate">Referrals</span>
+                        </span>
+                        <Lock size={12} className="shrink-0 text-text-muted/60" />
+                      </button>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => {
                           setSettingsOpen(false);
-setReferralsOpen(false);
-                          if (!isLeadsArea) {
-                            setPipelineNavOpen(true);
-                            navigateFast("/leads");
+                          setPipelineNavOpen(false);
+                          if (!isReferralsRoute) {
+                            setReferralsOpen(true);
+                            navigateFast("/referrals?direction=inbound");
                             onCloseMobile?.();
                             return;
                           }
-                          setPipelineNavOpen((prev) => !prev);
+                          setReferralsOpen((prev) => !prev);
                         }}
                         className={`group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
-                          pipelineExpandedUI
+                          referralsOpen && isReferralsRoute
                             ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                            : pipelineRowInLeadsWorkspace
-                              ? "bg-white/90 text-text-heading ring-1 ring-border/60"
-                              : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                            : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
                         }`}
-                        aria-expanded={pipelineExpandedUI}
+                        aria-expanded={referralsOpen && isReferralsRoute}
                       >
                         <span className="flex min-w-0 items-center gap-2">
                           <NavIconTile
-                            Icon={GitBranch}
-                            variant={pipelineExpandedUI ? "active" : "idle"}
+                            Icon={Handshake}
+                            variant={referralsOpen && isReferralsRoute ? "active" : "idle"}
                           />
-                          <span className="truncate">Pipeline</span>
+                          <span className="truncate">Referrals</span>
                         </span>
                         <ChevronDown
                           size={15}
                           className={`shrink-0 text-text-muted transition-transform duration-200 ${
-                            pipelineExpandedUI ? "rotate-180 text-primary-dark" : ""
+                            referralsOpen && isReferralsRoute ? "rotate-180 text-primary-dark" : ""
                           }`}
                         />
                       </button>
-
+                    )}
+                    {!isAnyLocked && (
                       <AnimatePresence initial={false}>
-                        {pipelineExpandedUI ? (
+                        {referralsOpen && isReferralsRoute ? (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -432,119 +627,35 @@ setReferralsOpen(false);
                             className="overflow-hidden"
                           >
                             <div className="ml-2 mt-0.5 space-y-0.5 rounded-lg border border-border/60 bg-white/80 py-1.5 pl-2 pr-1">
-                              <LeadsPipelineSidebarNav
-                                embedded
-                                variant="settings"
-                                skipRouteCheck
-                                onNavigate={() => onCloseMobile?.()}
-                              />
+                              {REFERRAL_DIRECTION_ITEMS.map((refItem) => {
+                                const active = isReferralsInboxDirectionActive(pathname, refItem.href, searchParams);
+                                const Icon = refItem.icon;
+                                return (
+                                  <Link
+                                    key={refItem.id}
+                                    href={refItem.href}
+                                    onClick={() => onCloseMobile?.()}
+                                    onMouseEnter={() => {
+                                      if (!shouldPrefetch) return;
+                                      router.prefetch(refItem.href);
+                                    }}
+                                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-snug transition ${
+                                      active
+                                        ? "bg-primary/12 text-primary-dark ring-1 ring-primary/12"
+                                        : "text-text-body hover:bg-primary/5"
+                                    }`}
+                                    aria-current={active ? "page" : undefined}
+                                  >
+                                    <SettingsSubIcon Icon={Icon} active={active} />
+                                    <span className="truncate">{refItem.label}</span>
+                                  </Link>
+                                );
+                              })}
                             </div>
                           </motion.div>
                         ) : null}
                       </AnimatePresence>
-                    </div>
-                    {showCalendarNav ? (
-                      <Link
-                        href="/calendar"
-                        onClick={() => {
-                          setSettingsOpen(false);
-                          setPipelineNavOpen(false);
-setReferralsOpen(false);
-                          onCloseMobile?.();
-                        }}
-                        className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
-                          isCalendarRoute
-                            ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                            : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
-                        }`}
-                        aria-current={isCalendarRoute ? "page" : undefined}
-                      >
-                        {isCalendarRoute ? (
-                          <span
-                            className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
-                            aria-hidden
-                          />
-                        ) : null}
-                        <NavIconTile Icon={CalendarDays} variant={isCalendarRoute ? "active" : "idle"} />
-                        <span className="truncate">Calendar</span>
-                      </Link>
-                    ) : null}
-                  </>
-                ) : null}
-                {item.id === "referrals" ? (
-                  <div className="space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSettingsOpen(false);
-                        setPipelineNavOpen(false);
-                        if (!isReferralsRoute) {
-                          setReferralsOpen(true);
-                          navigateFast("/referrals?direction=inbound");
-                          onCloseMobile?.();
-                          return;
-                        }
-                        setReferralsOpen((prev) => !prev);
-                      }}
-                      className={`group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[13px] font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background-light ${
-                        referralsOpen && isReferralsRoute
-                          ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                          : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
-                      }`}
-                      aria-expanded={referralsOpen && isReferralsRoute}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <NavIconTile
-                          Icon={Handshake}
-                          variant={referralsOpen && isReferralsRoute ? "active" : "idle"}
-                        />
-                        <span className="truncate">Referrals</span>
-                      </span>
-                      <ChevronDown
-                        size={15}
-                        className={`shrink-0 text-text-muted transition-transform duration-200 ${
-                          referralsOpen && isReferralsRoute ? "rotate-180 text-primary-dark" : ""
-                        }`}
-                      />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {referralsOpen && isReferralsRoute ? (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.16 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="ml-2 mt-0.5 space-y-0.5 rounded-lg border border-border/60 bg-white/80 py-1.5 pl-2 pr-1">
-                            {REFERRAL_DIRECTION_ITEMS.map((refItem) => {
-                              const active = isReferralsInboxDirectionActive(pathname, refItem.href, searchParams);
-                              const Icon = refItem.icon;
-                              return (
-                                <Link
-                                  key={refItem.id}
-                                  href={refItem.href}
-                                  onClick={() => onCloseMobile?.()}
-                                  onMouseEnter={() => {
-                                    if (!shouldPrefetch) return;
-                                    router.prefetch(refItem.href);
-                                  }}
-                                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-snug transition ${
-                                    active
-                                      ? "bg-primary/12 text-primary-dark ring-1 ring-primary/12"
-                                      : "text-text-body hover:bg-primary/5"
-                                  }`}
-                                  aria-current={active ? "page" : undefined}
-                                >
-                                  <SettingsSubIcon Icon={Icon} active={active} />
-                                  <span className="truncate">{refItem.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
+                    )}
                   </div>
                 ) : null}
               </Fragment>
@@ -599,13 +710,36 @@ setReferralsOpen(false);
                       const tabActive = item.href
                         ? pathname === item.href
                         : pathname === "/settings" && settingsTab === item.tab;
+                      const isSettingLocked =
+                        (isProfileLocked && !isRouteAllowedDuringSetup(href)) ||
+                        (isTrialLocked && !isAllowedAfterTrial(href));
+
+                      if (isSettingLocked) {
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={(e) => handleLockedItemClick(e, item.label)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium leading-snug text-text-muted/65 opacity-65 cursor-not-allowed transition hover:bg-slate-50/70"
+                            title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                            aria-disabled="true"
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <Icon size={13} strokeWidth={2} className="shrink-0 text-text-muted/50" />
+                              <span className="min-w-0 truncate">{item.label}</span>
+                            </span>
+                            <Lock size={11} className="shrink-0 text-text-muted/60" />
+                          </button>
+                        );
+                      }
+
                       return (
                         <Link
                           key={item.id}
                           href={href}
                           onClick={() => {
                             setPipelineNavOpen(false);
-setReferralsOpen(false);
+                            setReferralsOpen(false);
                             onCloseMobile?.();
                           }}
                           onMouseEnter={() => {

@@ -1,4 +1,5 @@
 import { CLIENT_ROLE, PROFESSIONAL_ROLE_VALUES } from '@/constants/auth';
+import { isTrialExpiredOrLocked, getUpgradeBillingRoute } from '@/lib/trialSubscriptionGate';
 
 /**
  * Determines the appropriate dashboard route based on user role
@@ -16,6 +17,21 @@ export function getDashboardRoute(role) {
   
   // Default fallback
   return '/dashboard';
+}
+
+/**
+ * Determines the appropriate post-login route based on role and trial status.
+ * If the user's trial has expired, sends them directly to billing/checkout,
+ * avoiding any intermediate dashboard paint or screen bounce.
+ * @param {Object} user - User object with role and accountStatus
+ * @returns {string} - Safe destination route
+ */
+export function getPostLoginRoute(user) {
+  if (!user) return '/dashboard';
+  if (isTrialExpiredOrLocked(user)) {
+    return getUpgradeBillingRoute(user);
+  }
+  return getDashboardRoute(user?.role);
 }
 
 /**

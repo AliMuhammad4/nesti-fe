@@ -19,11 +19,18 @@ import {
   MessageSquare,
   Target,
   PhoneCall,
+  Lock,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logoutAndClearAll } from "@/store/actions";
 import { PUBLIC_HOME_PATH, navigateToPublicHome } from "@/lib/workspaceNavigation";
+import { useProfileQuery } from "@/hooks/useAuthApi";
+import {
+  isTrialExpiredOrLocked,
+  openTrialExpiredModal,
+  notifyTrialExpired,
+} from "@/lib/trialSubscriptionGate";
 
 const CLIENT_SETTINGS_ITEMS = [
   { id: "personal", label: "Personal Information", tab: "personal", icon: User },
@@ -82,6 +89,15 @@ function isSectionNavActive(pathname, href) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
+function TrialUpgradeBadge() {
+  return (
+    <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-500/25">
+      <Lock size={9} className="text-amber-700" />
+      Upgrade
+    </span>
+  );
+}
+
 export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
   const pathname = usePathname() || "";
   const searchParams = useSearchParams();
@@ -91,6 +107,19 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
   const shouldPrefetch = process.env.NODE_ENV === "production";
   const personalInfo = useAppSelector((state) => state.profile.personalInfo);
   const menuRef = useRef(null);
+
+  const { data: profileData } = useProfileQuery();
+  const isTrialLocked = useMemo(
+    () => isTrialExpiredOrLocked(user, profileData),
+    [user, profileData]
+  );
+
+  const handleTrialLockedClick = (e, featureName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openTrialExpiredModal(featureName);
+    notifyTrialExpired(featureName);
+  };
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -213,76 +242,102 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
         <div className="space-y-0.5">
           <Link
             href="/client-dashboard"
-            onClick={() => {
+            onClick={(e) => {
+              if (isTrialLocked) {
+                handleTrialLockedClick(e, "Dashboard");
+                return;
+              }
               setSettingsOpen(false);
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              isDashboardActive
-                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+              isTrialLocked
+                ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                : isDashboardActive
+                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={isDashboardActive ? "page" : undefined}
+            aria-current={!isTrialLocked && isDashboardActive ? "page" : undefined}
+            aria-disabled={isTrialLocked ? "true" : undefined}
+            title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             onMouseEnter={() => {
-              if (!shouldPrefetch) return;
+              if (!shouldPrefetch || isTrialLocked) return;
               router.prefetch("/client-dashboard");
             }}
           >
-            {isDashboardActive && (
+            {!isTrialLocked && isDashboardActive && (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
               />
             )}
-            <NavIconTile Icon={Home} variant={isDashboardActive ? "active" : "idle"} />
+            <NavIconTile Icon={Home} variant={!isTrialLocked && isDashboardActive ? "active" : "idle"} />
             <span className="min-w-0 truncate">Dashboard</span>
+            {isTrialLocked && <TrialUpgradeBadge />}
           </Link>
 
           <Link
             href="/client-dashboard/properties"
-            onClick={() => {
+            onClick={(e) => {
+              if (isTrialLocked) {
+                handleTrialLockedClick(e, "Properties");
+                return;
+              }
               setSettingsOpen(false);
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              isPropertiesActive
-                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+              isTrialLocked
+                ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                : isPropertiesActive
+                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={isPropertiesActive ? "page" : undefined}
+            aria-current={!isTrialLocked && isPropertiesActive ? "page" : undefined}
+            aria-disabled={isTrialLocked ? "true" : undefined}
+            title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             onMouseEnter={() => {
-              if (!shouldPrefetch) return;
+              if (!shouldPrefetch || isTrialLocked) return;
               router.prefetch("/client-dashboard/properties");
             }}
           >
-            {isPropertiesActive && (
+            {!isTrialLocked && isPropertiesActive && (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
               />
             )}
-            <NavIconTile Icon={Building2} variant={isPropertiesActive ? "active" : "idle"} />
+            <NavIconTile Icon={Building2} variant={!isTrialLocked && isPropertiesActive ? "active" : "idle"} />
             <span className="min-w-0 truncate">Properties</span>
+            {isTrialLocked && <TrialUpgradeBadge />}
           </Link>
 
           <Link
             href="/client-dashboard/inquiries"
-            onClick={() => {
+            onClick={(e) => {
+              if (isTrialLocked) {
+                handleTrialLockedClick(e, "Inquiries");
+                return;
+              }
               setSettingsOpen(false);
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")
-                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+              isTrialLocked
+                ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                : pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")
+                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={pathname === "/client-dashboard/inquiries" ? "page" : undefined}
+            aria-current={!isTrialLocked && (pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")) ? "page" : undefined}
+            aria-disabled={isTrialLocked ? "true" : undefined}
+            title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             onMouseEnter={() => {
-              if (!shouldPrefetch) return;
+              if (!shouldPrefetch || isTrialLocked) return;
               router.prefetch("/client-dashboard/inquiries");
             }}
           >
-            {(pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")) && (
+            {!isTrialLocked && (pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")) && (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
@@ -291,32 +346,41 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
             <NavIconTile
               Icon={ClipboardList}
               variant={
-                pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/")
+                !isTrialLocked && (pathname === "/client-dashboard/inquiries" || pathname.startsWith("/client-dashboard/inquiries/"))
                   ? "active"
                   : "idle"
               }
             />
             <span className="min-w-0 truncate">Inquiries</span>
+            {isTrialLocked && <TrialUpgradeBadge />}
           </Link>
 
           <Link
             href="/client-dashboard/calls"
-            onClick={() => {
+            onClick={(e) => {
+              if (isTrialLocked) {
+                handleTrialLockedClick(e, "Call History");
+                return;
+              }
               setSettingsOpen(false);
               onCloseMobile?.();
             }}
             className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-              isSectionNavActive(pathname, "/client-dashboard/calls")
-                ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+              isTrialLocked
+                ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                : isSectionNavActive(pathname, "/client-dashboard/calls")
+                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
             }`}
-            aria-current={isSectionNavActive(pathname, "/client-dashboard/calls") ? "page" : undefined}
+            aria-current={!isTrialLocked && isSectionNavActive(pathname, "/client-dashboard/calls") ? "page" : undefined}
+            aria-disabled={isTrialLocked ? "true" : undefined}
+            title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             onMouseEnter={() => {
-              if (!shouldPrefetch) return;
+              if (!shouldPrefetch || isTrialLocked) return;
               router.prefetch("/client-dashboard/calls");
             }}
           >
-            {isSectionNavActive(pathname, "/client-dashboard/calls") ? (
+            {!isTrialLocked && isSectionNavActive(pathname, "/client-dashboard/calls") ? (
               <span
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                 aria-hidden
@@ -324,9 +388,10 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
             ) : null}
             <NavIconTile
               Icon={PhoneCall}
-              variant={isSectionNavActive(pathname, "/client-dashboard/calls") ? "active" : "idle"}
+              variant={!isTrialLocked && isSectionNavActive(pathname, "/client-dashboard/calls") ? "active" : "idle"}
             />
             <span className="min-w-0 truncate">Call History</span>
+            {isTrialLocked && <TrialUpgradeBadge />}
           </Link>
         </div>
 
@@ -338,56 +403,74 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
           <div className="space-y-0.5">
             <Link
               href="/professionals"
-              onClick={() => {
+              onClick={(e) => {
+                if (isTrialLocked) {
+                  handleTrialLockedClick(e, "Professionals");
+                  return;
+                }
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                isBrowseProfessionals
-                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                isTrialLocked
+                  ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                  : isBrowseProfessionals
+                    ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                    : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={isBrowseProfessionals ? "page" : undefined}
+              aria-current={!isTrialLocked && isBrowseProfessionals ? "page" : undefined}
+              aria-disabled={isTrialLocked ? "true" : undefined}
+              title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
               onMouseEnter={() => {
-                if (!shouldPrefetch) return;
+                if (!shouldPrefetch || isTrialLocked) return;
                 router.prefetch("/professionals");
               }}
             >
-              {isBrowseProfessionals && (
+              {!isTrialLocked && isBrowseProfessionals && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={UserRound} variant={isBrowseProfessionals ? "active" : "idle"} />
+              <NavIconTile Icon={UserRound} variant={!isTrialLocked && isBrowseProfessionals ? "active" : "idle"} />
               <span className="min-w-0 truncate">Professionals</span>
+              {isTrialLocked && <TrialUpgradeBadge />}
             </Link>
 
             <Link
               href="/professionals?recommended=1"
-              onClick={() => {
+              onClick={(e) => {
+                if (isTrialLocked) {
+                  handleTrialLockedClick(e, "Recommended");
+                  return;
+                }
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                isRecommendedProfessionals
-                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                isTrialLocked
+                  ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                  : isRecommendedProfessionals
+                    ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                    : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={isRecommendedProfessionals ? "page" : undefined}
+              aria-current={!isTrialLocked && isRecommendedProfessionals ? "page" : undefined}
+              aria-disabled={isTrialLocked ? "true" : undefined}
+              title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
               onMouseEnter={() => {
-                if (!shouldPrefetch) return;
+                if (!shouldPrefetch || isTrialLocked) return;
                 router.prefetch("/professionals?recommended=1");
               }}
             >
-              {isRecommendedProfessionals && (
+              {!isTrialLocked && isRecommendedProfessionals && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={Sparkles} variant={isRecommendedProfessionals ? "active" : "idle"} />
+              <NavIconTile Icon={Sparkles} variant={!isTrialLocked && isRecommendedProfessionals ? "active" : "idle"} />
               <span className="min-w-0 truncate">Recommended</span>
+              {isTrialLocked && <TrialUpgradeBadge />}
             </Link>
           </div>
         </div>
@@ -400,25 +483,34 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
           <div className="space-y-0.5">
             <Link
               href="/client-dashboard/progress"
-              onClick={() => {
+              onClick={(e) => {
+                if (isTrialLocked) {
+                  handleTrialLockedClick(e, "My Progress");
+                  return;
+                }
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                pathname === '/client-dashboard/progress'
-                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                isTrialLocked
+                  ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                  : pathname === '/client-dashboard/progress'
+                    ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                    : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={pathname === '/client-dashboard/progress' ? "page" : undefined}
+              aria-current={!isTrialLocked && pathname === '/client-dashboard/progress' ? "page" : undefined}
+              aria-disabled={isTrialLocked ? "true" : undefined}
+              title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             >
-              {pathname === '/client-dashboard/progress' && (
+              {!isTrialLocked && pathname === '/client-dashboard/progress' && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={TrendingUp} variant={pathname === '/client-dashboard/progress' ? "active" : "idle"} />
+              <NavIconTile Icon={TrendingUp} variant={!isTrialLocked && pathname === '/client-dashboard/progress' ? "active" : "idle"} />
               <span className="min-w-0 truncate">My Progress</span>
+              {isTrialLocked && <TrialUpgradeBadge />}
             </Link>
 
             <Link
@@ -430,7 +522,9 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
                 pathname === '/client-dashboard/billing'
                   ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                  : isTrialLocked
+                    ? "text-primary-dark bg-primary/10 hover:bg-primary/15 ring-1 ring-primary/20"
+                    : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
               aria-current={pathname === '/client-dashboard/billing' ? "page" : undefined}
             >
@@ -440,31 +534,45 @@ export default function ClientSidebar({ isMobileOpen, onCloseMobile }) {
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={CreditCard} variant={pathname === '/client-dashboard/billing' ? "active" : "idle"} />
+              <NavIconTile Icon={CreditCard} variant={pathname === '/client-dashboard/billing' ? "active" : isTrialLocked ? "soft" : "idle"} />
               <span className="min-w-0 truncate">Billing</span>
+              {isTrialLocked && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary-dark">
+                  Plans
+                </span>
+              )}
             </Link>
 
             <Link
               href="/conversations"
-              onClick={() => {
+              onClick={(e) => {
+                if (isTrialLocked) {
+                  handleTrialLockedClick(e, "Conversations");
+                  return;
+                }
                 setSettingsOpen(false);
                 onCloseMobile?.();
               }}
               className={`group relative flex items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                pathname === '/conversations'
-                  ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
-                  : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
+                isTrialLocked
+                  ? "text-text-body/70 opacity-75 cursor-not-allowed hover:bg-slate-50"
+                  : pathname === '/conversations'
+                    ? "bg-gradient-to-r from-primary/14 to-primary/5 text-primary-dark shadow-sm ring-1 ring-primary/10"
+                    : "text-text-body hover:bg-white/90 hover:text-text-heading hover:ring-1 hover:ring-border/70"
               }`}
-              aria-current={pathname === '/conversations' ? "page" : undefined}
+              aria-current={!isTrialLocked && pathname === '/conversations' ? "page" : undefined}
+              aria-disabled={isTrialLocked ? "true" : undefined}
+              title={isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
             >
-              {pathname === '/conversations' && (
+              {!isTrialLocked && pathname === '/conversations' && (
                 <span
                   className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
                   aria-hidden
                 />
               )}
-              <NavIconTile Icon={MessageSquare} variant={pathname === '/conversations' ? "active" : "idle"} />
+              <NavIconTile Icon={MessageSquare} variant={!isTrialLocked && pathname === '/conversations' ? "active" : "idle"} />
               <span className="min-w-0 truncate">Conversations</span>
+              {isTrialLocked && <TrialUpgradeBadge />}
             </Link>
           </div>
         </div>

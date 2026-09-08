@@ -27,7 +27,8 @@ import {
   getOrCreateInviteVisitorId,
   saveInviteAttribution,
 } from "@/lib/inviteAttributionStorage";
-import { getDashboardRoute } from "@/lib/roleUtils";
+import { getDashboardRoute, getPostLoginRoute } from "@/lib/roleUtils";
+import { isTrialExpiredOrLocked } from "@/lib/trialSubscriptionGate";
 
 export default function LoginPageClient() {
   const router = useRouter();
@@ -38,8 +39,8 @@ export default function LoginPageClient() {
 
   useEffect(() => {
     if (token && user?.role) {
-      const dashboardRoute = getDashboardRoute(user.role);
-      router.replace(dashboardRoute);
+      const destination = getPostLoginRoute(user);
+      router.replace(destination);
     }
   }, [token, user, router]);
 
@@ -69,7 +70,7 @@ export default function LoginPageClient() {
         source_referrer: typeof document !== "undefined" ? document.referrer || "" : "",
         landing_path: typeof window !== "undefined" ? window.location.pathname : "/log-in",
       },
-    }).catch(() => {});
+    }).catch(() => { });
   }, [inviteToken]);
 
   const [focusedField, setFocusedField] = useState("");
