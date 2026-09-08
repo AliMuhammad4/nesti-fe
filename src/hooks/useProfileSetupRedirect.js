@@ -5,19 +5,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
 import { useProfileQuery } from "@/hooks/useAuthApi";
-import { PROFESSIONAL_ROLE_VALUES } from "@/constants/auth";
-import { isPublicMarketingRoute } from "@/lib/publicRoutes";
-
-const ALLOWED_PREFIXES = ["/settings", "/checkout", "/calendly-callback", "/profile"];
-
-function pathAllowedDuringSetup(pathname) {
-  if (isPublicMarketingRoute(pathname)) return true;
-  if (pathname.startsWith("/p/") || pathname.startsWith("/professional/")) return true;
-  return ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
+import {
+  isRouteAllowedDuringSetup,
+  isProfileSetupLocked,
+  isPrivateWorkspaceRoute,
+} from "@/lib/profileSetupGate";
 
 /**
  * Sends agents / brokers / lawyers to Settings until personal + business basics exist (matches backend gate).
+ * Scoped EXCLUSIVELY to private workspace routes so public marketing, landing pages,
+ * blogs, documentation, and terms are completely unrestricted.
  */
 export function useProfileSetupRedirect(isMounted) {
   const pathname = usePathname() || "";
@@ -30,24 +27,23 @@ export function useProfileSetupRedirect(isMounted) {
   });
   const toastShownRef = useRef(false);
 
-  const effectiveRole = user?.role || profileData?.user?.role;
-  const needsGate = Boolean(
-    effectiveRole && PROFESSIONAL_ROLE_VALUES.includes(effectiveRole)
-  );
+  const isLocked = isProfileSetupLocked(user, profileData, isSuccess);
 
   useEffect(() => {
-    if (profileData?.profile_setup?.is_complete) {
+    if (!isLocked) {
       toastShownRef.current = false;
     }
-  }, [profileData?.profile_setup?.is_complete]);
+  }, [isLocked]);
 
   useEffect(() => {
     if (!isMounted || !token) return;
-    if (!needsGate) return;
-    if (isPending || !isSuccess || !profileData) return;
-    const setup = profileData.profile_setup;
-    if (!setup || setup.is_complete) return;
-    if (allowedPath) return;
+    if (isPending || !isSuccess) return;
+    if (!isLocked) return;
+
+    // Do NOT guard or intercept public marketing, landing pages, blogs, or documentation
+    if (!isPrivateWorkspaceRoute(pathname)) return;
+    if (isRouteAllowedDuringSetup(pathname)) return;
+
     if (!toastShownRef.current) {
       toastShownRef.current = true;
       toast.info("Complete your personal and business information in Settings to unlock the workspace.", {
@@ -55,5 +51,5 @@ export function useProfileSetupRedirect(isMounted) {
       });
     }
     router.replace("/settings?tab=personal&setup=required");
-  }, [isMounted, token, needsGate, isPending, isSuccess, profileData, allowedPath, router]);
+  }, [isMounted, token, isPending, isSuccess, isLocked, pathname, router]);
 }

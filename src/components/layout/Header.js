@@ -23,6 +23,9 @@ import NotificationsBell from "@/components/notifications/NotificationsBell";
 import { PUBLIC_HOME_PATH, navigateToPublicHome } from "@/lib/workspaceNavigation";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
+import IncompleteProfileBanner from "@/components/auth/IncompleteProfileBanner";
+import { useProfileQuery } from "@/hooks/useAuthApi";
+import { isProfileSetupLocked } from "@/lib/profileSetupGate";
 
 export default function Header() {
   const pathname = usePathname();
@@ -113,10 +116,27 @@ export default function Header() {
         .map((part) => part[0]?.toUpperCase())
         .join("")
     : "?";
-  const dashboardOrWebsiteItem =
-    pathname === "/dashboard"
-      ? { label: "Website", href: PUBLIC_HOME_PATH, Icon: Home }
-      : { label: "Dashboard", href: "/dashboard", Icon: LayoutDashboard };
+
+  const { data: profileData, isSuccess: isProfileSuccess } = useProfileQuery();
+  const isProfileLocked = useMemo(
+    () => isProfileSetupLocked(user, profileData, isProfileSuccess),
+    [user, profileData, isProfileSuccess]
+  );
+
+  const dashboardOrWebsiteItem = useMemo(() => {
+    if (pathname === "/dashboard") {
+      return { label: "Website", href: PUBLIC_HOME_PATH, Icon: Home };
+    }
+    if (isProfileLocked) {
+      return {
+        label: "Return to Setup",
+        href: "/settings?tab=personal&setup=required",
+        Icon: LayoutDashboard,
+      };
+    }
+    return { label: "Dashboard", href: "/dashboard", Icon: LayoutDashboard };
+  }, [pathname, isProfileLocked]);
+
   const DashboardOrWebsiteIcon = dashboardOrWebsiteItem.Icon;
 
   const handleLogout = () => {
@@ -133,6 +153,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-white/90 backdrop-blur-xl">
+      <IncompleteProfileBanner />
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
           {/* Logo — public landing home */}

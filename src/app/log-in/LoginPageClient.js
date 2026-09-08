@@ -16,6 +16,7 @@ import SubmitButton from "@/components/auth/SubmitButton";
 import Divider from "@/components/auth/Divider";
 import GoogleButton from "@/components/auth/GoogleButton";
 import AuthFooter from "@/components/auth/AuthFooter";
+import AuthRedirectOverlay from "@/components/auth/AuthRedirectOverlay";
 import { emailRegexSimple } from "@/utils/validation";
 import { useGoogleLogin, useLogin } from "@/hooks/useAuthApi";
 import { useAppSelector } from "@/store";
@@ -26,7 +27,8 @@ import {
   getOrCreateInviteVisitorId,
   saveInviteAttribution,
 } from "@/lib/inviteAttributionStorage";
-import { getDashboardRoute } from "@/lib/roleUtils";
+import { getDashboardRoute, getPostLoginRoute } from "@/lib/roleUtils";
+import { isTrialExpiredOrLocked } from "@/lib/trialSubscriptionGate";
 
 export default function LoginPageClient() {
   const router = useRouter();
@@ -37,8 +39,8 @@ export default function LoginPageClient() {
 
   useEffect(() => {
     if (token && user?.role) {
-      const dashboardRoute = getDashboardRoute(user.role);
-      router.replace(dashboardRoute);
+      const destination = getPostLoginRoute(user);
+      router.replace(destination);
     }
   }, [token, user, router]);
 
@@ -68,7 +70,7 @@ export default function LoginPageClient() {
         source_referrer: typeof document !== "undefined" ? document.referrer || "" : "",
         landing_path: typeof window !== "undefined" ? window.location.pathname : "/log-in",
       },
-    }).catch(() => {});
+    }).catch(() => { });
   }, [inviteToken]);
 
   const [focusedField, setFocusedField] = useState("");
@@ -78,9 +80,18 @@ export default function LoginPageClient() {
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectOverlay, setRedirectOverlay] = useState({
+    isVisible: false,
+    title: "Signing in...",
+    subtitle: "Preparing your workspace and redirecting to your dashboard.",
+    badge: "Authenticating",
+  });
+
   const loginMutation = useLogin();
   const googleLoginMutation = useGoogleLogin();
   const isSubmitting = isLoggingIn || loginMutation.isPending;
+  const isFormDisabled = isSubmitting || googleLoginMutation.isPending || isRedirecting;
 
   const redirectToGoogleSignup = () => {
     const params = new URLSearchParams();
@@ -92,6 +103,13 @@ export default function LoginPageClient() {
   const googleLogin = useGoogleOAuthLogin({
     flow: "implicit",
     onSuccess: (tokenResponse) => {
+      setIsRedirecting(true);
+      setRedirectOverlay({
+        isVisible: true,
+        title: "Setting up your workspace...",
+        subtitle: "Verifying your Google credentials...",
+        badge: "Connecting with Google",
+      });
       googleLoginMutation.mutate(
         {
           token: tokenResponse.access_token,
@@ -102,9 +120,17 @@ export default function LoginPageClient() {
           onSuccess: (data) => {
             const userRole = data?.user?.role || data?.role;
             const dashboardRoute = getDashboardRoute(userRole);
+            setRedirectOverlay({
+              isVisible: true,
+              title: "Welcome Back!",
+              subtitle: "Redirecting to your dashboard...",
+              badge: "Redirecting",
+            });
             router.push(dashboardRoute);
           },
           onError: (error) => {
+            setIsRedirecting(false);
+            setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
             const msg = String(error?.message || "").toLowerCase();
             if (error?.status === 404 || msg.includes("no google account found")) {
               toast.info("No Google account found. Redirecting to Google signup...");
@@ -114,10 +140,15 @@ export default function LoginPageClient() {
         }
       );
     },
-    onError: () => toast.error("Google login failed. Please try again."),
+    onError: () => {
+      setIsRedirecting(false);
+      setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
+      toast.error("Google login failed. Please try again.");
+    },
   });
 
   const handleChange = (e) => {
+    if (isFormDisabled) return;
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: "" }));
@@ -138,6 +169,7 @@ export default function LoginPageClient() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isFormDisabled) return;
     const errs = validate();
     setFieldErrors(errs);
     if (errs.email || errs.password) return;
@@ -151,19 +183,36 @@ export default function LoginPageClient() {
       });
       const userRole = data?.user?.role || data?.role;
       const dashboardRoute = getDashboardRoute(userRole);
+      setIsRedirecting(true);
+      setRedirectOverlay({
+        isVisible: true,
+        title: "Welcome Back!",
+        subtitle: "Redirecting to your dashboard...",
+        badge: "Redirecting",
+      });
       router.push(dashboardRoute);
     } catch (err) {
       setIsLoggingIn(false);
+      setIsRedirecting(false);
+      setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
       console.error("Login error:", err);
     }
   };
 
   const handleGoogleLogin = () => {
+    if (isFormDisabled) return;
     googleLogin();
   };
 
   return (
     <AuthLayout>
+      <AuthRedirectOverlay
+        isVisible={redirectOverlay.isVisible}
+        title={redirectOverlay.title}
+        subtitle={redirectOverlay.subtitle}
+        badge={redirectOverlay.badge}
+      />
+
       <div className="flex w-full min-h-0 flex-1 items-center bg-background px-5 py-4 sm:px-8 md:w-[48%] md:py-5 lg:px-12">
         <div className="mx-auto w-full max-w-[24rem] space-y-3">
           <AuthBrandLink />
@@ -186,6 +235,7 @@ export default function LoginPageClient() {
               focusedField={focusedField}
               error={fieldErrors.email}
               autoComplete="email"
+              disabled={isFormDisabled}
             />
 
             <PasswordField
@@ -199,6 +249,7 @@ export default function LoginPageClient() {
               focusedField={focusedField}
               error={fieldErrors.password}
               autoComplete="current-password"
+              disabled={isFormDisabled}
             />
 
             <div className="text-right">
@@ -212,14 +263,17 @@ export default function LoginPageClient() {
             </div>
 
             <div className="flex flex-col space-y-2 pt-1">
-              <SubmitButton loading={isSubmitting}>Sign In</SubmitButton>
+              <SubmitButton loading={isSubmitting} disabled={isFormDisabled}>
+                Sign In
+              </SubmitButton>
             </div>
 
             <Divider />
 
             <GoogleButton
               onClick={handleGoogleLogin}
-              loading={googleLoginMutation.isPending}
+              loading={googleLoginMutation.isPending || isRedirecting}
+              disabled={isFormDisabled}
             >
               Sign in with Google
             </GoogleButton>

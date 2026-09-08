@@ -17,6 +17,7 @@ import SubmitButton from "@/components/auth/SubmitButton";
 import Divider from "@/components/auth/Divider";
 import GoogleButton from "@/components/auth/GoogleButton";
 import AuthFooter from "@/components/auth/AuthFooter";
+import AuthRedirectOverlay from "@/components/auth/AuthRedirectOverlay";
 import {
   emailRegex,
   checkPasswordStrength,
@@ -38,24 +39,27 @@ function SignUpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useAppSelector((state) => state.auth.token);
+  const userRole = useAppSelector((state) => state.auth.user?.role);
   const [inviteToken, setInviteToken] = useState("");
 
   useEffect(() => {
     if (token) {
-      // If already logged in, redirect to appropriate dashboard based on stored role
-      const storedRole = localStorage.getItem('nesti_signup_data');
-      let role = null;
-      try {
-        if (storedRole) {
-          const data = JSON.parse(storedRole);
-          role = data.role;
-        }
-      } catch (e) {}
+      // If already logged in, redirect to appropriate dashboard based on user role or stored role
+      let role = userRole || null;
+      if (!role) {
+        try {
+          const storedRole = localStorage.getItem('nesti_signup_data');
+          if (storedRole) {
+            const data = JSON.parse(storedRole);
+            role = data.role;
+          }
+        } catch (e) {}
+      }
       
-      const dashboardRoute = role ? getDashboardRoute(role) : '/dashboard';
+      const dashboardRoute = getDashboardRoute(role);
       router.replace(dashboardRoute);
     }
-  }, [token, router]);
+  }, [token, userRole, router]);
 
   useEffect(() => {
     const wantsGoogleFlow = String(searchParams?.get("google") || "").trim() === "1";
@@ -103,14 +107,31 @@ function SignUpPageContent() {
     role: "", // specific professional role or "client"
   });
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectOverlay, setRedirectOverlay] = useState({
+    isVisible: false,
+    title: "Setting up your workspace...",
+    subtitle: "Preparing your personalized dashboard. This will only take a moment.",
+    badge: "Authenticating",
+  });
+
   const { saveSignupData } = useSignupFlow();
   const signupMutation = useSignup();
   const googleSignupMutation = useGoogleSignup();
   const isGoogleFlowActive = isGoogleSignupSelected || googleSignupMutation.isPending;
   const isSubmitting = loader || signupMutation.isPending;
+  const isFormDisabled = isSubmitting || googleSignupMutation.isPending || isRedirecting;
+
   const googleSignup = useGoogleLogin({
     flow: "implicit",
     onSuccess: (tokenResponse) => {
+      setIsRedirecting(true);
+      setRedirectOverlay({
+        isVisible: true,
+        title: "Setting up your workspace...",
+        subtitle: "Creating your account and securing your session...",
+        badge: "Connecting with Google",
+      });
       googleSignupMutation.mutate(
         {
           token: tokenResponse.access_token,
@@ -120,19 +141,33 @@ function SignUpPageContent() {
         },
         {
           onSuccess: (data) => {
-            const dashboardRoute = getDashboardRoute(form.role);
+            const userRole = data?.user?.role || form.role;
+            const dashboardRoute = getDashboardRoute(userRole);
+            setRedirectOverlay({
+              isVisible: true,
+              title: "Workspace Ready!",
+              subtitle: "Redirecting to your dashboard...",
+              badge: "Redirecting",
+            });
             router.push(dashboardRoute);
+          },
+          onError: () => {
+            setIsRedirecting(false);
+            setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
           },
         }
       );
     },
     onError: () => {
       setIsGoogleSignupSelected(false);
+      setIsRedirecting(false);
+      setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
       toast.error("Google signup failed. Please try again.");
     },
   });
 
   const handleChange = (e) => {
+    if (isFormDisabled) return;
     const { name, value } = e.target;
     const v = name === "email" ? value.toLowerCase() : value;
     setForm((prev) => ({ ...prev, [name]: v }));
@@ -147,6 +182,7 @@ function SignUpPageContent() {
   };
 
   const handleUserTypeChange = (value) => {
+    if (isFormDisabled) return;
     setForm((prev) => ({ 
       ...prev, 
       userType: value,
@@ -157,6 +193,7 @@ function SignUpPageContent() {
   };
 
   const handleRoleChange = (value) => {
+    if (isFormDisabled) return;
     setForm((prev) => ({ ...prev, role: value }));
     setFieldErrors((prev) => ({ ...prev, role: "" }));
   };
@@ -190,6 +227,7 @@ function SignUpPageContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isFormDisabled) return;
     const errs = validate();
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
@@ -213,16 +251,27 @@ function SignUpPageContent() {
         role: form.role,
       });
 
+      setIsRedirecting(true);
+      setRedirectOverlay({
+        isVisible: true,
+        title: "Account Created!",
+        subtitle: "Redirecting to email verification...",
+        badge: "Verifying Email",
+      });
+
       // Redirect to verify email page
       router.push("/verify-email");
     } catch (err) {
       console.error("Signup error:", err);
+      setIsRedirecting(false);
+      setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
     } finally {
       setLoader(false);
     }
   };
 
   const handleGoogleSignup = () => {
+    if (isFormDisabled) return;
     setIsGoogleSignupSelected(true);
     if (!form.userType) {
       setFieldErrors((prev) => ({ ...prev, userType: "Please select if you are a professional or client" }));
@@ -239,6 +288,13 @@ function SignUpPageContent() {
 
   return (
     <AuthLayout>
+      <AuthRedirectOverlay
+        isVisible={redirectOverlay.isVisible}
+        title={redirectOverlay.title}
+        subtitle={redirectOverlay.subtitle}
+        badge={redirectOverlay.badge}
+      />
+
       {/* Left - Form Section */}
       <div className="flex w-full min-h-0 flex-1 items-center bg-background px-5 py-4 sm:px-8 md:w-[48%] md:py-5 lg:px-12">
         <div className="mx-auto w-full max-w-[24rem] space-y-3 md:max-h-full md:overflow-y-auto md:pr-1">
@@ -262,6 +318,7 @@ function SignUpPageContent() {
                   firstNameError={fieldErrors.firstName}
                   lastNameError={fieldErrors.lastName}
                   focusedField={focusedField}
+                  disabled={isFormDisabled}
                 />
 
                 <FormField
@@ -278,6 +335,7 @@ function SignUpPageContent() {
                   error={fieldErrors.email}
                   required
                   autoComplete="email"
+                  disabled={isFormDisabled}
                 />
 
                 <PasswordField
@@ -295,6 +353,7 @@ function SignUpPageContent() {
                   autoComplete="new-password"
                   showStrengthIndicator={true}
                   passwordRequirements={passwordRequirements}
+                  disabled={isFormDisabled}
                 />
               </>
             ) : null}
@@ -304,6 +363,7 @@ function SignUpPageContent() {
               value={form.userType}
               onChange={handleUserTypeChange}
               error={fieldErrors.userType}
+              disabled={isFormDisabled}
             />
 
             {/* Professional Role Selection - Only show if user selected "professional" */}
@@ -315,12 +375,15 @@ function SignUpPageContent() {
                 onBlur={() => setFocusedField("")}
                 error={fieldErrors.role}
                 required
+                disabled={isFormDisabled}
               />
             )}
 
             {!isGoogleFlowActive ? (
               <div className="flex flex-col space-y-2 pt-1">
-                <SubmitButton loading={isSubmitting}>Create Account</SubmitButton>
+                <SubmitButton loading={isSubmitting} disabled={isFormDisabled}>
+                  Create Account
+                </SubmitButton>
               </div>
             ) : null}
 
@@ -328,7 +391,8 @@ function SignUpPageContent() {
 
             <GoogleButton
               onClick={handleGoogleSignup}
-              loading={googleSignupMutation.isPending}
+              loading={googleSignupMutation.isPending || (isRedirecting && isGoogleSignupSelected)}
+              disabled={isFormDisabled}
             >
               Sign up with Google
             </GoogleButton>
@@ -336,8 +400,11 @@ function SignUpPageContent() {
             {isGoogleFlowActive ? (
               <button
                 type="button"
-                onClick={() => setIsGoogleSignupSelected(false)}
-                className="w-full text-xs font-semibold text-text-muted hover:text-text-heading transition-colors"
+                disabled={isFormDisabled}
+                onClick={() => {
+                  if (!isFormDisabled) setIsGoogleSignupSelected(false);
+                }}
+                className="w-full text-xs font-semibold text-text-muted hover:text-text-heading transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Use email signup instead
               </button>

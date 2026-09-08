@@ -1,6 +1,6 @@
 "use client";
 
-export default function UserTypeSelector({ value, onChange, error }) {
+export default function UserTypeSelector({ value, onChange, error, disabled = false }) {
   const userTypes = [
     { value: "professional", label: "Professional" },
     { value: "client", label: "User" }
@@ -20,8 +20,9 @@ export default function UserTypeSelector({ value, onChange, error }) {
             <button
               key={type.value}
               type="button"
+              disabled={disabled}
               onClick={() => onChange(type.value)}
-              className={`flex-1 rounded-full px-6 py-2.5 text-sm font-semibold transition-all duration-200 ${
+              className={`flex-1 rounded-full px-6 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
                 isSelected
                   ? "bg-primary text-white shadow-md shadow-primary/25"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"

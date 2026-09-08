@@ -6,31 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/store";
 import { ACCOUNT_STATUS } from "@/constants/features";
-import { isPublicMarketingRoute } from "@/lib/publicRoutes";
 import { apiClient, API_ENDPOINTS } from "@/lib/api";
 import { getActivePlanLimitStates } from "@/lib/planLimitUtils";
 import { getTrialRemainingMs } from "@/components/ui/TrialCountdownBadge";
-
-const ALLOWED_PREFIXES = [
-  "/checkout",
-  "/client-dashboard/billing",
-  "/client-dashboard/subscription",
-  "/calendly-callback",
-  "/log-in",
-  "/sign-up",
-  "/forgot-password",
-  "/verify-reset-otp",
-  "/reset-password",
-  "/verify-email",
-];
-
-function isAllowedAfterTrial(pathname) {
-  if (pathname === "/") return true;
-  if (isPublicMarketingRoute(pathname)) return true;
-  if (pathname.startsWith("/invite/")) return true;
-  if (pathname.startsWith("/p/") || pathname.startsWith("/professional/")) return true;
-  return ALLOWED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
+import {
+  isAllowedAfterTrial,
+  isTrialExpiredOrLocked,
+  getUpgradeBillingRoute,
+} from "@/lib/trialSubscriptionGate";
 
 function isAuthEntryPath(pathname) {
   return (
@@ -74,7 +57,9 @@ export function useTrialExpiryRedirect(isMounted) {
   const sessionInvalid = profileIsError && Number(profileError?.status) === 401;
   const effectiveUser = profileIsSuccess ? profileData?.user : null;
 
-  const accountStatus = String(effectiveUser?.accountStatus || effectiveUser?.account_status || "").toLowerCase();
+  const accountStatus = String(
+    effectiveUser?.accountStatus || effectiveUser?.account_status || ""
+  ).toLowerCase();
   const isClient = String(effectiveUser?.role || "").toLowerCase() === "client";
   const trialEndsAt = effectiveUser?.trialEndsAt || effectiveUser?.trial_ends_at;
   const planLimits = effectiveUser?.planLimits || effectiveUser?.plan_limits || null;
@@ -86,7 +71,8 @@ export function useTrialExpiryRedirect(isMounted) {
     trialRemainingMs > 0;
   const trialHasEnded =
     accountStatus === ACCOUNT_STATUS.EXPIRED ||
-    (accountStatus === ACCOUNT_STATUS.FREE_TRIAL && Boolean(trialEndsAt) && trialRemainingMs <= 0);
+    (accountStatus === ACCOUNT_STATUS.FREE_TRIAL && Boolean(trialEndsAt) && trialRemainingMs <= 0) ||
+    isTrialExpiredOrLocked(effectiveUser);
   const trialQuotaExhausted =
     accountStatus === ACCOUNT_STATUS.FREE_TRIAL &&
     !trialStillActive &&
@@ -120,25 +106,25 @@ export function useTrialExpiryRedirect(isMounted) {
         toastId: quotaLocked ? "trial-quota-subscription-required" : "trial-expired-subscription-required",
       }
     );
-    router.replace(
-      isClient
-        ? "/client-dashboard/billing"
-        : quotaLocked
-          ? "/checkout?trial=quota"
-          : "/checkout?trial=expired"
-    );
+
+    const upgradeRoute = isClient
+      ? "/client-dashboard/billing"
+      : quotaLocked
+        ? "/checkout?trial=quota"
+        : getUpgradeBillingRoute(effectiveUser);
+
+    router.replace(upgradeRoute);
   }, [
     isMounted,
     token,
-    sessionInvalid,
-    effectiveUser,
     trialHasEnded,
     trialQuotaExhausted,
     quotaRedirectRequested,
     trialStillActive,
-    allowedPath,
+    pathname,
     router,
     isClient,
+    effectiveUser,
   ]);
 
   useEffect(() => {

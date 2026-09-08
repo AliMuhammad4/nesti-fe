@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const SIGNUP_DATA_KEY = "nesti_signup_data";
 
@@ -20,7 +20,7 @@ export function useSignupFlow() {
     }
   }, []);
 
-  const saveSignupData = (data) => {
+  const saveSignupData = useCallback((data) => {
     try {
       const dataToStore = {
         email: data.email?.toLowerCase().trim(),
@@ -36,9 +36,9 @@ export function useSignupFlow() {
     } catch (error) {
       console.error("Error saving signup data:", error);
     }
-  };
+  }, []);
 
-  const getEmail = () => {
+  const getEmail = useCallback(() => {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem(SIGNUP_DATA_KEY);
@@ -50,9 +50,9 @@ export function useSignupFlow() {
       console.error("Error reading email:", error);
     }
     return null;
-  };
+  }, []);
 
-  const getVerificationToken = () => {
+  const getVerificationToken = useCallback(() => {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem(SIGNUP_DATA_KEY);
@@ -64,9 +64,9 @@ export function useSignupFlow() {
       console.error("Error reading verificationToken:", error);
     }
     return null;
-  };
+  }, []);
 
-  const getInviteToken = () => {
+  const getInviteToken = useCallback(() => {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem(SIGNUP_DATA_KEY);
@@ -78,9 +78,9 @@ export function useSignupFlow() {
       console.error("Error reading inviteToken:", error);
     }
     return null;
-  };
+  }, []);
 
-  const getRole = () => {
+  const getRole = useCallback(() => {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem(SIGNUP_DATA_KEY);
@@ -92,9 +92,9 @@ export function useSignupFlow() {
       console.error("Error reading role:", error);
     }
     return null;
-  };
+  }, []);
 
-  const clearSignupData = () => {
+  const clearSignupData = useCallback(() => {
     try {
       if (typeof window !== "undefined") {
         localStorage.removeItem(SIGNUP_DATA_KEY);
@@ -103,7 +103,7 @@ export function useSignupFlow() {
     } catch (error) {
       console.error("Error clearing signup data:", error);
     }
-  };
+  }, []);
 
   return {
     signupData,

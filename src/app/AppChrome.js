@@ -26,6 +26,7 @@ import {
   Menu,
   Settings,
   User,
+  Lock,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logoutAndClearAll } from "@/store/actions";
@@ -41,6 +42,17 @@ import { useProfileQuery } from "@/hooks/useAuthApi";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
 import { updateProfile } from "@/store/authSlice";
+import {
+  isRouteAllowedDuringSetup,
+  isProfileSetupLocked,
+  notifyProfileSetupLocked,
+  isPrivateWorkspaceRoute,
+} from "@/lib/profileSetupGate";
+import TrialExpiredPaywallModal from "@/components/billing/TrialExpiredPaywallModal";
+import {
+  isAllowedAfterTrial,
+  isTrialExpiredOrLocked,
+} from "@/lib/trialSubscriptionGate";
 import {
   BILLING_REFRESH_CHANNEL,
   broadcastSubscriptionUpdated,
@@ -272,6 +284,22 @@ export default function AppChrome({ children }) {
       });
   }, [token, isMounted, pathname, queryClient, router]);
 
+  const { data: profileData, isSuccess: isProfileSuccess } = useProfileQuery();
+  const isProfileLocked = useMemo(
+    () => isProfileSetupLocked(user, profileData, isProfileSuccess),
+    [user, profileData, isProfileSuccess]
+  );
+  const isLockedRoute = Boolean(
+    isProfileLocked && isPrivateWorkspaceRoute(pathname) && !isRouteAllowedDuringSetup(pathname)
+  );
+  const isTrialLocked = useMemo(
+    () => isTrialExpiredOrLocked(user, profileData),
+    [user, profileData]
+  );
+  const isTrialRestrictedRoute = Boolean(
+    isTrialLocked && !isAllowedAfterTrial(pathname)
+  );
+
   const isChatbotEmbed = pathname.startsWith("/chatbot");
   const isCalendlyCallback = pathname.startsWith("/calendly-callback");
   const isStandaloneAuthPage = useMemo(
@@ -309,6 +337,7 @@ export default function AppChrome({ children }) {
 
   useEffect(() => {
     if (!isMounted || !token || isPublicAuthPage) return;
+    if (isProfileLocked || isTrialLocked) return; // Do not prefetch restricted routes while profile setup is incomplete or trial expired
     const isProd = process.env.NODE_ENV === "production";
     const hrefs = isProd
       ? [
@@ -360,7 +389,7 @@ export default function AppChrome({ children }) {
     }
     const timer = setTimeout(prefetchAll, 0);
     return () => clearTimeout(timer);
-  }, [isMounted, token, isPublicAuthPage, router, pathname]);
+  }, [isMounted, token, isPublicAuthPage, router, pathname, isProfileLocked, isTrialLocked]);
 
   const displayName = useMemo(() => {
     if (!isMounted) return "";
@@ -597,14 +626,42 @@ export default function AppChrome({ children }) {
                       className="absolute right-0 top-full z-[100] mt-1.5 min-w-[13rem] overflow-hidden rounded-xl border border-border bg-white py-1 shadow-lg shadow-slate-900/10"
                     >
                       <Link
-                        href={isClient ? "/" : dashboardOrWebsiteItem.href}
+                        href="/"
                         role="menuitem"
                         className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        <DashboardOrWebsiteIcon size={16} className="text-text-muted" />
-                        {isClient ? "Home" : dashboardOrWebsiteItem.label}
+                        <Globe2 size={16} className="text-text-muted" />
+                        Public Website
                       </Link>
+                      {isProfileLocked ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            notifyProfileSetupLocked("Dashboard");
+                          }}
+                          title="Complete setup to unlock"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <LayoutDashboard size={16} className="text-text-muted/50" />
+                            {isClient ? "Client Portal" : "Dashboard"}
+                          </span>
+                          <Lock size={13} className="text-text-muted/60" />
+                        </button>
+                      ) : (
+                        <Link
+                          href={isClient ? "/client-dashboard" : "/dashboard"}
+                          role="menuitem"
+                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <LayoutDashboard size={16} className="text-text-muted" />
+                          {isClient ? "Client Portal" : "Dashboard"}
+                        </Link>
+                      )}
                       {!isClient && (
                         <Link
                           href="/profile"
@@ -626,28 +683,66 @@ export default function AppChrome({ children }) {
                         Settings
                       </Link>
                       {showPublicProfile && !isClient ? (
-                        <Link
-                          href={publicProfileHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          role="menuitem"
-                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                          onClick={() => setUserMenuOpen(false)}
-                        >
-                          <Globe2 size={16} className="text-text-muted" />
-                          Web Page
-                        </Link>
+                        isProfileLocked ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                            onClick={() => {
+                              setUserMenuOpen(false);
+                              notifyProfileSetupLocked("Web Page");
+                            }}
+                            title="Complete setup to unlock"
+                          >
+                            <span className="flex items-center gap-2.5">
+                              <Globe2 size={16} className="text-text-muted/50" />
+                              Web Page
+                            </span>
+                            <Lock size={13} className="text-text-muted/60" />
+                          </button>
+                        ) : (
+                          <Link
+                            href={publicProfileHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            role="menuitem"
+                            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            <Globe2 size={16} className="text-text-muted" />
+                            Web Page
+                          </Link>
+                        )
                       ) : null}
                       {showCalendar && !isClient ? (
-                        <Link
-                          href="/calendar"
-                          role="menuitem"
-                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                          onClick={() => setUserMenuOpen(false)}
-                        >
-                          <CalendarDays size={16} className="text-text-muted" />
-                          Calendar
-                        </Link>
+                        isProfileLocked ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                            onClick={() => {
+                              setUserMenuOpen(false);
+                              notifyProfileSetupLocked("Calendar");
+                            }}
+                            title="Complete setup to unlock"
+                          >
+                            <span className="flex items-center gap-2.5">
+                              <CalendarDays size={16} className="text-text-muted/50" />
+                              Calendar
+                            </span>
+                            <Lock size={13} className="text-text-muted/60" />
+                          </button>
+                        ) : (
+                          <Link
+                            href="/calendar"
+                            role="menuitem"
+                            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            <CalendarDays size={16} className="text-text-muted" />
+                            Calendar
+                          </Link>
+                        )
                       ) : null}
                       <div className="my-1 h-px bg-border" role="separator" />
                       <button
@@ -675,14 +770,47 @@ export default function AppChrome({ children }) {
                   : "overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               }`}
             >
-              {children}
+              {isTrialRestrictedRoute ? (
+                <div className="flex min-h-[65vh] flex-1 items-center justify-center p-6 sm:p-10">
+                  <div className="mx-auto max-w-md w-full text-center space-y-4 rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 via-white to-white p-8 shadow-xl">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/25 shadow-sm">
+                      <Lock size={26} />
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-500/25">
+                      Trial Concluded
+                    </span>
+                    <h2 className="text-2xl font-bold text-text-heading">Subscription Required</h2>
+                    <p className="text-sm text-text-body leading-relaxed">
+                      Your 3-day evaluation period has ended. Choose a subscription plan to regain access to your workspace and tools.
+                    </p>
+                    <div className="pt-3">
+                      <Link
+                        href={isClient ? "/client-dashboard/billing" : "/checkout?trial=expired"}
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-3 text-sm font-bold text-white shadow-md shadow-primary/20 hover:from-primary-dark hover:to-primary transition"
+                      >
+                        View Subscription Plans
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : isLockedRoute ? (
+                <div className="flex min-h-[60vh] flex-1 items-center justify-center p-8">
+                  <WorkspaceLoader
+                    label="Workspace Area Locked"
+                    sublabel="Redirecting to required profile setup in Settings..."
+                  />
+                </div>
+              ) : (
+                children
+              )}
             </main>
             {!isFullHeightWorkspaceRoute ? (
               <footer className="shrink-0 border-t border-primary/20 bg-gradient-to-r from-primary/[0.08] via-white/95 to-primary/[0.06] px-4 py-2.5 sm:px-6">
                 <div className="flex items-center justify-between gap-3 text-[11px] text-text-muted">
                   <Link
-                    href={isClient ? "/client-dashboard" : "/dashboard"}
+                    href="/"
                     className="group flex min-w-0 items-center gap-2"
+                    title="Go to Nesti AI Public Website"
                   >
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg overflow-hidden transition-transform group-hover:scale-105">
                       <Image
@@ -706,6 +834,7 @@ export default function AppChrome({ children }) {
             ) : null}
           </div>
         </div>
+        <TrialExpiredPaywallModal />
         <CustomToastContainer />
       </>
     );

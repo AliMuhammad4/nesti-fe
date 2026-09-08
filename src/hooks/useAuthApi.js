@@ -130,7 +130,7 @@ export function useLogin() {
       }),
     onSuccess: (data, variables) => {
       const token = data.token || null;
-      dispatch(loginSuccess({ user: null, token }));
+      dispatch(loginSuccess({ user: data.user || null, token }));
       if (variables?.invite_token) {
         clearInviteAttribution();
       }
@@ -312,7 +312,7 @@ export function useGoogleLogin() {
       }),
     onSuccess: (data, variables) => {
       const token = data.token || null;
-      dispatch(loginSuccess({ user: null, token }));
+      dispatch(loginSuccess({ user: data.user || null, token }));
       if (variables?.invite_token) {
         clearInviteAttribution();
       }
@@ -337,7 +337,7 @@ export function useGoogleSignup() {
       }),
     onSuccess: (data, variables) => {
       const token = data.token || null;
-      dispatch(loginSuccess({ user: null, token }));
+      dispatch(loginSuccess({ user: data.user || null, token }));
       if (variables?.invite_token) {
         clearInviteAttribution();
       }
