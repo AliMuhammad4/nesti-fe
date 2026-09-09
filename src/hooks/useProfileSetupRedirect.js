@@ -21,7 +21,7 @@ export function useProfileSetupRedirect(isMounted) {
   const router = useRouter();
   const token = useAppSelector((s) => s.auth.token);
   const user = useAppSelector((s) => s.auth.user);
-  const allowedPath = pathAllowedDuringSetup(pathname);
+  const allowedPath = isRouteAllowedDuringSetup(pathname);
   const { data: profileData, isSuccess, isPending } = useProfileQuery({
     enabled: !allowedPath,
   });

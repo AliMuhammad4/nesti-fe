@@ -25,22 +25,26 @@ export function useBillingPlans() {
   });
 }
 
-export function useSubscriptionMe() {
+export function useSubscriptionMe({ refreshFromStripe = false } = {}) {
   const { token } = useAppSelector((state) => state.auth);
+  const refresh = Boolean(refreshFromStripe);
 
   return useQuery({
-    queryKey: ["subscriptionMe"],
+    queryKey: ["subscriptionMe", refresh ? "refresh" : "cached"],
     queryFn: () => {
       if (!token) throw new Error("missing or invalid Authorization header");
+      const url = refresh
+        ? `${API_ENDPOINTS.billing.subscriptionMe}?refresh=1`
+        : API_ENDPOINTS.billing.subscriptionMe;
       return apiClient({
-        url: API_ENDPOINTS.billing.subscriptionMe,
+        url,
         method: "GET",
         token,
       });
     },
     enabled: !!token,
     // Keep subscription status fresh so expiry/cancel UI doesn't lag behind backend
-    staleTime: 10_000,
+    staleTime: refresh ? 5_000 : 10_000,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -263,7 +267,7 @@ export function redirectToStripeCheckout(data) {
   return openStripeCheckoutInNewTab(data);
 }
 
-export function useBillingInvoices(enabled = true) {
+export function useBillingInvoices(enabled = true, { refetchInterval } = {}) {
   const { token } = useAppSelector((state) => state.auth);
 
   return useQuery({
@@ -277,6 +281,10 @@ export function useBillingInvoices(enabled = true) {
       });
     },
     enabled: !!token && enabled,
+    staleTime: 5_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: refetchInterval || false,
   });
 }
 

@@ -30,7 +30,7 @@ export default function CheckoutOrchestrator() {
   const [isChoosingPlan, setIsChoosingPlan] = useState(false);
   const checkoutMutation = useCreateCheckoutSession();
   const billingPlansQuery = useBillingPlans();
-  const subscriptionMeQuery = useSubscriptionMe();
+  const subscriptionMeQuery = useSubscriptionMe({ refreshFromStripe: true });
   const isClient = String(user?.role || "").toLowerCase() === "client";
 
   const userStatus = String(user?.accountStatus || user?.account_status || "").toLowerCase();

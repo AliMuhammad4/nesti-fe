@@ -27,6 +27,32 @@ function formatDate(value) {
   }
 }
 
+function formatRenewalLabel(value) {
+  if (!value) return null;
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    const now = new Date();
+    const sameDay =
+      date.getFullYear() === now.getFullYear()
+      && date.getMonth() === now.getMonth()
+      && date.getDate() === now.getDate();
+    const datePart = date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    if (!sameDay) return datePart;
+    const timePart = date.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    return `${datePart} · ${timePart}`;
+  } catch {
+    return null;
+  }
+}
+
 function resolvePeriodEnd({ user, subscription, invoices = [] }) {
   const direct =
     subscription?.subscriptionEndsAt ||
@@ -212,8 +238,11 @@ export default function SubscriptionBillingPanel({
 }) {
   const dispatch = useAppDispatch();
   const { user, token } = useAppSelector((state) => state.auth);
-  const subscriptionQuery = useSubscriptionMe();
-  const invoicesQuery = useBillingInvoices(true);
+  const subscriptionQuery = useSubscriptionMe({ refreshFromStripe: true });
+  const [pollRenewal, setPollRenewal] = useState(false);
+  const invoicesQuery = useBillingInvoices(true, {
+    refetchInterval: pollRenewal ? 20_000 : false,
+  });
   const cancelMutation = useCancelSubscription();
   const resumeMutation = useResumeSubscription();
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -263,11 +292,27 @@ export default function SubscriptionBillingPanel({
   );
 
   const periodEndRaw = resolvePeriodEnd({ user, subscription, invoices });
-  const periodEndLabel = formatDate(periodEndRaw);
+  const periodEndLabel = formatRenewalLabel(periodEndRaw);
   const isLoadingPeriod = subscriptionQuery.isLoading && !periodEndLabel;
+  const periodEndMs = periodEndRaw ? new Date(periodEndRaw).getTime() : NaN;
   const periodHasEnded = Boolean(
-    periodEndRaw && !Number.isNaN(new Date(periodEndRaw).getTime()) && new Date(periodEndRaw).getTime() <= Date.now()
+    Number.isFinite(periodEndMs) && periodEndMs <= Date.now()
   );
+
+  useEffect(() => {
+    // After period end, briefly poll so the next invoice/period syncs without a manual refresh.
+    setPollRenewal(Boolean(isSubscribed && periodHasEnded));
+  }, [isSubscribed, periodHasEnded]);
+
+  useEffect(() => {
+    if (!pollRenewal) return undefined;
+    const refetchSubscription = subscriptionQuery.refetch;
+    const id = setInterval(() => {
+      refetchSubscription();
+    }, 20_000);
+    return () => clearInterval(id);
+  }, [pollRenewal, subscriptionQuery.refetch]);
+
   // Resume is only valid while cancel-at-period-end is scheduled and the paid window is still open
   const canContinueSubscription = cancelAtPeriodEnd && !periodHasEnded;
 

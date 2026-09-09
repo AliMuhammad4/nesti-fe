@@ -38,7 +38,7 @@ export default function SubscriptionInfo() {
   const [planSwitchTarget, setPlanSwitchTarget] = useState(null);
 
   const billingPlansQuery = useBillingPlans();
-  const subscriptionQuery = useSubscriptionMe();
+  const subscriptionQuery = useSubscriptionMe({ refreshFromStripe: true });
   const { refetch: refetchSubscription } = subscriptionQuery;
   const changePlanMutation = useChangeSubscriptionPlan();
 
