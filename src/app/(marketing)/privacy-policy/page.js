@@ -3,10 +3,24 @@ import { getPublicPage } from "@/lib/publicPageContent";
 import { getPublicPageMeta } from "@/lib/publicPageMeta";
 
 export const metadata = {
-  title: "Privacy Policy | Nesti AI",
-  description: "Our commitment to privacy",
+  title: {
+    absolute: "Privacy Policy | Nesti AI",
+  },
+  description:
+    "Read Nesti AI's privacy policy to learn how we collect, use, and protect your personal data as a real estate professional or client.",
   alternates: {
     canonical: "https://nesti.ca/privacy-policy",
+  },
+  openGraph: {
+    title: "Privacy Policy | Nesti AI",
+    description:
+      "Read Nesti AI's privacy policy to learn how we collect, use, and protect your personal data as a real estate professional or client.",
+    url: "https://nesti.ca/privacy-policy",
+  },
+  twitter: {
+    title: "Privacy Policy | Nesti AI",
+    description:
+      "Read Nesti AI's privacy policy to learn how we collect, use, and protect your personal data as a real estate professional or client.",
   },
 };
 

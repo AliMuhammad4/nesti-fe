@@ -3,10 +3,24 @@ import { getPublicPage } from "@/lib/publicPageContent";
 import { getPublicPageMeta } from "@/lib/publicPageMeta";
 
 export const metadata = {
-  title: "Our Mission | Nesti AI",
-  description: "Modernizing real estate through intelligent technology",
+  title: {
+    absolute: "Mission | Nesti AI",
+  },
+  description:
+    "Discover Nesti AI's mission to modernize real estate through AI-driven lead intelligence, automation, and smarter client experiences for professionals.",
   alternates: {
     canonical: "https://nesti.ca/mission",
+  },
+  openGraph: {
+    title: "Mission | Nesti AI",
+    description:
+      "Discover Nesti AI's mission to modernize real estate through AI-driven lead intelligence, automation, and smarter client experiences for professionals.",
+    url: "https://nesti.ca/mission",
+  },
+  twitter: {
+    title: "Mission | Nesti AI",
+    description:
+      "Discover Nesti AI's mission to modernize real estate through AI-driven lead intelligence, automation, and smarter client experiences for professionals.",
   },
 };
 

@@ -2,10 +2,24 @@ import Link from "next/link";
 import { ArrowRight, Handshake, Headphones, Mail, PhoneCall, ShieldCheck } from "lucide-react";
 
 export const metadata = {
-  title: "Contact Nesti | Nesti AI",
-  description: "Contact the Nesti AI team for support, partnerships, privacy, and platform questions.",
+  title: {
+    absolute: "Contact Us | Nesti AI",
+  },
+  description:
+    "Contact Nesti AI to book a live demo, ask about pricing, or get support. We help real estate agents, lawyers, and mortgage brokers.",
   alternates: {
     canonical: "https://nesti.ca/contact",
+  },
+  openGraph: {
+    title: "Contact Us | Nesti AI",
+    description:
+      "Contact Nesti AI to book a live demo, ask about pricing, or get support. We help real estate agents, lawyers, and mortgage brokers.",
+    url: "https://nesti.ca/contact",
+  },
+  twitter: {
+    title: "Contact Us | Nesti AI",
+    description:
+      "Contact Nesti AI to book a live demo, ask about pricing, or get support. We help real estate agents, lawyers, and mortgage brokers.",
   },
 };
 

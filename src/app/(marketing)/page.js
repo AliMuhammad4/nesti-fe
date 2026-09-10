@@ -11,11 +11,24 @@ import OnboardingSection from "@/components/sections/OnboardingSection";
 import { PageCta } from "@/components/public-pages/shared/PublicPageShared";
 
 export const metadata = {
-  title: "Nesti AI - AI Intelligence Platform for Real Estate",
+  title: {
+    absolute: "Nesti AI - AI Lead Qualification for Realtors, Agents",
+  },
   description:
-    "Transform your real estate business with AI intelligence. Guided nurture, client matching, and automated workflows for agents, mortgage brokers, and lawyers across Canada.",
+    "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
   alternates: {
     canonical: "https://nesti.ca",
+  },
+  openGraph: {
+    title: "Nesti AI - AI Lead Qualification for Realtors, Agents",
+    description:
+      "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
+    url: "https://nesti.ca",
+  },
+  twitter: {
+    title: "Nesti AI - AI Lead Qualification for Realtors, Agents",
+    description:
+      "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
   },
 };
 
@@ -29,7 +42,7 @@ const structuredData = {
       "url": "https://nesti.ca",
       "logo": "https://nesti.ca/logo/logo.png",
       "description":
-        "AI intelligence platform modernizing real estate infrastructure for agents, brokers, and clients.",
+        "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
       "contactPoint": {
         "@type": "ContactPoint",
         "telephone": "+1-416-565-4791",
