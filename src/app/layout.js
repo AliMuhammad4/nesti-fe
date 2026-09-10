@@ -21,11 +21,11 @@ const poppins = Poppins({
 export const metadata = {
   metadataBase: new URL("https://nesti.ca"),
   title: {
-    default: "Nesti AI - AI Intelligence Platform for Real Estate",
+    default: "Nesti AI - AI Lead Qualification for Realtors, Agents",
     template: "%s | Nesti AI",
   },
   description:
-    "Transform your real estate business with AI intelligence. Guided nurture, client matching, and automated workflows for agents, mortgage brokers, and lawyers across Canada.",
+    "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
   keywords: [
     "real estate AI",
     "real estate platform",
@@ -48,9 +48,9 @@ export const metadata = {
     locale: "en_CA",
     url: "https://nesti.ca",
     siteName: "Nesti AI",
-    title: "Nesti AI - AI Intelligence Platform for Real Estate",
+    title: "Nesti AI - AI Lead Qualification for Realtors, Agents",
     description:
-      "Transform your real estate business with AI intelligence. Guided nurture, client matching, and automated workflows.",
+      "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
     images: [
       {
         url: "/logo/logo.png",
@@ -62,9 +62,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nesti AI - AI Intelligence Platform for Real Estate",
+    title: "Nesti AI - AI Lead Qualification for Realtors, Agents",
     description:
-      "Transform your real estate business with AI intelligence. Guided nurture, client matching, and automated workflows.",
+      "Nesti AI qualifies and nurtures real estate leads 24/7 for agents, lawyers, and mortgage brokers. Start your free trial today.",
     images: ["/logo/logo.png"],
   },
   robots: {
