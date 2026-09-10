@@ -3,6 +3,7 @@
 import { LawyerEditableText as EditableText } from '../../lawyer/shared/LawyerEditableText';
 import {
   blockContent,
+  lawyerClassicGridClass,
   lawyerContentSource,
   resolveLawyerClassicIcon,
 } from '../../lawyer/shared/lawyerSectionUtils';
@@ -21,16 +22,22 @@ import { BROKER_CLASSIC_COMPENSATION_ITEMS } from './brokerClassicDefaults';
 
 const COMP_ICON_KEYS = ['building', 'percent', 'briefcase', 'home', 'shield', 'target'];
 
-export function BrokerClassicCompensation({ profile, block }) {
+export function BrokerClassicCompensation({
+  profile,
+  block,
+  fallbackItems = BROKER_CLASSIC_COMPENSATION_ITEMS,
+  headingDefaults = {
+    eyebrow: '',
+    heading: 'Transparent broker compensation',
+    body: 'Clear disclosures help clients understand lender compensation, brokerage fees, and private-mortgage costs.',
+  },
+  disclaimerDefault = 'Compensation structures vary by lender, product, and transaction type. This section is informational and does not replace a written disclosure for your specific mortgage.',
+}) {
   const content = blockContent(block);
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '2');
-  const { items, hasPersisted } = normalizedItems(content, BROKER_CLASSIC_COMPENSATION_ITEMS, 'items', 8);
-  const disclaimer = brokerContentValue(
-    content,
-    'disclaimer',
-    'Compensation structures vary by lender, product, and transaction type. This section is informational and does not replace a written disclosure for your specific mortgage.',
-  );
+  const { items, hasPersisted } = normalizedItems(content, fallbackItems, 'items', 8);
+  const disclaimer = brokerContentValue(content, 'disclaimer', disclaimerDefault).trim();
 
   return (
     <section
@@ -42,12 +49,13 @@ export function BrokerClassicCompensation({ profile, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          heading="Transparent broker compensation"
-          body="Clear disclosures help clients understand lender compensation, brokerage fees, and private-mortgage costs."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {items.length ? (
-          <div className={`mt-10 grid items-stretch gap-4 md:grid-cols-2 ${brokerContentRegionClass(presentation.contentAlignment)}`}>
+          <div className={`mt-10 grid items-stretch gap-4 ${lawyerClassicGridClass(presentation.columns, items.length, true)} ${brokerContentRegionClass(presentation.contentAlignment)}`}>
             {items.map((item, index) => {
               const Icon = resolveLawyerClassicIcon(item, index, COMP_ICON_KEYS);
               const iconProps = brokerIconSurfaceProps(content, item, presentation, {
@@ -112,15 +120,17 @@ export function BrokerClassicCompensation({ profile, block }) {
           </div>
         ) : null}
 
-        <EditableText
-          as="p"
-          field="content.disclaimer"
-          label="Compensation disclaimer"
-          source={lawyerContentSource(content, 'disclaimer')}
-          className="mt-6 max-w-4xl text-xs leading-5 text-slate-500"
-        >
-          {disclaimer}
-        </EditableText>
+        {disclaimer ? (
+          <EditableText
+            as="p"
+            field="content.disclaimer"
+            label="Compensation disclaimer"
+            source={lawyerContentSource(content, 'disclaimer')}
+            className="mt-6 max-w-4xl text-xs leading-5 text-slate-500"
+          >
+            {disclaimer}
+          </EditableText>
+        ) : null}
       </div>
     </section>
   );

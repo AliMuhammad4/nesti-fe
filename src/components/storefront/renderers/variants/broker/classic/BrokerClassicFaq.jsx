@@ -17,7 +17,16 @@ import {
 } from './brokerSectionUtils';
 import { BROKER_CLASSIC_FAQS } from './brokerClassicDefaults';
 
-export function BrokerClassicFaq({ profile, block, fallbackFaqs = BROKER_CLASSIC_FAQS }) {
+export function BrokerClassicFaq({
+  profile,
+  block,
+  fallbackFaqs = BROKER_CLASSIC_FAQS,
+  headingDefaults = {
+    eyebrow: 'Helpful questions',
+    heading: 'What clients often ask',
+    body: 'Clear answers to common mortgage questions before you start.',
+  },
+}) {
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '1');
@@ -71,9 +80,9 @@ export function BrokerClassicFaq({ profile, block, fallbackFaqs = BROKER_CLASSIC
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Helpful questions"
-          heading="What clients often ask"
-          body="Clear answers to common mortgage questions before you start."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {faqs.length ? (

@@ -327,7 +327,7 @@ export function ImageAdjustmentControls({
   const isAboutPortrait = resolvedEditorKind === 'about-portrait';
   const isCover = kind === 'cover' || isHeroSlide;
   const prefix = fieldPrefix || (isCover ? 'cover' : 'profile');
-  const minZoom = (isHeroSlide || isAboutPortrait) ? 0.6 : 1;
+  const minZoom = 1;
   const x = Number(values?.[`${prefix}_position_x`] ?? 50);
   const y = Number(values?.[`${prefix}_position_y`] ?? (isCover ? 50 : (isAboutPortrait ? 50 : 25)));
   const zoom = Math.max(minZoom, Number(values?.[`${prefix}_zoom`] ?? 1));

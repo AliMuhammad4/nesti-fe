@@ -31,6 +31,16 @@ export const industrialMinimalExperience = {
       margin-inline: auto;
     }
 
+    [data-template-key='mortgage_broker-commercial'] .storefront-anim-body,
+    [data-template-key='mortgage_broker-commercial'] [data-storefront-block] .storefront-anim-body,
+    .storefront-experience-industrial[data-template-key='mortgage_broker-commercial'] [data-storefront-block='services'] .storefront-anim-body,
+    .storefront-experience-industrial[data-template-key='mortgage_broker-commercial'] [data-storefront-block='guidance'] .storefront-anim-body,
+    .storefront-experience-industrial[data-template-key='mortgage_broker-commercial'] [data-storefront-block='featured-listings'] .storefront-anim-body {
+      max-width: none !important;
+      width: 100%;
+      margin-inline: 0;
+    }
+
     .storefront-experience-industrial [data-storefront-block='services'] {
       background-image: linear-gradient(135deg, color-mix(in srgb, var(--storefront-primary) 4%, transparent) 0%, transparent 45%);
     }

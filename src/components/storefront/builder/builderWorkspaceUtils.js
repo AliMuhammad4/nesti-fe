@@ -16,7 +16,7 @@ export function appendUniqueItems(items, supplemental, limit) {
 
 export function pinBoundaryBlocks(blocks = [], templateKey = '') {
   const key = String(templateKey).trim().toLowerCase();
-  if (!['lawyer-investor', 'mortgage_broker-classic', 'mortgage_broker-first-home', 'mortgage_broker-renewal', 'lawyer-classic'].includes(key)) {
+  if (!['lawyer-investor', 'mortgage_broker-classic', 'mortgage_broker-first-home', 'mortgage_broker-renewal', 'mortgage_broker-commercial', 'lawyer-classic'].includes(key)) {
     return blocks;
   }
   const hero = blocks.find((block) => block.type === STOREFRONT_BLOCK_TYPES.HERO);

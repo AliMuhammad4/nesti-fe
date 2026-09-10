@@ -204,16 +204,23 @@ function ClassicLenderCard({ item, index, hasPersisted, isPreview, href }) {
   );
 }
 
-export function BrokerClassicLenders({ profile, block, appearance = 'classic' }) {
+export function BrokerClassicLenders({
+  profile,
+  block,
+  appearance = 'classic',
+  fallbackItems = LENDER_FALLBACK,
+  headingDefaults = {
+    eyebrow: 'Lender network',
+    heading: 'Access to Canada’s leading lenders',
+    body: 'A curated network across major banks, credit unions, and alternative lenders — matched to your file, not a one-size product.',
+  },
+  disclaimerDefault = 'Lender availability varies by province, product, and borrower profile. Logos identify institutions for reference only.',
+}) {
   const content = blockContent(block);
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '1');
-  const { items, hasPersisted } = normalizedItems(content, LENDER_FALLBACK, 'items', 24);
-  const note = brokerContentValue(
-    content,
-    'disclaimer',
-    'Lender availability varies by province, product, and borrower profile. Logos identify institutions for reference only.',
-  );
+  const { items, hasPersisted } = normalizedItems(content, fallbackItems, 'items', 24);
+  const note = brokerContentValue(content, 'disclaimer', disclaimerDefault).trim();
 
   const isFirstHome = appearance === 'first-home';
 
@@ -296,15 +303,17 @@ export function BrokerClassicLenders({ profile, block, appearance = 'classic' })
             </div>
           ) : null}
 
-          <EditableText
-            as="p"
-            field="content.disclaimer"
-            label="Lender network note"
-            source={lawyerContentSource(content, 'disclaimer')}
-            className="mt-8 max-w-3xl text-[11px] leading-5 text-[#5B7186]"
-          >
-            {note}
-          </EditableText>
+          {note ? (
+            <EditableText
+              as="p"
+              field="content.disclaimer"
+              label="Lender network note"
+              source={lawyerContentSource(content, 'disclaimer')}
+              className="mt-8 max-w-3xl text-[11px] leading-5 text-[#5B7186]"
+            >
+              {note}
+            </EditableText>
+          ) : null}
         </div>
       </section>
     );
@@ -320,9 +329,9 @@ export function BrokerClassicLenders({ profile, block, appearance = 'classic' })
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Lender network"
-          heading="Access to Canada’s leading lenders"
-          body="A curated network across major banks, credit unions, and alternative lenders — matched to your file, not a one-size product."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
           bodyClassName="mx-auto max-w-none lg:whitespace-nowrap"
         />
 
@@ -348,15 +357,17 @@ export function BrokerClassicLenders({ profile, block, appearance = 'classic' })
           </div>
         ) : null}
 
-        <EditableText
-          as="p"
-          field="content.disclaimer"
-          label="Lender network note"
-          source={lawyerContentSource(content, 'disclaimer')}
-          className="mt-5 max-w-3xl text-[11px] leading-5 text-slate-500"
-        >
-          {note}
-        </EditableText>
+        {note ? (
+          <EditableText
+            as="p"
+            field="content.disclaimer"
+            label="Lender network note"
+            source={lawyerContentSource(content, 'disclaimer')}
+            className="mt-5 max-w-3xl text-[11px] leading-5 text-slate-500"
+          >
+            {note}
+          </EditableText>
+        ) : null}
       </div>
     </section>
   );

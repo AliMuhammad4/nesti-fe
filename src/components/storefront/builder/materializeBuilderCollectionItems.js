@@ -5,6 +5,10 @@ import {
   brokerFirstHomeCollectionFallback,
   normalizeFirstHomeHeroSlides,
 } from '@/components/storefront/renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import {
+  brokerCommercialCollectionFallback,
+  normalizeCommercialHeroSlides,
+} from '@/components/storefront/renderers/variants/broker/commercial/brokerCommercialDefaults';
 import { brokerRenewalCollectionFallback } from '@/components/storefront/renderers/variants/broker/renewal/brokerRenewalDefaults';
 import { LAWYER_CLASSIC_PROCESS_DEFAULTS } from '../renderers/variants/lawyer/shared/lawyerSectionUtils';
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
@@ -61,14 +65,16 @@ export function materializeBuilderCollectionItems({
   }
 
   if (collection === 'slides'
-    && templateKey === 'mortgage_broker-first-home'
+    && (templateKey === 'mortgage_broker-first-home' || templateKey === 'mortgage_broker-commercial')
     && blockType === STOREFRONT_BLOCK_TYPES.HERO
   ) {
     const persistedSlides = Object.prototype.hasOwnProperty.call(content || {}, 'slides')
       && Array.isArray(content.slides)
       ? content.slides
       : [];
-    return normalizeFirstHomeHeroSlides(persistedSlides);
+    return templateKey === 'mortgage_broker-commercial'
+      ? normalizeCommercialHeroSlides(persistedSlides)
+      : normalizeFirstHomeHeroSlides(persistedSlides);
   }
 
   if (Object.prototype.hasOwnProperty.call(content || {}, collection)
@@ -112,6 +118,15 @@ export function materializeBuilderCollectionItems({
       );
       if (firstHomeFallback?.length) {
         return coerceCollectionItems(collection === 'services' ? 'items' : collection, firstHomeFallback);
+      }
+    }
+    if (templateKey === 'mortgage_broker-commercial') {
+      const commercialFallback = brokerCommercialCollectionFallback(
+        blockType,
+        collection === 'services' ? 'items' : collection,
+      );
+      if (commercialFallback?.length) {
+        return coerceCollectionItems(collection === 'services' ? 'items' : collection, commercialFallback);
       }
     }
     if (templateKey === 'mortgage_broker-renewal') {
@@ -215,6 +230,12 @@ export function materializeBuilderCollectionItems({
       const firstHomeFallback = brokerFirstHomeCollectionFallback(blockType, collection);
       if (firstHomeFallback?.length) {
         return coerceCollectionItems(collection, firstHomeFallback);
+      }
+    }
+    if (templateKey === 'mortgage_broker-commercial') {
+      const commercialFallback = brokerCommercialCollectionFallback(blockType, collection);
+      if (commercialFallback?.length) {
+        return coerceCollectionItems(collection, commercialFallback);
       }
     }
     if (templateKey === 'mortgage_broker-renewal') {

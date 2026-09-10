@@ -13,6 +13,7 @@ import {
   isSingletonBlockType,
   BROKER_CLASSIC_CANONICAL_BLOCK_ORDER,
   BROKER_FIRST_HOME_CANONICAL_BLOCK_ORDER,
+  BROKER_COMMERCIAL_CANONICAL_BLOCK_ORDER,
   LAWYER_CLASSIC_CANONICAL_BLOCK_ORDER,
   normalizeBlocks,
 } from '@/components/storefront/builder/storefrontBuilderState';
@@ -39,6 +40,10 @@ import {
   migrateBrokerRenewalBlocks,
   migrateBrokerRenewalBrandKit,
 } from '@/components/storefront/templates/mortgage-broker/renewalMigration';
+import {
+  migrateBrokerCommercialBlocks,
+  migrateBrokerCommercialBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/commercialMigration';
 import { normalizeRole } from './editorConstants';
 import {
   blockLayoutStyleSignature,
@@ -858,6 +863,10 @@ function migrateBrokerBlocks(templateKey, blocks = [], profileSeed = {}) {
     const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
     return migrateBrokerRenewalBlocks(blocks, defaults);
   }
+  if (templateKey === 'mortgage_broker-commercial') {
+    const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
+    return migrateBrokerCommercialBlocks(blocks, defaults);
+  }
   if (templateKey !== 'mortgage_broker-classic') return blocks;
   const defaults = materializeTemplate(templateKey, profileSeed)?.blocks || [];
   return migrateBrokerClassicBlocks(blocks, defaults);
@@ -884,18 +893,28 @@ function needsBrokerRenewalMigration(templateKey, blocks = [], profileSeed = {})
   return JSON.stringify(source) !== JSON.stringify(migrated);
 }
 
+function needsBrokerCommercialMigration(templateKey, blocks = [], profileSeed = {}) {
+  if (templateKey !== 'mortgage_broker-commercial') return false;
+  const source = normalizeBlocks(blocks);
+  const migrated = normalizeBlocks(migrateBrokerBlocks(templateKey, blocks, profileSeed));
+  return JSON.stringify(source) !== JSON.stringify(migrated);
+}
+
 function applyTemplateBrandKitMigrations(templateKey, input = {}) {
-  return migrateBrokerRenewalBrandKit(
+  return migrateBrokerCommercialBrandKit(
     templateKey,
-    migrateBrokerFirstHomeBrandKit(
+    migrateBrokerRenewalBrandKit(
       templateKey,
-      migrateBrokerClassicBrandKit(
+      migrateBrokerFirstHomeBrandKit(
         templateKey,
-        migrateLawyerNewcomerBrandKit(
+        migrateBrokerClassicBrandKit(
           templateKey,
-          migrateCommunityHubBrandKit(
+          migrateLawyerNewcomerBrandKit(
             templateKey,
-            migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+            migrateCommunityHubBrandKit(
+              templateKey,
+              migrateSellerExpertBrandKit(templateKey, migrateFirstHomeBrandKit(templateKey, input)),
+            ),
           ),
         ),
       ),
@@ -963,7 +982,8 @@ function editorDataFromDraft(
       || needsLawyerNewcomerMigration(templateKey, draft.blocks, profileSeed)
       || needsBrokerClassicMigration(templateKey, draft.blocks, profileSeed)
       || needsBrokerFirstHomeMigration(templateKey, draft.blocks, profileSeed)
-      || needsBrokerRenewalMigration(templateKey, draft.blocks, profileSeed);
+      || needsBrokerRenewalMigration(templateKey, draft.blocks, profileSeed)
+      || needsBrokerCommercialMigration(templateKey, draft.blocks, profileSeed);
     return {
       migrationApplied,
       editorData: {
@@ -1153,6 +1173,10 @@ export default function useStorefrontEditorState({
             recoveredDraft.blocks,
             profileSeed,
           ) || needsBrokerRenewalMigration(
+            recoveredDraft.template_key,
+            recoveredDraft.blocks,
+            profileSeed,
+          ) || needsBrokerCommercialMigration(
             recoveredDraft.template_key,
             recoveredDraft.blocks,
             profileSeed,
@@ -1516,6 +1540,12 @@ export default function useStorefrontEditorState({
     if (
       editorData.template_key === 'mortgage_broker-first-home'
       && !BROKER_FIRST_HOME_CANONICAL_BLOCK_ORDER.includes(type)
+    ) {
+      return;
+    }
+    if (
+      editorData.template_key === 'mortgage_broker-commercial'
+      && !BROKER_COMMERCIAL_CANONICAL_BLOCK_ORDER.includes(type)
     ) {
       return;
     }

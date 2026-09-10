@@ -37,13 +37,12 @@ export function resolveSlideImagePlacement(slide = {}) {
     : {};
   const x = clamp(slide.image_position_x ?? position.x, 0, 100, 50);
   const y = clamp(slide.image_position_y ?? position.y, 0, 100, 50);
-  const zoom = clamp(slide.image_zoom ?? position.zoom, 0.6, 3, 1);
-  const fit = slide.image_fit === 'contain' ? 'contain' : 'cover';
+  const zoom = clamp(slide.image_zoom ?? position.zoom, 1, 3, 1);
   return {
     x,
     y,
     zoom,
-    fit,
+    fit: 'cover',
     image_position: { x, y, zoom },
   };
 }

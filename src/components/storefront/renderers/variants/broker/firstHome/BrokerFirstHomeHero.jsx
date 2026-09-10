@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Calculator, ChevronLeft, ChevronRight, MessageSquareText, UserPlus } from 'lucide-react';
 import PublicStorefrontHeader from '@/components/public-profile/PublicStorefrontHeader';
 import { LawyerEditableText as EditableText } from '../../lawyer/shared/LawyerEditableText';
@@ -35,25 +35,23 @@ export function BrokerFirstHomeHero({ profile, actions = {}, block }) {
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [progressKey, setProgressKey] = useState(0);
-  const autoplayEnabled = slides.length > 1 && !isPreview && !paused;
+  const slideCount = slides.length;
+  const autoplayEnabled = slideCount > 1 && !isPreview && !paused;
+  const autoplayEnabledRef = useRef(autoplayEnabled);
+  autoplayEnabledRef.current = autoplayEnabled;
 
   useEffect(() => {
-    if (activeIndex > slides.length - 1) setActiveIndex(0);
-  }, [activeIndex, slides.length]);
+    if (activeIndex > slideCount - 1) setActiveIndex(0);
+  }, [activeIndex, slideCount]);
 
   useEffect(() => {
-    setProgressKey((key) => key + 1);
-  }, [activeIndex, paused, isPreview, slides.length]);
-
-  // Autoplay driven by setTimeout — reliable across tab blur / animation edge cases
-  useEffect(() => {
-    if (!autoplayEnabled) return undefined;
-    const id = setTimeout(() => {
-      setActiveIndex((current) => (current + 1) % slides.length);
+    if (slideCount < 2 || isPreview) return undefined;
+    const id = setInterval(() => {
+      if (!autoplayEnabledRef.current) return;
+      setActiveIndex((current) => (current + 1) % slideCount);
     }, AUTOPLAY_MS);
-    return () => clearTimeout(id);
-  }, [activeIndex, autoplayEnabled, slides.length, progressKey]);
+    return () => clearInterval(id);
+  }, [isPreview, slideCount]);
 
   const active = slides[activeIndex] || slides[0];
   const primaryLabel = brokerContentValue(content, 'primary_cta_label', 'Start my pre-approval');
@@ -62,7 +60,8 @@ export function BrokerFirstHomeHero({ profile, actions = {}, block }) {
   const joinHref = String(profile?.invite_link?.share_url || '').trim() || '/sign-up';
 
   const goTo = (index) => {
-    setActiveIndex((index + slides.length) % slides.length);
+    if (slideCount < 2) return;
+    setActiveIndex((index + slideCount) % slideCount);
   };
 
   return (
@@ -103,7 +102,7 @@ export function BrokerFirstHomeHero({ profile, actions = {}, block }) {
                   sizes="100vw"
                   placement={placement}
                   showLoading
-                  className={placement.fit === 'contain' ? 'object-contain' : 'object-cover'}
+                  className="h-full w-full object-cover"
                   fallback={<div className="absolute inset-0" style={{ background: P.dark }} />}
                 />
               ) : (
@@ -231,74 +230,33 @@ export function BrokerFirstHomeHero({ profile, actions = {}, block }) {
             ) : null}
           </div>
         </div>
-
-        {slides.length > 1 ? (
-        <div className="mt-10 flex w-full items-center justify-center sm:mt-12">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button
-              type="button"
-              onClick={() => goTo(activeIndex - 1)}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/30 bg-white/[0.06] text-white backdrop-blur-md transition hover:scale-105 hover:border-white hover:bg-white hover:text-[#0B1F33]"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div className="flex items-center justify-center gap-2 px-1">
-              {slides.map((slide, index) => {
-                const activeSlide = index === activeIndex;
-                return (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    onClick={() => goTo(index)}
-                    className={`relative h-[3px] overflow-hidden rounded-full transition-all duration-500 ${
-                      activeSlide ? 'w-14 bg-white/25' : 'w-6 bg-white/25 hover:w-9 hover:bg-white/40'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                    aria-current={activeSlide ? 'true' : undefined}
-                  >
-                    <span
-                      key={activeSlide ? `progress-${progressKey}` : `idle-${index}`}
-                      className={`absolute inset-y-0 left-0 rounded-full bg-white ${
-                        activeSlide && autoplayEnabled
-                          ? 'broker-fh-progress shadow-[0_0_12px_rgba(255,255,255,0.6)]'
-                          : activeSlide
-                            ? 'w-full'
-                            : ''
-                      }`}
-                      style={{
-                        width: activeSlide && !autoplayEnabled ? '100%' : undefined,
-                        animationPlayState: paused ? 'paused' : 'running',
-                      }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => goTo(activeIndex + 1)}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/30 bg-white/[0.06] text-white backdrop-blur-md transition hover:scale-105 hover:border-white hover:bg-white hover:text-[#0B1F33]"
-              aria-label="Next slide"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-        ) : null}
       </div>
 
+      {slideCount > 1 ? (
+        <div className="absolute bottom-6 right-4 z-20 flex items-center gap-2 sm:bottom-8 sm:right-6 lg:right-8">
+          <button
+            type="button"
+            onClick={() => goTo(activeIndex - 1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/35 text-white backdrop-blur-md transition hover:border-white hover:bg-white hover:text-[#0B1F33]"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => goTo(activeIndex + 1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/35 text-white backdrop-blur-md transition hover:border-white hover:bg-white hover:text-[#0B1F33]"
+            aria-label="Next slide"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      ) : null}
+
       <style jsx global>{`
-        @keyframes broker-fh-progress-fill {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
         @keyframes broker-fh-copy-in {
           from { opacity: 0; transform: translateY(14px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        [data-broker-first-home-hero='true'] .broker-fh-progress {
-          animation: broker-fh-progress-fill ${AUTOPLAY_MS}ms linear forwards;
         }
         [data-broker-first-home-hero='true'] .broker-fh-copy {
           animation: broker-fh-copy-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -311,7 +269,6 @@ export function BrokerFirstHomeHero({ profile, actions = {}, block }) {
           transform: translateX(3px);
         }
         @media (prefers-reduced-motion: reduce) {
-          [data-broker-first-home-hero='true'] .broker-fh-progress { animation: none; width: 100%; }
           [data-broker-first-home-hero='true'] .broker-fh-copy { animation: none; }
           [data-broker-first-home-hero='true'] .broker-fh-btn-arrow { transition: none; }
         }

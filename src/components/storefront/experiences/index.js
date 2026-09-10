@@ -21,7 +21,7 @@ export function experienceIdFromTemplateKey(templateKey = '') {
 
   // Fallback for legacy/custom keys not in the registry.
   const key = String(templateKey || '').toLowerCase();
-  if (key.includes('luxury') || key.includes('wealth')) return 'luxury-editorial';
+  if (key.includes('luxury')) return 'luxury-editorial';
   if (key.includes('commercial') || key.includes('investor')) return 'industrial-minimal';
   if (key.includes('community')) return 'neighborhood-local';
   if (key.includes('first-home') || key.includes('newcomer')) return 'story-warm';

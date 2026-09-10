@@ -5,6 +5,7 @@ import { resolvePublicProfileAreas } from '@/lib/publicProfileAreas';
 import { LawyerEditableText as EditableText } from '../../lawyer/shared/LawyerEditableText';
 import {
   blockContent,
+  lawyerClassicGridClass,
   uniqueNamedList,
 } from '../../lawyer/shared/lawyerSectionUtils';
 import { BrokerSectionHeading } from './BrokerSectionHeading';
@@ -22,7 +23,15 @@ function titleCase(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function BrokerClassicSnapshot({ profile, block }) {
+export function BrokerClassicSnapshot({
+  profile,
+  block,
+  headingDefaults = {
+    eyebrow: 'Advisor snapshot',
+    heading: 'Mortgage guidance shaped around your needs',
+    body: 'A concise view of financing specialties, service markets, and consultation languages.',
+  },
+}) {
   const content = blockContent(block);
   const professional = profile?.professional_profile || {};
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
@@ -82,11 +91,11 @@ export function BrokerClassicSnapshot({ profile, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Advisor snapshot"
-          heading="Mortgage guidance shaped around your needs"
-          body="A concise view of financing specialties, service markets, and consultation languages."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
-        <div className={`mt-10 grid gap-4 lg:grid-cols-3 ${brokerContentRegionClass(presentation.contentAlignment)}`}>
+        <div className={`mt-10 grid gap-4 ${lawyerClassicGridClass(presentation.columns, groups.length, true)} ${brokerContentRegionClass(presentation.contentAlignment)}`}>
           {groups.map((group) => {
             const Icon = group.Icon;
             return (

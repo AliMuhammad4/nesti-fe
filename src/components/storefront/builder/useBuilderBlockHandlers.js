@@ -274,7 +274,7 @@ export function useBuilderBlockHandlers({
       );
     if (!resolvedItems?.length) return;
     if (
-      templateKey === 'mortgage_broker-first-home'
+      (templateKey === 'mortgage_broker-first-home' || templateKey === 'mortgage_broker-commercial')
       && selected?.type === STOREFRONT_BLOCK_TYPES.HERO
       && collection === 'slides'
       && resolvedItems.length <= 1

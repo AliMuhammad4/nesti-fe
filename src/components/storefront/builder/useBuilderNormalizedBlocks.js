@@ -11,6 +11,9 @@ import {
 import {
   migrateBrokerRenewalBlocks,
 } from '../templates/mortgage-broker/renewalMigration';
+import {
+  migrateBrokerCommercialBlocks,
+} from '../templates/mortgage-broker/commercialMigration';
 import { materializeTemplate } from '../templates';
 import { STOREFRONT_BLOCK_TYPES } from '../storefrontPresets';
 import {
@@ -38,6 +41,9 @@ function migrateBlocksForTemplate(templateKey, blocks, profile, brandKit) {
   }
   if (templateKey === 'mortgage_broker-renewal') {
     return normalizeBlocks(migrateBrokerRenewalBlocks(blocks, defaults));
+  }
+  if (templateKey === 'mortgage_broker-commercial') {
+    return normalizeBlocks(migrateBrokerCommercialBlocks(blocks, defaults));
   }
   return normalizeBlocks(blocks);
 }
@@ -94,6 +100,7 @@ export function useBuilderNormalizedBlocks({
       'mortgage_broker-classic',
       'mortgage_broker-first-home',
       'mortgage_broker-renewal',
+      'mortgage_broker-commercial',
     ].includes(templateKey)) {
       return migrateBlocksForTemplate(templateKey, blocks, profile, brandKit);
     }
@@ -108,6 +115,7 @@ export function useBuilderNormalizedBlocks({
       'mortgage_broker-classic',
       'mortgage_broker-first-home',
       'mortgage_broker-renewal',
+      'mortgage_broker-commercial',
     ].includes(templateKey)) return;
 
     const source = normalizeBlocks(blocks);

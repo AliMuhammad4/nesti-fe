@@ -23,6 +23,10 @@ export default function Inspector({
   onItemAdd,
   onDelete,
   onDuplicate,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   media,
   onMediaUpload,
   brandKit,
@@ -95,6 +99,10 @@ export default function Inspector({
         onItemChange={onItemChange}
         onItemAdd={onItemAdd}
         onItemDelete={onItemDelete}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         onMediaUpload={onMediaUpload}
         onBrandKitChange={onBrandKitChange}
       />
@@ -131,6 +139,10 @@ export default function Inspector({
                 onChange={onChange}
                 onMediaUpload={onMediaUpload}
                 onBrandKitChange={onBrandKitChange}
+                onUndo={onUndo}
+                onRedo={onRedo}
+                canUndo={canUndo}
+                canRedo={canRedo}
                   />
                 ) : null}
         {tab === 'layout' ? (

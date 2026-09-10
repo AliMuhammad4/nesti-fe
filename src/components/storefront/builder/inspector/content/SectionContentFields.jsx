@@ -58,6 +58,7 @@ export function AboutContentFields({
     isLawyerFirstHome,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerCommercial,
     isElementSelection,
     contentValue,
   } = model;
@@ -73,12 +74,14 @@ export function AboutContentFields({
         onMediaUpload={onMediaUpload}
         onBrandKitChange={onBrandKitChange}
       />
-      {isBrokerFirstHome ? (
+      {isBrokerFirstHome || isBrokerCommercial ? (
         <InspectorTextarea
           label="Trust statement"
           value={contentValue('trust_statement')}
           onChange={setContent('trust_statement')}
-          placeholder="Advice shaped around your budget, timeline, and long-term comfort."
+          placeholder={isBrokerCommercial
+            ? 'Clear underwriting packages and lender matching for commercial deals.'
+            : 'Advice shaped around your budget, timeline, and long-term comfort.'}
           className="min-h-24 resize-y"
         />
       ) : null}

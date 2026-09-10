@@ -55,8 +55,9 @@ export function GuidanceContentFields({ block, model, onChange }) {
 }
 
 export function ExpertiseContentFields({ block, model, onChange }) {
-  const { isElementSelection, isLayeredLawyerTemplate, contentValue } = model;
+  const { isElementSelection, isLayeredLawyerTemplate, isBrokerCommercial, contentValue } = model;
   if (block.type !== T.EXPERTISE || isElementSelection) return null;
+  if (isBrokerCommercial) return null;
   const setContent = bindContent(onChange, block.id);
   return (
     <>

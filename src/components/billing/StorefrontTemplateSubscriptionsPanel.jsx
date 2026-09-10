@@ -61,7 +61,7 @@ export default function StorefrontTemplateSubscriptionsPanel() {
         </p>
         <p className="mt-2 text-sm font-semibold text-slate-900">No paid template subscriptions</p>
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          Unlock a paid lawyer or agent template from the public page builder. Free templates stay available without a subscription.
+          Unlock a paid agent, lawyer, or mortgage broker template from the public page builder. Free templates stay available without a subscription.
         </p>
         <Link
           href="/dashboard/public-profile"

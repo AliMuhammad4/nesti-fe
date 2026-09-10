@@ -128,18 +128,6 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       width: 'full',
       shadow: isTool ? 'medium' : 'none',
     },
-    'mortgage_broker-wealth': {
-      bg: index % 2 === 0 ? '#f5f3ff' : '#fff7ed',
-      align: isHero ? 'center' : 'left',
-      padding: 'large',
-      radius: 'default',
-      variant: 'premium',
-      cardStyle: 'elevated',
-      columns: '2',
-      mediaPosition: isHero ? 'background' : 'right',
-      width: 'contained',
-      shadow: 'large',
-    },
     'mortgage_broker-renewal': {
       bg: [T.CTA, T.FOOTER].includes(type)
         ? (type === T.FOOTER ? '#07090C' : '#0E1116')
@@ -161,16 +149,40 @@ export function visualTreatmentForTemplate(templateId, type, index) {
       shadow: 'none',
     },
     'mortgage_broker-commercial': {
-      bg: index % 2 === 0 ? '#f8fafc' : '#fef3c7',
+      bg: [T.CTA, T.FOOTER, T.CREDENTIALS].includes(type)
+        ? (type === T.FOOTER ? '#090E14' : '#141C26')
+        : '',
       align: 'left',
-      padding: 'large',
+      padding: isHero ? 'large' : 'medium',
       radius: 'none',
-      variant: 'minimal',
-      cardStyle: 'bordered',
-      columns: '3',
-      mediaPosition: 'none',
+      variant: isHero ? 'premium' : isTool ? 'lead-magnet' : 'standard',
+      cardStyle: isTool || type === T.EXPERTISE || type === T.ALTERNATIVE_LENDING
+        ? 'elevated'
+        : type === T.GUIDANCE
+          ? 'flat'
+          : type === T.CREDENTIALS
+            ? 'glass'
+            : 'bordered',
+      columns: type === T.WHO_WE_HELP
+        || type === T.SERVICES
+        || type === T.LENDER_NETWORK
+        || type === T.CREDENTIALS
+        || type === T.GUIDANCE
+        ? '4'
+        : type === T.PRACTICE_SNAPSHOT
+          || type === T.MORTGAGE_PROGRAMS
+          || type === T.ROLE_DETAILS
+          || type === T.EXPERTISE
+          || type === T.ALTERNATIVE_LENDING
+          || type === T.BROKER_COMPENSATION
+          || type === T.TESTIMONIALS
+          ? '3'
+          : type === T.FAQ || type === T.MORTGAGE_RATES || type === T.MORTGAGE_CALCULATOR
+            ? '1'
+            : '2',
+      mediaPosition: isHero ? 'background' : 'none',
       width: 'full',
-      shadow: 'none',
+      shadow: isTool || type === T.EXPERTISE || type === T.ALTERNATIVE_LENDING ? 'medium' : 'none',
     },
     'lawyer-classic': {
       bg: '',

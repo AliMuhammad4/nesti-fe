@@ -450,17 +450,6 @@ export function HeroSlideItemFields({ selection, onItemChange, onMediaUpload }) 
           onChange={(patch) => onItemChange?.(patch)}
         />
       ) : null}
-      <Field label="Image fit">
-        <BuilderSelect
-          value={item.image_fit === 'contain' ? 'contain' : 'cover'}
-          options={[
-            { value: 'cover', label: 'Fill frame (crop edges)' },
-            { value: 'contain', label: 'Fit full image (no crop)' },
-          ]}
-          onChange={(value) => onItemChange?.({ image_fit: value })}
-          ariaLabel="Slide image fit"
-        />
-      </Field>
       <InspectorInput
         label="Eyebrow"
         value={item.eyebrow || ''}

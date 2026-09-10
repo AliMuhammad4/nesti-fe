@@ -16,6 +16,8 @@ import { BrokerFirstHomeFooter } from './renderers/variants/broker/firstHome/Bro
 import { FIRST_HOME_FOOTER_ITEMS } from './renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
 import { BrokerRenewalFooter } from './renderers/variants/broker/renewal/BrokerRenewalFooter';
 import { RENEWAL_FOOTER_ITEMS } from './renderers/variants/broker/renewal/brokerRenewalDefaults';
+import { BrokerCommercialFooter } from './renderers/variants/broker/commercial/BrokerCommercialAdapters';
+import { COMMERCIAL_FOOTER_ITEMS } from './renderers/variants/broker/commercial/brokerCommercialDefaults';
 import { submitPublicLead } from '@/lib/publicProfileClient';
 import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 import StorefrontInlineStyle from './StorefrontInlineStyle';
@@ -53,6 +55,7 @@ function resolveSectionVariant(templateKey = '') {
   if (key === 'mortgage_broker-classic') return 'brokerClassic';
   if (key === 'mortgage_broker-first-home') return 'brokerClassic';
   if (key === 'mortgage_broker-renewal') return 'brokerClassic';
+  if (key === 'mortgage_broker-commercial') return 'brokerClassic';
   if (key.includes('luxury')) return 'luxury';
   if (key === 'agent-first-home') return 'firstHome';
   if (key.includes('seller')) return 'seller';
@@ -167,7 +170,8 @@ export default function PublicContactPage({ profile }) {
   const isBrokerClassic = templateKey === 'mortgage_broker-classic';
   const isBrokerFirstHome = templateKey === 'mortgage_broker-first-home';
   const isBrokerRenewal = templateKey === 'mortgage_broker-renewal';
-  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome || isBrokerRenewal;
+  const isBrokerCommercial = templateKey === 'mortgage_broker-commercial';
+  const isBrokerTemplate = isBrokerClassic || isBrokerFirstHome || isBrokerRenewal || isBrokerCommercial;
   const isBroker = profile?.professional_type === 'mortgage_broker' || isBrokerTemplate;
   const isLayeredLawyer = isLawyerClassic
     || isLawyerFirstHome
@@ -193,11 +197,13 @@ export default function PublicContactPage({ profile }) {
       ? footerBlockContent.items
       : isBrokerFirstHome
         ? mapFooterItems(FIRST_HOME_FOOTER_ITEMS, profileHref)
-        : isBrokerRenewal
-          ? mapFooterItems(RENEWAL_FOOTER_ITEMS, profileHref)
-          : isBrokerClassic
-            ? mapFooterItems(BROKER_CLASSIC_FOOTER_ITEMS, profileHref)
-            : [
+        : isBrokerCommercial
+          ? mapFooterItems(COMMERCIAL_FOOTER_ITEMS, profileHref)
+          : isBrokerRenewal
+            ? mapFooterItems(RENEWAL_FOOTER_ITEMS, profileHref)
+            : isBrokerClassic
+              ? mapFooterItems(BROKER_CLASSIC_FOOTER_ITEMS, profileHref)
+              : [
             { label: 'Profile', url: profileHref },
             { label: 'Services', url: `${profileHref}#services` },
             ...(isBroker
@@ -617,6 +623,8 @@ export default function PublicContactPage({ profile }) {
             <LawyerClassicFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerFirstHome ? (
             <BrokerFirstHomeFooter profile={profile} block={footerBlock} absoluteHashes />
+          ) : isBrokerCommercial ? (
+            <BrokerCommercialFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerRenewal ? (
             <BrokerRenewalFooter profile={profile} block={footerBlock} absoluteHashes />
           ) : isBrokerClassic ? (

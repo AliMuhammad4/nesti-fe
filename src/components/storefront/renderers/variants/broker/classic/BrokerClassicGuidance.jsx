@@ -23,6 +23,11 @@ export function BrokerClassicGuidance({
     { id: 'benefit-payments', title: 'Quick payments', description: 'Fast approvals and clear timelines from application to funding.' },
     { id: 'benefit-process', title: 'Loan process', description: 'A structured process from consultation through closing.' },
   ],
+  headingDefaults = {
+    eyebrow: 'Our benefits',
+    heading: 'Why choose us?',
+    body: 'Provide your best loan services and let our experienced team guide you with less paperwork and faster approvals.',
+  },
 }) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
@@ -41,9 +46,9 @@ export function BrokerClassicGuidance({
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Our benefits"
-          heading="Why choose us?"
-          body="Provide your best loan services and let our experienced team guide you with less paperwork and faster approvals."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
         <div className={`mt-10 grid gap-5 ${lawyerClassicGridClass(presentation.columns, items.length, true)} ${brokerContentRegionClass(presentation.contentAlignment)}`}>
           {items.map((item, index) => (

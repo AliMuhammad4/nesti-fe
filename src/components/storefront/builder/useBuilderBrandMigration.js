@@ -8,6 +8,9 @@ import {
 import {
   migrateBrokerRenewalBrandKit,
 } from '../templates/mortgage-broker/renewalMigration';
+import {
+  migrateBrokerCommercialBrandKit,
+} from '../templates/mortgage-broker/commercialMigration';
 import { getTemplateBrandDefaults } from '../templates';
 
 export function useBuilderBrandMigration({
@@ -32,6 +35,13 @@ export function useBuilderBrandMigration({
   useEffect(() => {
     if (templateKey !== 'mortgage_broker-renewal') return;
     const migrated = migrateBrokerRenewalBrandKit(templateKey, brandKit || {});
+    if (JSON.stringify(brandKit || {}) === JSON.stringify(migrated)) return;
+    onBrandKitChange(migrated);
+  }, [brandKit, onBrandKitChange, templateKey]);
+
+  useEffect(() => {
+    if (templateKey !== 'mortgage_broker-commercial') return;
+    const migrated = migrateBrokerCommercialBrandKit(templateKey, brandKit || {});
     if (JSON.stringify(brandKit || {}) === JSON.stringify(migrated)) return;
     onBrandKitChange(migrated);
   }, [brandKit, onBrandKitChange, templateKey]);

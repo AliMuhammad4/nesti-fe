@@ -59,6 +59,8 @@ export function resolveStorefrontBlockPresentation({
     ...(templateKey === 'lawyer-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
     ...(templateKey === 'mortgage_broker-classic' && !isHero ? { width: 'full', variant: 'standard' } : {}),
     ...(templateKey === 'mortgage_broker-renewal' && !isHero ? { width: 'full', variant: 'standard' } : {}),
+    ...(templateKey === 'mortgage_broker-commercial' && !isHero ? { width: 'full', variant: 'standard' } : {}),
+    ...(templateKey === 'mortgage_broker-commercial' && isHero ? { width: 'full' } : {}),
     ...((isLuxuryHero || isLuxuryServices || isLuxuryFooter)
       && (!layout.animationType || layout.animationType === 'none' || isLuxuryHero)
       ? {
@@ -67,7 +69,7 @@ export function resolveStorefrontBlockPresentation({
       : {}),
     // PublicHero keeps a fixed header inside the hero band — transforms on this
     // wrapper break fixed positioning and let later sections paint over the nav.
-    ...(isHero && ['mortgage_broker-renewal', 'agent-investor', 'lawyer-newcomer'].includes(templateKey)
+    ...(isHero && ['mortgage_broker-renewal', 'mortgage_broker-commercial', 'agent-investor', 'lawyer-newcomer'].includes(templateKey)
       ? { animationType: 'none' }
       : {}),
   };
@@ -150,7 +152,8 @@ export function resolveStorefrontBlockPresentation({
     (templateKey === 'lawyer-newcomer'
       || templateKey === 'mortgage_broker-classic'
       || templateKey === 'mortgage_broker-first-home'
-      || templateKey === 'mortgage_broker-renewal')
+      || templateKey === 'mortgage_broker-renewal'
+      || templateKey === 'mortgage_broker-commercial')
     && useTemplateBand
     && !isHero
   )

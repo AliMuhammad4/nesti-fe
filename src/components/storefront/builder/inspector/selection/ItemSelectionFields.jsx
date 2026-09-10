@@ -35,7 +35,7 @@ export default function ItemSelectionFields({
     selectedItemField,
   } = model;
 
-  if (model.isBrokerFirstHome && block?.type === T.HERO && selection?.collection === 'slides') {
+  if ((model.isBrokerFirstHome || model.isBrokerCommercial) && block?.type === T.HERO && selection?.collection === 'slides') {
     return (
       <HeroSlideItemFields
         selection={selection}

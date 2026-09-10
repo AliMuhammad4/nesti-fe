@@ -23,25 +23,27 @@ export function HeroMediaFields({
     isLawyerInvestor,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerCommercial,
     isBrokerRenewal,
     heroUsesProfilePhoto,
     layout,
   } = model;
+  const isSlideHero = isBrokerFirstHome || isBrokerCommercial;
   const investorMediaPosition = layout?.mediaPosition || 'portrait';
   const brokerMediaPosition = layout?.mediaPosition || (isBrokerRenewal ? 'background' : 'right');
-  const showCoverPicker = isBrokerFirstHome
+  const showCoverPicker = isSlideHero
     ? false
     : isBrokerClassic
       ? brokerMediaPosition !== 'none'
       : !isLawyerInvestor || investorMediaPosition === 'cover';
   const showProfilePicker = heroUsesProfilePhoto
-    && !isBrokerFirstHome
+    && !isSlideHero
     && (
       isBrokerClassic
       || !isLawyerInvestor
       || investorMediaPosition === 'portrait'
     );
-  if (isBrokerFirstHome) {
+  if (isSlideHero) {
     return (
       <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
@@ -137,16 +139,18 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
     isLawyerNewcomer,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerCommercial,
     isBrokerRenewal,
     isThemeDrivenAgentHero,
     contentValue,
     placeholders,
   } = model;
   if (block.type !== T.HERO || isElementSelection) return null;
+  const isSlideHero = isBrokerFirstHome || isBrokerCommercial;
   const setContent = bindContent(onChange, block.id);
   return (
     <>
-      {!isBrokerFirstHome ? (
+      {!isSlideHero ? (
         <InspectorInput
           label="Hero eyebrow"
           value={contentValue('eyebrow')}
@@ -154,7 +158,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
           placeholder={isBrokerRenewal ? 'Renewal specialist' : 'Full-service real estate'}
         />
       ) : null}
-      {(isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic) && !isBrokerFirstHome ? (
+      {(isLayeredLawyerTemplate || isLawyerNewcomer || isBrokerClassic) && !isSlideHero ? (
         <>
           <InspectorInput label="Hero heading" value={contentValue('heading')} onChange={setContent('heading')} placeholder={placeholders.heading} />
           <InspectorTextarea
@@ -198,7 +202,7 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
           <InspectorInput label="Hero card subtitle" value={contentValue('hero_subtitle')} onChange={setContent('hero_subtitle')} placeholder={profile?.headline || 'Your trusted real estate partner'} />
         </>
       ) : null}
-      {!isLayeredLawyerTemplate && !isBrokerFirstHome ? (
+      {!isLayeredLawyerTemplate && !isSlideHero ? (
         <InspectorInput
           label="Company badge text"
           value={contentValue('hero_company_badge')}
@@ -210,13 +214,13 @@ export function HeroCopyFields({ block, model, profile, onChange }) {
         label="Primary button label"
         value={contentValue('primary_cta_label')}
         onChange={setContent('primary_cta_label')}
-        placeholder={isBrokerRenewal ? 'Review my renewal' : 'Submit inquiry'}
+        placeholder={isBrokerCommercial ? 'Submit a deal' : isBrokerRenewal ? 'Review my renewal' : 'Submit inquiry'}
       />
       <InspectorInput
         label="Secondary button label"
         value={contentValue('cta_label')}
         onChange={setContent('cta_label')}
-        placeholder={isBrokerRenewal ? 'Book a consultation' : 'Book a Free Consultation'}
+        placeholder={isBrokerCommercial || isBrokerRenewal ? 'Book a consultation' : 'Book a Free Consultation'}
       />
       {(isLayeredLawyerTemplate || isBrokerClassic) ? (
         <InspectorInput label="Join Nesti button label" value={contentValue('join_label')} onChange={setContent('join_label')} placeholder="Join Nesti" />

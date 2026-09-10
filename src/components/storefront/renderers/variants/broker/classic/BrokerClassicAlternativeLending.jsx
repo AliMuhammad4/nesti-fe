@@ -30,12 +30,30 @@ const ALTERNATIVE_FALLBACK = [
 
 const ALT_ICON_KEYS = ['briefcase', 'target', 'shield', 'percent', 'building', 'home'];
 
-export function BrokerClassicAlternativeLending({ profile, actions = {}, block }) {
+export function BrokerClassicAlternativeLending({
+  profile,
+  actions = {},
+  block,
+  fallbackItems = ALTERNATIVE_FALLBACK,
+  headingDefaults = {
+    eyebrow: 'Private & alternative lending',
+    heading: 'Options beyond the traditional bank path',
+    body: 'Help visitors explore potential solutions for complex income, credit, investment, and short-term financing needs.',
+  },
+}) {
   const content = blockContent(block);
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
-  const { items, hasPersisted } = normalizedItems(content, ALTERNATIVE_FALLBACK, 'items', 12);
+  const { items, hasPersisted } = normalizedItems(content, fallbackItems, 'items', 12);
   const ctaLabel = brokerContentValue(content, 'cta_label', 'Explore My Mortgage Options');
+
+  const handleCta = () => {
+    if (typeof actions.onDirectLeadClick === 'function') {
+      actions.onDirectLeadClick();
+      return;
+    }
+    actions.onCtaClick?.('explore_options');
+  };
 
   return (
     <section
@@ -47,9 +65,9 @@ export function BrokerClassicAlternativeLending({ profile, actions = {}, block }
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Private & alternative lending"
-          heading="Options beyond the traditional bank path"
-          body="Help visitors explore potential solutions for complex income, credit, investment, and short-term financing needs."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {items.length ? (
@@ -116,10 +134,7 @@ export function BrokerClassicAlternativeLending({ profile, actions = {}, block }
         <div className="mt-8" data-storefront-anim-item="true">
           <button
             type="button"
-            onClick={() => {
-              actions.onCtaClick?.('explore_options');
-              actions.onDirectLeadClick?.();
-            }}
+            onClick={handleCta}
             className="inline-flex min-h-11 items-center justify-center gap-2 bg-[color:var(--storefront-primary,#0c2139)] px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-white transition hover:brightness-110"
             style={{
               borderRadius: presentation.controlRadius,

@@ -12,9 +12,9 @@ const EDITOR_CONFIG = {
     title: 'slide image',
     frameClass: 'aspect-[21/9] w-full rounded-xl',
     defaultY: 50,
-    minZoom: 0.6,
+    minZoom: 1,
     maxZoom: 3,
-    zoomHint: 'Matches the live hero frame. Zoom out to reveal more of the photo, or zoom in to crop tighter.',
+    zoomHint: 'Matches the live hero frame. Zoom in to crop tighter — images always fill the slide.',
     presets: [
       { label: 'Center', x: 50, y: 50 },
       { label: 'Top', x: 50, y: 28 },
@@ -27,9 +27,9 @@ const EDITOR_CONFIG = {
     title: 'slide image',
     frameClass: 'aspect-[16/9] w-full rounded-xl',
     defaultY: 50,
-    minZoom: 0.6,
+    minZoom: 1,
     maxZoom: 3,
-    zoomHint: 'Zoom out to reveal more of the photo, or zoom in to crop tighter.',
+    zoomHint: 'Zoom in to crop tighter — images always fill the slide.',
     presets: [
       { label: 'Center', x: 50, y: 50 },
       { label: 'Top', x: 50, y: 28 },

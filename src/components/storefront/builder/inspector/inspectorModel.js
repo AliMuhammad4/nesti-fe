@@ -56,6 +56,11 @@ import {
   brokerRenewalCollectionFallback,
 } from '../../renderers/variants/broker/renewal/brokerRenewalDefaults';
 import { brokerRenewalCapabilities } from '../../renderers/variants/broker/renewal/brokerRenewalCapabilities';
+import {
+  COMMERCIAL_FAQS,
+  brokerCommercialCollectionFallback,
+} from '../../renderers/variants/broker/commercial/brokerCommercialDefaults';
+import { brokerCommercialCapabilities } from '../../renderers/variants/broker/commercial/brokerCommercialCapabilities';
 import { readContentPath } from '../contentPath';
 
 function mapProfileServiceCards(profile) {
@@ -126,7 +131,11 @@ export function buildInspectorModel({
   const isBrokerClassicTemplate = templateKey === 'mortgage_broker-classic';
   const isBrokerFirstHome = templateKey === 'mortgage_broker-first-home';
   const isBrokerRenewal = templateKey === 'mortgage_broker-renewal';
-  const isBrokerClassic = isBrokerClassicTemplate || isBrokerFirstHome || isBrokerRenewal;
+  const isBrokerCommercial = templateKey === 'mortgage_broker-commercial';
+  const isBrokerClassic = isBrokerClassicTemplate
+    || isBrokerFirstHome
+    || isBrokerRenewal
+    || isBrokerCommercial;
   const investorCapabilities = isLawyerInvestor
     ? lawyerInvestorCapabilities(block?.type)
     : null;
@@ -135,11 +144,13 @@ export function buildInspectorModel({
     : null;
   const brokerCapabilities = isBrokerClassic
     ? (
-        isBrokerFirstHome
-          ? brokerFirstHomeCapabilities(block?.type)
-          : isBrokerRenewal
-            ? brokerRenewalCapabilities(block?.type)
-            : brokerClassicCapabilities(block?.type)
+        isBrokerCommercial
+          ? brokerCommercialCapabilities(block?.type)
+          : isBrokerFirstHome
+            ? brokerFirstHomeCapabilities(block?.type)
+            : isBrokerRenewal
+              ? brokerRenewalCapabilities(block?.type)
+              : brokerClassicCapabilities(block?.type)
       )
     : null;
   // Keep the story-warm Newcomer Hero on its established generic control path.
@@ -206,12 +217,17 @@ export function buildInspectorModel({
     || block.type === T.LENDER_NETWORK
     || block.type === T.ALTERNATIVE_LENDING
     || block.type === T.BROKER_COMPENSATION
+    || (isBrokerCommercial && (block.type === T.EXPERTISE || block.type === T.WHO_WE_HELP))
   );
   const isSellerCaseStudy = block.type === T.SELLER_CASE_STUDY;
   const isSellerCredentials = block.type === T.SELLER_CREDENTIALS;
   const hasEditableCards = isServices || isSellerCaseStudy || isBrokerPrograms;
   const serviceCardLimit = isBrokerClassic && block.type === T.LENDER_NETWORK
     ? 24
+    : isBrokerCommercial && block.type === T.EXPERTISE
+      ? 6
+    : isBrokerCommercial && block.type === T.WHO_WE_HELP
+      ? 8
     : isBrokerClassic && (
       block.type === T.MORTGAGE_RATES
       || block.type === T.ALTERNATIVE_LENDING
@@ -308,6 +324,10 @@ export function buildInspectorModel({
         const firstHomeFallback = brokerFirstHomeCollectionFallback(block.type, 'items');
         if (firstHomeFallback?.length) return firstHomeFallback;
       }
+      if (isBrokerCommercial) {
+        const commercialFallback = brokerCommercialCollectionFallback(block.type, 'items');
+        if (commercialFallback?.length) return commercialFallback;
+      }
       if (isBrokerRenewal) {
         const renewalFallback = brokerRenewalCollectionFallback(block.type, 'items');
         if (renewalFallback?.length) return renewalFallback;
@@ -325,6 +345,7 @@ export function buildInspectorModel({
       const templateItems = templateDefaultBlock?.data?.content?.items;
       if (Array.isArray(templateItems) && templateItems.length) return templateItems;
       if (isBrokerFirstHome) return brokerFirstHomeCollectionFallback(block.type, 'items');
+      if (isBrokerCommercial) return brokerCommercialCollectionFallback(block.type, 'items') || [];
       if (isBrokerRenewal) return brokerRenewalCollectionFallback(block.type, 'items') || [];
       return BROKER_CLASSIC_SERVICE_ITEMS;
     }
@@ -434,6 +455,9 @@ export function buildInspectorModel({
     if (isBrokerFirstHome && block.type === T.GUIDANCE) {
       return brokerFirstHomeCollectionFallback('guidance', 'steps');
     }
+    if (isBrokerCommercial && block.type === T.GUIDANCE) {
+      return brokerCommercialCollectionFallback(T.GUIDANCE, 'steps');
+    }
     if (isBrokerRenewal && block.type === T.GUIDANCE) {
       return brokerRenewalCollectionFallback(T.GUIDANCE, 'steps');
     }
@@ -456,9 +480,11 @@ export function buildInspectorModel({
         'faqs',
         isBrokerFirstHome
           ? FIRST_HOME_FAQS
-          : isBrokerRenewal
-            ? RENEWAL_FAQS
-            : BROKER_CLASSIC_FAQS,
+          : isBrokerCommercial
+            ? COMMERCIAL_FAQS
+            : isBrokerRenewal
+              ? RENEWAL_FAQS
+              : BROKER_CLASSIC_FAQS,
       )
       : getGuidanceCollectionFallback(profile?.professional_type, 'faqs'));
   const commitGuidanceSteps = (next) => {
@@ -616,6 +642,7 @@ export function buildInspectorModel({
     isBrokerClassic,
     isBrokerFirstHome,
     isBrokerRenewal,
+    isBrokerCommercial,
     investorCapabilities,
     newcomerCapabilities,
     brokerCapabilities,

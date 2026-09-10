@@ -38,25 +38,21 @@ const TEMPLATE_GALLERY_COPY = {
     title: 'Neighborhood',
     tagline: 'Local insight for the streets you know',
   },
-  'mortgage_broker-classic': {
-    title: 'Lead Storefront',
-    tagline: 'Focused mortgage programs, services, and lead conversion',
-  },
-  'mortgage_broker-first-home': {
-    title: 'First Home',
-    tagline: 'Financing made simple for first-time buyers',
-  },
-  'mortgage_broker-wealth': {
-    title: 'Wealth',
-    tagline: 'Portfolio strategy for high-equity clients',
-  },
   'mortgage_broker-renewal': {
     title: 'Renewal',
-    tagline: 'Free starter — refinance and renewal with a clear plan',
+    tagline: 'Refinance with a clear plan',
   },
   'mortgage_broker-commercial': {
     title: 'Commercial',
-    tagline: 'Financing for multi-unit and commercial deals',
+    tagline: 'Multi-unit and commercial deals',
+  },
+  'mortgage_broker-classic': {
+    title: 'Lead Storefront',
+    tagline: 'Programs and lead conversion',
+  },
+  'mortgage_broker-first-home': {
+    title: 'First Home',
+    tagline: 'Simple first-time buyer financing',
   },
   'lawyer-classic': {
     title: 'Classic',
@@ -414,15 +410,15 @@ export default function PageSettings({
 
       {/* Templates section */}
       <section className="relative mt-3.5">
-        <div className="mb-2 flex items-end justify-between gap-2 px-0.5">
+        <div className="mb-2.5 flex items-end justify-between gap-2 px-0.5">
           <div>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Themes</p>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-700">Template gallery</p>
+            <p className="mt-0.5 text-[12px] font-semibold tracking-[-0.01em] text-slate-800">Template gallery</p>
           </div>
-          <p className="text-[9px] font-medium text-slate-400">Tap to apply</p>
+          <p className="pb-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-slate-400">Tap to apply</p>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {orderedTemplates.map((template) => {
             const active = template.id === templateKey;
             const expanded = active && expandedTemplateId === template.id;
@@ -438,21 +434,23 @@ export default function PageSettings({
               ? (brandKit.page_background || '#ffffff')
               : (template.brand.page_background || '#ffffff');
             const fontName = active ? (brandKit.font || template.brand.font) : template.brand.font;
+            const badgeLabel = access.unlocked
+              ? (access.display_amount || 'Free')
+              : `${tierLabel}${access.display_amount ? ` · ${access.display_amount}` : ''}`;
 
             return (
               <div
                 key={template.id}
-                className={`group/card relative overflow-hidden rounded-[1.25rem] border bg-white transition duration-300 ${
+                className={`group/card relative overflow-hidden rounded-2xl border bg-white transition duration-300 ${
                   active
-                    ? 'shadow-[0_18px_40px_rgba(15,23,42,0.14)]'
-                    : 'border-white/80 shadow-[0_10px_28px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(15,23,42,0.12)]'
+                    ? 'border-slate-900/90 shadow-[0_16px_36px_rgba(15,23,42,0.12)]'
+                    : 'border-slate-200/90 shadow-[0_8px_22px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)]'
                 }`}
-                style={active ? { borderColor: primary, boxShadow: `0 18px 40px rgba(15,23,42,0.14), 0 0 0 1px ${primary}` } : undefined}
               >
                 {active ? (
                   <div
-                    className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full opacity-50"
-                    style={{ background: `radial-gradient(circle, ${accent}40, transparent 68%)` }}
+                    className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
+                    style={{ background: `linear-gradient(90deg, ${primary}, ${accent})` }}
                     aria-hidden="true"
                   />
                 ) : null}
@@ -461,51 +459,44 @@ export default function PageSettings({
                   type="button"
                   onClick={() => handleTemplateSelect(template)}
                   aria-pressed={active}
-                  aria-expanded={active}
+                  aria-expanded={expanded}
                   className="relative w-full text-left text-slate-900"
                 >
                   <div
-                    className="relative h-12 overflow-hidden"
+                    className="relative h-14 overflow-hidden"
                     style={{
-                      background: `linear-gradient(128deg, ${primary} 0%, color-mix(in srgb, ${primary} 55%, ${accent}) 48%, ${accent} 100%)`,
+                      background: `linear-gradient(125deg, ${primary} 0%, color-mix(in srgb, ${primary} 58%, ${accent}) 52%, ${accent} 100%)`,
                     }}
                   >
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),transparent_42%),linear-gradient(90deg,rgba(0,0,0,0.18),transparent_50%)]" />
-                    <div className="absolute left-3.5 top-3 flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white/85 shadow-sm" />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),transparent_48%),linear-gradient(90deg,rgba(0,0,0,0.16),transparent_55%)]" />
+                    <div className="absolute left-3.5 top-3.5 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
                       <span className="h-1.5 w-1.5 rounded-full bg-white/55" />
                       <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
                     </div>
-                    <div
-                      className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
-                      aria-hidden="true"
-                    />
+                    <div className="absolute bottom-3 right-3.5 rounded-md bg-black/20 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
+                      Preview
+                    </div>
                   </div>
 
-                  <div className="relative p-3.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p
-                          className="text-[13px] font-bold leading-4 tracking-[-0.02em]"
-                          style={{
-                            fontFamily: fontName,
-                            color: primary,
-                          }}
-                        >
-                          {copy.title}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] ${
-                            access.unlocked ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                          }`}>
-                            {access.unlocked ? (access.display_amount || 'Unlocked') : `${tierLabel} · ${access.display_amount}`}
-                          </span>
-                          <p className="text-[10px] leading-4 text-slate-500">
-                            {copy.tagline}
+                  <div className="relative px-3.5 pb-3.5 pt-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[13px] font-semibold leading-5 tracking-[-0.02em] text-slate-950">
+                            {copy.title}
                           </p>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] ${
+                            access.unlocked
+                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15'
+                              : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/15'
+                          }`}>
+                            {badgeLabel}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
+
+                      <div className="flex h-8 shrink-0 items-center gap-1.5">
                         {active ? (
                           <button
                             type="button"
@@ -514,51 +505,53 @@ export default function PageSettings({
                               event.stopPropagation();
                               setExpandedTemplateId((current) => (current === template.id ? null : template.id));
                             }}
-                            className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] transition hover:bg-slate-50"
-                            style={{ borderColor: `${primary}33`, color: primary }}
+                            className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
                           >
                             {expanded ? 'Colors' : 'Refine'}
                             <ChevronDown
-                              size={11}
+                              size={12}
                               className={`transition ${expanded ? 'rotate-180' : ''}`}
                             />
                           </button>
                         ) : null}
                         <span
-                          className={`grid h-6 w-6 place-items-center rounded-full border transition ${
+                          className={`grid h-8 w-8 place-items-center rounded-full border transition ${
                             active
-                              ? 'text-white shadow-[0_6px_14px_rgba(15,23,42,0.18)]'
+                              ? 'border-slate-900 bg-slate-900 text-white shadow-[0_8px_16px_rgba(15,23,42,0.18)]'
                               : locked
-                                ? 'bg-amber-50 text-amber-700'
-                                : 'bg-white text-transparent group-hover/card:border-slate-300'
+                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                : 'border-slate-200 bg-white text-transparent group-hover/card:border-slate-300'
                           }`}
-                          style={active
-                            ? { background: primary, borderColor: primary }
-                            : locked
-                              ? { borderColor: '#f59e0b55' }
-                              : { borderColor: `${primary}55` }}
+                          aria-hidden="true"
                         >
                           {locked ? (
-                            <Lock size={11} strokeWidth={2.8} />
+                            <Lock size={12} strokeWidth={2.6} />
                           ) : (
-                            <Check size={12} strokeWidth={3} />
+                            <Check size={13} strokeWidth={2.8} className={active ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-40 group-hover/card:text-slate-400'} />
                           )}
                         </span>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
-                      <div className="flex items-center gap-1.5">
+                    <p className="mt-2 w-full text-[11px] leading-4 text-slate-500">
+                      {copy.tagline}
+                    </p>
+
+                    <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3">
+                      <div className="flex items-center gap-2">
                         {[primary, accent, canvas].map((swatch, index) => (
                           <span
                             key={`${template.id}-swatch-${index}`}
-                            className="h-3.5 w-3.5 rounded-full ring-1 ring-black/15 ring-offset-1 ring-offset-white"
+                            className="h-4 w-4 rounded-full border border-black/5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]"
                             style={{ background: swatch }}
-                            title={index === 2 ? 'Page background' : undefined}
+                            title={index === 0 ? 'Primary' : index === 1 ? 'Accent' : 'Page background'}
                           />
                         ))}
                       </div>
-                      <span className="text-[9px] font-semibold tracking-wide text-slate-400">
+                      <span
+                        className="text-[10px] font-medium tracking-wide text-slate-400"
+                        style={{ fontFamily: fontName }}
+                      >
                         Aa · {fontName}
                       </span>
                     </div>

@@ -70,7 +70,15 @@ function mergeReviews(curated = [], submitted = []) {
     });
 }
 
-export function BrokerClassicTestimonials({ profile, block }) {
+export function BrokerClassicTestimonials({
+  profile,
+  block,
+  headingDefaults = {
+    eyebrow: 'Customers testimonials',
+    heading: 'Customers testimonials',
+    body: 'Real clients sharing how clear guidance and fast service made financing easier.',
+  },
+}) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '3');
   const isPreview = Boolean(profile?.storefront_builder_preview);
@@ -166,9 +174,9 @@ export function BrokerClassicTestimonials({ profile, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Customers testimonials"
-          heading="Customers testimonials"
-          body="Real clients sharing how clear guidance and fast service made financing easier."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {feedbackLoading && !reviews.length ? (

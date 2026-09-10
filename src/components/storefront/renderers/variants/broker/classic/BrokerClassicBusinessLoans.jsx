@@ -19,7 +19,19 @@ import {
 } from './brokerSectionUtils';
 import { BROKER_CLASSIC_ROLE_HIGHLIGHTS, BROKER_CLASSIC_ROLE_SNAPSHOT_DEFAULTS } from './brokerClassicDefaults';
 
-export function BrokerClassicBusinessLoans({ profile, actions = {}, block }) {
+export function BrokerClassicBusinessLoans({
+  profile,
+  actions = {},
+  block,
+  fallbackHighlights = BROKER_CLASSIC_ROLE_HIGHLIGHTS,
+  snapshotDefaults = BROKER_CLASSIC_ROLE_SNAPSHOT_DEFAULTS,
+  headingDefaults = {
+    eyebrow: 'Business & commercial',
+    heading: 'Flexible financing for growing businesses',
+    body: 'Fast approvals, affordable repayment plans, and clear documentation pathways for business and commercial needs.',
+  },
+  ctaDefault = 'See What I May Qualify For',
+}) {
   const content = blockContent(block);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '2');
   const stats = profile?.stats || {};
@@ -48,17 +60,17 @@ export function BrokerClassicBusinessLoans({ profile, actions = {}, block }) {
       value: Number(stats.avg_approval_days) > 0 ? `${stats.avg_approval_days} days` : 'Responsive',
     },
   ];
-  const { items, hasPersisted } = normalizedItems(content, BROKER_CLASSIC_ROLE_HIGHLIGHTS, 'highlights', 6);
-  const ctaLabel = brokerContentValue(content, 'cta_label', 'See What I May Qualify For');
+  const { items, hasPersisted } = normalizedItems(content, fallbackHighlights, 'highlights', 6);
+  const ctaLabel = brokerContentValue(content, 'cta_label', ctaDefault);
   const snapshotEyebrow = brokerContentValue(
     content,
     'snapshot_eyebrow',
-    BROKER_CLASSIC_ROLE_SNAPSHOT_DEFAULTS.snapshot_eyebrow,
+    snapshotDefaults.snapshot_eyebrow,
   );
   const snapshotHeading = brokerContentValue(
     content,
     'snapshot_heading',
-    BROKER_CLASSIC_ROLE_SNAPSHOT_DEFAULTS.snapshot_heading,
+    snapshotDefaults.snapshot_heading,
   );
 
   return (
@@ -71,9 +83,9 @@ export function BrokerClassicBusinessLoans({ profile, actions = {}, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Business & commercial"
-          heading="Flexible financing for growing businesses"
-          body="Fast approvals, affordable repayment plans, and clear documentation pathways for business and commercial needs."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         <div

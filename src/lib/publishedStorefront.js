@@ -17,6 +17,10 @@ import {
   migrateBrokerRenewalBlocks,
   migrateBrokerRenewalBrandKit,
 } from '@/components/storefront/templates/mortgage-broker/renewalMigration';
+import {
+  migrateBrokerCommercialBlocks,
+  migrateBrokerCommercialBrandKit,
+} from '@/components/storefront/templates/mortgage-broker/commercialMigration';
 
 export function resolvePublishedStorefrontBrandKit(templateKey, brandKit = {}) {
   if (templateKey === 'lawyer-newcomer') {
@@ -30,6 +34,9 @@ export function resolvePublishedStorefrontBrandKit(templateKey, brandKit = {}) {
   }
   if (templateKey === 'mortgage_broker-renewal') {
     return migrateBrokerRenewalBrandKit(templateKey, brandKit);
+  }
+  if (templateKey === 'mortgage_broker-commercial') {
+    return migrateBrokerCommercialBrandKit(templateKey, brandKit);
   }
   if (templateKey !== 'agent-community-expert') return brandKit;
 
@@ -105,6 +112,9 @@ export function canonicalPublishedStorefrontBlocks({
   }
   if (templateKey === 'mortgage_broker-first-home') {
     return migrateBrokerFirstHomeBlocks(normalized, defaults, profile);
+  }
+  if (templateKey === 'mortgage_broker-commercial') {
+    return migrateBrokerCommercialBlocks(normalized, defaults);
   }
   return normalized;
 }

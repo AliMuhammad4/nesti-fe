@@ -14,7 +14,15 @@ import {
   transparentSectionPresentation,
 } from './brokerSectionUtils';
 
-export function BrokerClassicAbout({ profile, block }) {
+export function BrokerClassicAbout({
+  profile,
+  block,
+  headingDefaults = {
+    eyebrow: 'Company introductions',
+    heading: 'Mortgage advice shaped around your goals',
+    body: '',
+  },
+}) {
   const content = blockContent(block);
   const identity = resolveProfessionalIdentity(profile);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '2');
@@ -58,12 +66,13 @@ export function BrokerClassicAbout({ profile, block }) {
           <BrokerSectionHeading
             align={presentation.headingAlignment}
             content={content}
-            eyebrow="Company introductions"
-            heading="Mortgage advice shaped around your goals"
+            eyebrow={headingDefaults.eyebrow}
+            heading={headingDefaults.heading}
             body={brokerContentValue(
               content,
               'body',
-              'Loan solutions that help transform your goals into reality with trusted financial support and flexible repayment options.',
+              headingDefaults.body
+                || 'Loan solutions that help transform your goals into reality with trusted financial support and flexible repayment options.',
             )}
           />
         </div>

@@ -35,7 +35,7 @@ export default function StorefrontRenderedBlock({
   if (
     block.type === STOREFRONT_BLOCK_TYPES.TESTIMONIALS
     && !preview
-    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic', 'mortgage_broker-first-home', 'mortgage_broker-renewal'].includes(templateKey)
+    && !['lawyer-classic', 'lawyer-first-home-closing', 'lawyer-newcomer', 'mortgage_broker-classic', 'mortgage_broker-first-home', 'mortgage_broker-renewal', 'mortgage_broker-commercial'].includes(templateKey)
     && !hasPublicClientStories({
       ...profile,
       testimonials: contentItems.length ? contentItems : profile.testimonials,
@@ -97,6 +97,7 @@ export default function StorefrontRenderedBlock({
     'mortgage_broker-classic',
     'mortgage_broker-first-home',
     'mortgage_broker-renewal',
+    'mortgage_broker-commercial',
   ].includes(templateKey) && isHero;
   const skipPreviewBandChrome = (templateKey === 'lawyer-classic' && isHero) || isDedicatedBrokerHero;
   const isSelectedBand = preview && selectedBlockId === block.id;
@@ -104,6 +105,7 @@ export default function StorefrontRenderedBlock({
   // context above animated siblings so section eyebrows cannot paint over the nav.
   const hostsFixedPublicHeader = isHero && [
     'mortgage_broker-renewal',
+    'mortgage_broker-commercial',
     'agent-investor',
     'lawyer-newcomer',
   ].includes(templateKey);

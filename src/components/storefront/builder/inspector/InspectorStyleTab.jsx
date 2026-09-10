@@ -266,13 +266,30 @@ export default function InspectorStyleTab({ block, model, onChange }) {
           onReset={() => model.clearGuidanceCardStyles('faq')}
         />
       ) : null}
-      {(isLawyerInvestor || isLawyerNewcomer || isBrokerClassic) && templateStyle.buttonColors && isCta ? (
+      {(isLawyerInvestor || isLawyerNewcomer || isBrokerClassic)
+        && templateStyle.buttonColors
+        && isCta ? (
         <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">CTA buttons</p>
           <ColorField label={isLawyerNewcomer ? 'Appointment background' : isBrokerClassic ? 'Primary button background' : 'Primary inquiry background'} value={content.primary_button_background || ''} onChange={(primary_button_background) => onChange(block.id, { content: { primary_button_background } })} />
           <ColorField label={isLawyerNewcomer ? 'Appointment text' : isBrokerClassic ? 'Primary button text' : 'Primary inquiry text'} value={content.primary_button_text_color || ''} onChange={(primary_button_text_color) => onChange(block.id, { content: { primary_button_text_color } })} />
           <ColorField label={isLawyerNewcomer ? 'Inquiry background' : isBrokerClassic ? 'Secondary button background' : 'Appointment background'} value={content.secondary_button_background || ''} onChange={(secondary_button_background) => onChange(block.id, { content: { secondary_button_background } })} />
           <ColorField label={isLawyerNewcomer ? 'Inquiry text' : isBrokerClassic ? 'Secondary button text' : 'Appointment text'} value={content.secondary_button_text_color || ''} onChange={(secondary_button_text_color) => onChange(block.id, { content: { secondary_button_text_color } })} />
+        </div>
+      ) : null}
+      {isBrokerClassic && templateStyle.buttonColors && block.type === T.ALTERNATIVE_LENDING ? (
+        <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Section CTA button</p>
+          <ColorField
+            label="Button background"
+            value={content.cta_background || ''}
+            onChange={(cta_background) => onChange(block.id, { content: { cta_background } })}
+          />
+          <ColorField
+            label="Button text"
+            value={content.cta_text_color || ''}
+            onChange={(cta_text_color) => onChange(block.id, { content: { cta_text_color } })}
+          />
         </div>
       ) : null}
       {block.type === T.ABOUT ? (

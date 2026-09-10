@@ -24,12 +24,23 @@ const RATE_FALLBACK = [
   { id: 'rate-private', title: 'Private', rate: 'Custom', description: 'Short-term and private options reviewed case by case.' },
 ];
 
-export function BrokerClassicRates({ profile, actions = {}, block }) {
+export function BrokerClassicRates({
+  profile,
+  actions = {},
+  block,
+  fallbackItems = RATE_FALLBACK,
+  headingDefaults = {
+    eyebrow: 'Current rate ranges',
+    heading: 'Explore starting mortgage rates',
+    body: 'Compare common rate categories, then request a personalized review based on your file.',
+  },
+  ctaDefault = 'Get My Personalized Rate',
+}) {
   const content = blockContent(block);
   const isPreview = Boolean(profile?.storefront_builder_preview);
   const presentation = transparentSectionPresentation(block, BROKER_INK, '1');
-  const { items, hasPersisted } = normalizedItems(content, RATE_FALLBACK, 'items', 12);
-  const ctaLabel = brokerContentValue(content, 'cta_label', 'Get My Personalized Rate');
+  const { items, hasPersisted } = normalizedItems(content, fallbackItems, 'items', 12);
+  const ctaLabel = brokerContentValue(content, 'cta_label', ctaDefault);
 
   return (
     <section
@@ -41,9 +52,9 @@ export function BrokerClassicRates({ profile, actions = {}, block }) {
         <BrokerSectionHeading
           align={presentation.headingAlignment}
           content={content}
-          eyebrow="Current rate ranges"
-          heading="Explore starting mortgage rates"
-          body="Compare common rate categories, then request a personalized review based on your file."
+          eyebrow={headingDefaults.eyebrow}
+          heading={headingDefaults.heading}
+          body={headingDefaults.body}
         />
 
         {items.length ? (

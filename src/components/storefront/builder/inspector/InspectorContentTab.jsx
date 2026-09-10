@@ -3,6 +3,7 @@ import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { BROKER_CLASSIC_FOOTER_ITEMS } from '../../renderers/variants/broker/classic/brokerClassicDefaults';
 import { FIRST_HOME_FOOTER_ITEMS } from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
 import { RENEWAL_FOOTER_ITEMS } from '../../renderers/variants/broker/renewal/brokerRenewalDefaults';
+import { COMMERCIAL_FOOTER_ITEMS } from '../../renderers/variants/broker/commercial/brokerCommercialDefaults';
 import {
   ExpertiseProcessEditor,
   GuidanceFaqsEditor,
@@ -40,6 +41,10 @@ export default function InspectorContentTab({
   onChange,
   onMediaUpload,
   onBrandKitChange,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }) {
   const {
     isHero,
@@ -60,6 +65,7 @@ export default function InspectorContentTab({
     isLawyerNewcomer,
     isBrokerClassic,
     isBrokerFirstHome,
+    isBrokerCommercial,
     isBrokerRenewal,
     isLawyerClassic,
     isFooter,
@@ -85,6 +91,7 @@ export default function InspectorContentTab({
     || block.type === T.SELLER_PERFORMANCE
     || block.type === T.CTA
     || block.type === T.FAQ
+    || block.type === T.WHO_WE_HELP
     || isListings
     || (hasEditableCards && block.type !== T.BROKER_COMPENSATION)
     || isRoleDetails
@@ -107,12 +114,16 @@ export default function InspectorContentTab({
           onBrandKitChange={onBrandKitChange}
         />
       ) : null}
-      {isHero && isBrokerFirstHome && !isElementSelection ? (
+      {isHero && (isBrokerFirstHome || isBrokerCommercial) && !isElementSelection ? (
         <HeroSlidesEditor
           block={block}
           model={model}
           onChange={onChange}
           onMediaUpload={onMediaUpload}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
         />
       ) : null}
       {!isHero && !isElementSelection ? (
@@ -128,7 +139,11 @@ export default function InspectorContentTab({
           onChange={setContent('eyebrow')}
           placeholder={
             hasEditableCards
-              ? (isSellerCaseStudy ? 'Success story' : 'Capabilities')
+              ? (isSellerCaseStudy
+                ? 'Success story'
+                : block.type === T.ALTERNATIVE_LENDING
+                  ? 'Private & alternative lending'
+                  : 'Capabilities')
               : isSellerCredentials
                 ? 'Credentials and recognition'
               : isRoleDetails
@@ -289,12 +304,14 @@ export default function InspectorContentTab({
           <InvestorFooterLinksEditor
             block={block}
             onChange={onChange}
-            itemLimit={isBrokerFirstHome ? 10 : 8}
+            itemLimit={isBrokerFirstHome || isBrokerCommercial ? 10 : 8}
             resolvedItems={isBrokerFirstHome
               ? FIRST_HOME_FOOTER_ITEMS
-              : isBrokerRenewal
-                ? RENEWAL_FOOTER_ITEMS
-                : isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
+              : isBrokerCommercial
+                ? COMMERCIAL_FOOTER_ITEMS
+                : isBrokerRenewal
+                  ? RENEWAL_FOOTER_ITEMS
+                  : isBrokerClassic ? BROKER_CLASSIC_FOOTER_ITEMS : []}
           />
         </div>
       ) : null}
@@ -329,7 +346,11 @@ export default function InspectorContentTab({
           label="Calculator button"
           value={contentValue('cta_label') || contentValue('primary_cta_label')}
           onChange={setContent('cta_label')}
-          placeholder={isBrokerFirstHome ? 'Talk through my numbers' : 'Get My Mortgage Options'}
+          placeholder={isBrokerFirstHome
+            ? 'Talk through my numbers'
+            : isBrokerCommercial
+              ? 'Estimate my payment'
+              : 'Get My Mortgage Options'}
         />
       ) : null}
       {isBrokerClassic && isTestimonials && !isElementSelection ? (
@@ -343,11 +364,25 @@ export default function InspectorContentTab({
           placeholder={block.type === T.ALTERNATIVE_LENDING ? 'Explore My Mortgage Options' : 'Get My Personalized Rate'}
         />
       ) : null}
+      {hasEditableCards && block.type === T.ALTERNATIVE_LENDING && isBrokerCommercial && !isElementSelection ? (
+        <InspectorNote>
+          Alternative lending is a full commercial layer—edit heading copy, pathways, CTA, columns, card style, and icon/button colors here.
+        </InspectorNote>
+      ) : null}
       {hasEditableCards && block.type === T.MORTGAGE_RATES ? (
         <RateCardsEditor block={block} model={model} />
       ) : null}
       {hasEditableCards && block.type === T.ALTERNATIVE_LENDING ? (
-        <AlternativeCardsEditor block={block} model={model} />
+        <AlternativeCardsEditor
+          block={block}
+          model={model}
+          fieldLabel={isBrokerCommercial ? 'Lending pathways' : 'Options'}
+          addLabel={isBrokerCommercial ? 'Add pathway' : 'Add option'}
+          titlePlaceholder={isBrokerCommercial ? 'Bridge financing' : 'Self-employed borrowers'}
+          descriptionPlaceholder={isBrokerCommercial
+            ? 'Short-term capital for timing gaps—paired with a documented exit plan.'
+            : 'Present business income through suitable lender programs.'}
+        />
       ) : null}
       {hasEditableCards && block.type === T.MORTGAGE_PROGRAMS ? (
         <AlternativeCardsEditor
@@ -359,9 +394,39 @@ export default function InspectorContentTab({
           descriptionPlaceholder="Plan your down payment, affordability, and pre-approval with clear guidance."
         />
       ) : null}
+      {hasEditableCards && isBrokerCommercial && block.type === T.EXPERTISE ? (
+        <AlternativeCardsEditor
+          block={block}
+          model={model}
+          fieldLabel="Expertise cards"
+          addLabel="Add expertise"
+          titlePlaceholder="DSCR analysis"
+          descriptionPlaceholder="Coverage and stress scenarios for income-producing assets."
+        />
+      ) : null}
+      {hasEditableCards && isBrokerCommercial && block.type === T.WHO_WE_HELP ? (
+        <AlternativeCardsEditor
+          block={block}
+          model={model}
+          fieldLabel="Audience cards"
+          addLabel="Add audience"
+          titlePlaceholder="Sponsors"
+          descriptionPlaceholder="Capital stack clarity for acquisitions and partnership structures."
+        />
+      ) : null}
+      {hasEditableCards && isBrokerCommercial && block.type === T.SERVICES ? (
+        <AlternativeCardsEditor
+          block={block}
+          model={model}
+          fieldLabel="Service cards"
+          addLabel="Add service"
+          titlePlaceholder="Term sheet review"
+          descriptionPlaceholder="Break down rate, term, covenants, fees, and conditions before you accept an offer."
+        />
+      ) : null}
       {hasEditableCards && block.type === T.BROKER_COMPENSATION ? (
         <>
-          {!isElementSelection ? (
+          {!isElementSelection && !isBrokerCommercial ? (
             <InspectorTextarea
               label="Disclaimer"
               value={contentValue('disclaimer')}
@@ -388,7 +453,10 @@ export default function InspectorContentTab({
         && block.type !== T.MORTGAGE_RATES
         && block.type !== T.ALTERNATIVE_LENDING
         && block.type !== T.BROKER_COMPENSATION
-        && block.type !== T.MORTGAGE_PROGRAMS ? (
+        && block.type !== T.MORTGAGE_PROGRAMS
+        && block.type !== T.EXPERTISE
+        && block.type !== T.WHO_WE_HELP
+        && !(isBrokerCommercial && block.type === T.SERVICES) ? (
         <ServiceCardsEditor block={block} model={model} />
       ) : null}
       {isListings && !isElementSelection ? (

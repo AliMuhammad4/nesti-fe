@@ -176,6 +176,27 @@ import {
   BrokerRenewalTestimonials,
 } from './variants/broker/renewal';
 import {
+  BrokerCommercialAbout,
+  BrokerCommercialAlternativeLending,
+  BrokerCommercialCalculator,
+  BrokerCommercialCompensation,
+  BrokerCommercialCredentials,
+  BrokerCommercialCta,
+  BrokerCommercialExpertise,
+  BrokerCommercialFaq,
+  BrokerCommercialFooter,
+  BrokerCommercialGuidance,
+  BrokerCommercialHero,
+  BrokerCommercialLenders,
+  BrokerCommercialPrograms,
+  BrokerCommercialRates,
+  BrokerCommercialRoleDetails,
+  BrokerCommercialServices,
+  BrokerCommercialSnapshot,
+  BrokerCommercialTestimonials,
+  BrokerCommercialWhoWeHelp,
+} from './variants/broker/commercial';
+import {
   LawyerNewcomerAbout,
   LawyerNewcomerCredentials,
   LawyerNewcomerCta,
@@ -745,6 +766,27 @@ const experienceOverrides = {
 };
 
 const templateOverrides = {
+  'mortgage_broker-commercial': {
+    [T.HERO]: ({ profile, actions, block }) => <BrokerCommercialHero profile={profile} actions={actions} block={block} />,
+    [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerCommercialSnapshot profile={profile} block={block} />,
+    [T.WHO_WE_HELP]: ({ profile, block }) => <BrokerCommercialWhoWeHelp profile={profile} block={block} />,
+    [T.MORTGAGE_PROGRAMS]: ({ profile, actions, block }) => <BrokerCommercialPrograms profile={profile} actions={actions} block={block} />,
+    [T.SERVICES]: ({ profile, block }) => <BrokerCommercialServices profile={profile} block={block} />,
+    [T.ROLE_DETAILS]: ({ profile, actions, block }) => <BrokerCommercialRoleDetails profile={profile} actions={actions} block={block} />,
+    [T.EXPERTISE]: ({ profile, actions, block }) => <BrokerCommercialExpertise profile={profile} actions={actions} block={block} />,
+    [T.ABOUT]: ({ profile, block }) => <BrokerCommercialAbout profile={profile} block={block} />,
+    [T.GUIDANCE]: ({ profile, block }) => <BrokerCommercialGuidance profile={profile} block={block} />,
+    [T.MORTGAGE_RATES]: ({ profile, actions, block }) => <BrokerCommercialRates profile={profile} actions={actions} block={block} />,
+    [T.MORTGAGE_CALCULATOR]: ({ profile, actions, block }) => <BrokerCommercialCalculator profile={profile} actions={actions} block={block} />,
+    [T.LENDER_NETWORK]: ({ profile, block }) => <BrokerCommercialLenders profile={profile} block={block} />,
+    [T.ALTERNATIVE_LENDING]: ({ profile, actions, block }) => <BrokerCommercialAlternativeLending profile={profile} actions={actions} block={block} />,
+    [T.BROKER_COMPENSATION]: ({ profile, block }) => <BrokerCommercialCompensation profile={profile} block={block} />,
+    [T.CREDENTIALS]: ({ profile, block }) => <BrokerCommercialCredentials profile={profile} block={block} />,
+    [T.TESTIMONIALS]: ({ profile, block }) => <BrokerCommercialTestimonials profile={profile} block={block} />,
+    [T.FAQ]: ({ profile, block }) => <BrokerCommercialFaq profile={profile} block={block} />,
+    [T.CTA]: ({ profile, actions, block }) => <BrokerCommercialCta profile={profile} actions={actions} block={block} />,
+    [T.FOOTER]: ({ profile, actions, block }) => <BrokerCommercialFooter profile={profile} actions={actions} block={block} />,
+  },
   'mortgage_broker-renewal': {
     [T.HERO]: ({ profile, actions, block }) => <BrokerRenewalHero profile={profile} actions={actions} block={block} />,
     [T.PRACTICE_SNAPSHOT]: ({ profile, block }) => <BrokerRenewalSnapshot profile={profile} block={block} />,

@@ -24,6 +24,10 @@ import {
   migrateBrokerRenewalBlocks,
   migrateBrokerRenewalBrandKit,
 } from './templates/mortgage-broker/renewalMigration';
+import {
+  migrateBrokerCommercialBlocks,
+  migrateBrokerCommercialBrandKit,
+} from './templates/mortgage-broker/commercialMigration';
 
 const PROOF_TEMPLATE_KEYS = new Set([
   'agent-luxury-advisor',
@@ -124,6 +128,14 @@ export default function PublicStorefrontPage({ profile }) {
       )?.blocks || [];
       return migrateBrokerFirstHomeBlocks(savedBlocks, defaults, profile);
     }
+    if (profile.storefront_template_key === 'mortgage_broker-commercial') {
+      const defaults = materializeTemplate(
+        profile.storefront_template_key,
+        profile,
+        profile.storefront_brand_kit || profile.brand_kit || {},
+      )?.blocks || [];
+      return migrateBrokerCommercialBlocks(savedBlocks, defaults);
+    }
     if (!PROOF_TEMPLATE_KEYS.has(profile.storefront_template_key)) return savedBlocks;
     const baseBlocks = profile.storefront_template_key === 'agent-community-expert'
       ? migrateCommunityPublishedBlocks(savedBlocks)
@@ -153,9 +165,12 @@ export default function PublicStorefrontPage({ profile }) {
       profile.storefront_template_key,
       classicBrandKit,
     );
-    const storefrontBrandKit = migrateBrokerRenewalBrandKit(
+    const storefrontBrandKit = migrateBrokerCommercialBrandKit(
       profile.storefront_template_key,
-      firstHomeBrandKit,
+      migrateBrokerRenewalBrandKit(
+        profile.storefront_template_key,
+        firstHomeBrandKit,
+      ),
     );
     return {
       ...profile,

@@ -1,6 +1,7 @@
 import { labelForBlock } from '../storefrontBuilderState';
 import { STOREFRONT_BLOCK_TYPES as T } from '../../storefrontPresets';
 import { normalizeFirstHomeHeroSlides } from '../../renderers/variants/broker/firstHome/brokerFirstHomeDefaults';
+import { normalizeCommercialHeroSlides } from '../../renderers/variants/broker/commercial/brokerCommercialDefaults';
 import ProfileSelectionFields from './selection/ProfileSelectionFields';
 import ElementFieldEditor from './selection/ElementFieldEditor';
 import ItemSelectionFields from './selection/ItemSelectionFields';
@@ -16,6 +17,10 @@ export default function InspectorSelectionPanel({
   onItemChange,
   onItemAdd,
   onItemDelete,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   onMediaUpload,
   onBrandKitChange,
 }) {
@@ -30,17 +35,27 @@ export default function InspectorSelectionPanel({
     isLawyerClassicItemCards,
     isRoleDetails,
     isBrokerFirstHome,
+    isBrokerCommercial,
     content,
   } = model;
 
-  const heroSlideCount = isBrokerFirstHome && block?.type === T.HERO
-    ? normalizeFirstHomeHeroSlides(content?.slides).length
+  const isHeroSlideSelection = (isBrokerFirstHome || isBrokerCommercial)
+    && block?.type === T.HERO
+    && selection?.collection === 'slides';
+  const heroSlideCount = isHeroSlideSelection
+    ? (
+        isBrokerCommercial
+          ? normalizeCommercialHeroSlides(content?.slides)
+          : normalizeFirstHomeHeroSlides(content?.slides)
+      ).length
     : 0;
-  const showDeleteButton = !(selection?.collection === 'slides' && heroSlideCount <= 1);
+  const showDeleteButton = !(isHeroSlideSelection && heroSlideCount <= 1);
 
   if (!selection?.kind || selection.kind === 'block') return null;
 
-  const deleteLabel = hasEditableCards
+  const deleteLabel = isHeroSlideSelection
+    ? 'Delete this slide'
+    : hasEditableCards
     ? (isSellerCaseStudy
       ? 'Delete this story card'
       : block?.type === 'lender-network'
@@ -93,7 +108,37 @@ export default function InspectorSelectionPanel({
             onItemAdd={onItemAdd}
             onMediaUpload={onMediaUpload}
           />
-          {showDeleteButton ? (
+          {isHeroSlideSelection ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onUndo}
+                disabled={!canUndo || !onUndo}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-35"
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={onRedo}
+                disabled={!canRedo || !onRedo}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-35"
+              >
+                Redo
+              </button>
+              {showDeleteButton ? (
+                <button
+                  type="button"
+                  onClick={onItemDelete}
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+                >
+                  {deleteLabel}
+                </button>
+              ) : (
+                <p className="text-[10px] text-slate-500">At least one slide is required.</p>
+              )}
+            </div>
+          ) : showDeleteButton ? (
           <button
             type="button"
             onClick={onItemDelete}
