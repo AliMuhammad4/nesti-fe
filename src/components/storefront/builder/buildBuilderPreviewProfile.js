@@ -49,18 +49,37 @@ export function buildBuilderPreviewProfile({
 }
 
 export function useBuilderPreviewProfile(args) {
+  const {
+    profile,
+    normalized,
+    templateKey,
+    brandKit,
+    embedToken,
+    accessToken,
+    media,
+    selectedElement,
+  } = args;
+
   return useMemo(
-    () => buildBuilderPreviewProfile(args),
+    () => buildBuilderPreviewProfile({
+      profile,
+      normalized,
+      templateKey,
+      brandKit,
+      embedToken,
+      accessToken,
+      media,
+      selectedElement,
+    }),
     [
-      args.profile,
-      args.normalized,
-      args.templateKey,
-      args.brandKit,
-      args.embedToken,
-      args.accessToken,
-      args.media?.cover,
-      args.media?.profile,
-      args.selectedElement,
+      profile,
+      normalized,
+      templateKey,
+      brandKit,
+      embedToken,
+      accessToken,
+      media,
+      selectedElement,
     ],
   );
 }

@@ -117,10 +117,12 @@ export function useTrialExpiryRedirect(isMounted) {
   }, [
     isMounted,
     token,
+    sessionInvalid,
     trialHasEnded,
     trialQuotaExhausted,
     quotaRedirectRequested,
     trialStillActive,
+    allowedPath,
     pathname,
     router,
     isClient,

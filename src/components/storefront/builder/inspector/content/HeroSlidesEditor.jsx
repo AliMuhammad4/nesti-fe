@@ -66,10 +66,11 @@ export function HeroSlidesEditor({
   canRedo = false,
 }) {
   const { isBrokerFirstHome, isBrokerCommercial, content } = model;
-  if ((!isBrokerFirstHome && !isBrokerCommercial) || block?.type !== 'hero') return null;
+  const [uploadingIndex, setUploadingIndex] = useState(null);
+  const isHeroSlidesEditor = (isBrokerFirstHome || isBrokerCommercial) && block?.type === 'hero';
+  if (!isHeroSlidesEditor) return null;
 
   const slideConfig = resolveSlideConfig(model);
-  const [uploadingIndex, setUploadingIndex] = useState(null);
   const slides = slideConfig.normalize(content?.slides);
   const canDeleteSlide = slides.length > slideConfig.min;
   const commitSlides = (next) => {
