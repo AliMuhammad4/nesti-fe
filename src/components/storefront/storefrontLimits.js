@@ -1,0 +1,3 @@
+export const LAWYER_EXPERTISE_PROCESS_LIMIT = 4;
+export const FIRST_HOME_ROADMAP_LIMIT = 6;
+export const PRACTICE_AREA_LIMIT = 6;

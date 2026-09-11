@@ -30,7 +30,7 @@ export default function CheckoutOrchestrator() {
   const [isChoosingPlan, setIsChoosingPlan] = useState(false);
   const checkoutMutation = useCreateCheckoutSession();
   const billingPlansQuery = useBillingPlans();
-  const subscriptionMeQuery = useSubscriptionMe();
+  const subscriptionMeQuery = useSubscriptionMe({ refreshFromStripe: true });
   const isClient = String(user?.role || "").toLowerCase() === "client";
 
   const userStatus = String(user?.accountStatus || user?.account_status || "").toLowerCase();
@@ -114,7 +114,11 @@ export default function CheckoutOrchestrator() {
   };
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-text-muted">
+        Redirecting to login…
+      </div>
+    );
   }
 
   if (isClient) {

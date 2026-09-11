@@ -1,6 +1,3 @@
-/**
- * Marketing / legal page copy for clean public routes.
- */
 
 export const PUBLIC_PAGES = {
   about: {

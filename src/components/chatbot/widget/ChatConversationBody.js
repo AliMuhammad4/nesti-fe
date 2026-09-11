@@ -25,6 +25,7 @@ export default function ChatConversationBody({
   resolvedRole,
   showHostAvatar,
   trimmedAvatarUrl,
+  hostAvatarStyle,
   setHostAvatarBroken,
   quickReplies,
   handleSend,
@@ -66,6 +67,7 @@ export default function ChatConversationBody({
                     src={trimmedAvatarUrl}
                     alt=""
                     className="h-full w-full object-cover"
+                    style={hostAvatarStyle}
                     onError={() => setHostAvatarBroken(true)}
                   />
                 </div>
@@ -183,6 +185,7 @@ export default function ChatConversationBody({
                 src={trimmedAvatarUrl}
                 alt=""
                 className="h-full w-full object-cover"
+                style={hostAvatarStyle}
                 onError={() => setHostAvatarBroken(true)}
               />
             </div>

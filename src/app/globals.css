@@ -95,6 +95,10 @@ h6 {
   .success-stories-track:hover {
     animation-play-state: paused;
   }
+
+  .success-stories-track:focus-within {
+    animation-play-state: paused;
+  }
 }
 
 @keyframes press-logo-marquee {

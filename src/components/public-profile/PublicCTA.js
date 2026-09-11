@@ -1,135 +1,236 @@
 'use client';
 
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Clock3,
+  Mail,
+  MessageSquareText,
+  Phone,
+  ShieldCheck,
+} from 'lucide-react';
+import { buildTrackedCalendlyUrl } from '@/lib/publicProfileLinks';
 
 const ROLE_CONTENT = {
   agent: {
-    eyebrow: 'How to connect',
-    title: 'Work with a trusted real estate professional.',
+    eyebrow: 'Contact & appointments',
+    title: 'Plan your next real estate conversation.',
     description:
-      'Use the chat assistant for questions about buying, selling, investing, property availability, or booking a consultation with this agent.',
-    steps: [
-      { label: 'Intent', title: 'Choose your real estate goal', description: 'Tell the assistant if you want to buy, sell, invest, ask about a listing, or book a consultation.' },
-      { label: 'Area', title: 'Share your preferred area', description: 'Add your target city, neighborhood, property location, or the area where you need guidance.' },
-      { label: 'Budget', title: 'Clarify budget and price range', description: 'For buyers, share your budget. For sellers, share your expected price or current property value.' },
-      { label: 'Needs', title: 'Explain your property needs', description: 'Mention bedrooms, property type, must-have features, timeline, motivation, or seller details.' },
-      { label: 'Contact', title: 'Send a complete request', description: 'The assistant organizes your answers and connects the full inquiry to the agent for follow-up.' },
-      { label: 'Booking', title: 'Book a consultation', description: 'Ask the assistant to help route a consultation request to the agent.' },
-    ],
+      'Choose an available consultation time or send a detailed property inquiry for a direct follow-up.',
   },
   mortgage_broker: {
-    eyebrow: 'How to connect',
-    title: 'Get mortgage guidance from a trusted broker.',
+    eyebrow: 'Contact & appointments',
+    title: 'Schedule a mortgage consultation.',
     description:
-      'Use the chat assistant for questions about pre-approval, affordability, refinancing, rates, documents, or booking a mortgage consultation.',
-    steps: [
-      { label: 'Intent', title: 'Choose your need', description: 'Pre-approval, affordability, refinance, rates, or mortgage advice.' },
-      { label: 'Info', title: 'Share basics', description: 'Budget, income range, credit status, timeline, and financing goal.' },
-      { label: 'Contact', title: 'Get connected', description: 'The assistant connects your request to the broker for follow-up.' },
-      { label: 'Booking', title: 'Book a consultation', description: 'Ask the assistant to help route a mortgage consultation request to the broker.' },
-    ],
+      'Review available appointment times or send your financing goals and timeline for a direct response.',
   },
   lawyer: {
-    eyebrow: 'How to connect',
-    title: 'Get legal support for your real estate transaction.',
+    eyebrow: 'Contact & appointments',
+    title: 'Arrange a legal consultation.',
     description:
-      'Use the chat assistant for questions about closings, contracts, title review, legal documents, or booking a legal consultation.',
-    steps: [
-      { label: 'Intent', title: 'Select legal help', description: 'Closing, contract review, title support, or transaction guidance.' },
-      { label: 'Info', title: 'Add case context', description: 'Transaction stage, timeline, property value, and legal needs.' },
-      { label: 'Contact', title: 'Get connected', description: 'The assistant sends your inquiry to the lawyer with clear details.' },
-      { label: 'Booking', title: 'Book a consultation', description: 'Ask the assistant to help route a legal consultation request to the lawyer.' },
-    ],
+      'Select an available consultation time or submit your transaction details for a focused legal follow-up.',
   },
 };
 
-export default function PublicCTA({ profile, onDirectLeadClick }) {
-  const content = ROLE_CONTENT[profile.professional_type] || ROLE_CONTENT.agent;
+const AVAILABILITY_LABELS = {
+  business: 'Weekday business hours',
+  extended: 'Extended weekday hours',
+  weekends: 'Weekday and weekend availability',
+  247: 'Flexible availability',
+};
+
+const RESPONSE_TIME_LABELS = {
+  '1hour': 'Usually within 1 hour',
+  sameday: 'Usually the same day',
+  '24hours': 'Usually within 24 hours',
+  '48hours': 'Usually within 48 hours',
+};
+
+export default function PublicCTA({
+  profile,
+  onDirectLeadClick,
+  onCtaClick,
+  onAppointmentClick,
+  content = {},
+}) {
+  const isPreview = Boolean(profile?.storefront_builder_preview);
+  const previewMode = profile?.storefront_preview_mode || 'desktop';
+  const forceMobilePreview = isPreview && previewMode === 'mobile';
+  const forceTabletPreview = isPreview && previewMode === 'tablet';
+  const forceCompactPreview = forceMobilePreview || forceTabletPreview;
+  const base = ROLE_CONTENT[profile.professional_type] || ROLE_CONTENT.agent;
+  const professional = profile.professional_profile || {};
+  const calendlyUrl = buildTrackedCalendlyUrl(professional.calendly_link, profile);
+  const availability = AVAILABILITY_LABELS[professional.availability]
+    || professional.availability
+    || 'Contact for availability';
+  const responseTime = RESPONSE_TIME_LABELS[professional.response_time]
+    || professional.response_time
+    || 'Response time varies';
+  const email = String(profile.email || '').trim();
+  const phone = String(professional.phone || '').trim();
+  const website = String(profile.social_links?.website || professional.website || '').trim();
+  const name = profile.professional_name || 'this professional';
+
+  const handleBooking = () => {
+    if (calendlyUrl) {
+      onAppointmentClick?.();
+      return;
+    }
+    onCtaClick?.('book_consultation');
+  };
+
+  const appointmentLabel = (content.cta_label || content.appointment_label || '').trim()
+    || (calendlyUrl ? 'View available times' : 'Ask about availability');
+  const inquiryLabel = (content.secondary_cta_label || content.inquiry_label || '').trim()
+    || 'Send detailed inquiry';
+  const helperText = (content.helper_text || '').trim()
+    || (calendlyUrl
+      ? 'Live appointment availability opens securely in Calendly and displays times in your local timezone.'
+      : 'Submit an inquiry and the professional will confirm an available time with you.');
 
   return (
-    <section id="contact" className="bg-transparent py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-5 shadow-[0_20px_70px_rgba(15,23,42,0.06)] sm:p-7 lg:p-8">
-            <div className="absolute right-10 top-10 h-32 w-32 rounded-full bg-primary/5 blur-3xl" />
-            <div className="relative">
-            <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              {content.eyebrow}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 gap-y-2">
-              <h2 className="max-w-3xl text-2xl font-semibold leading-tight tracking-[-0.03em] text-text-heading md:text-[32px]">
-                {content.title}
-              </h2>
-              <button
-                type="button"
-                onClick={onDirectLeadClick}
-                className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-primary/25 ring-1 ring-primary/15 transition duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/35"
-              >
-                Submit inquiry
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:bg-white/25">
-                  <ArrowRight size={13} className="transition duration-300 group-hover:translate-x-0.5" />
-                </span>
-              </button>
-            </div>
-            <p className="mt-4 max-w-3xl text-[15px] leading-7 text-text-muted">
-              {content.description}
+    <section id="contact" className="border-y border-slate-200/80 bg-transparent">
+      <div className={`w-full px-5 py-12 ${forceCompactPreview ? '' : 'sm:px-8 sm:py-16 lg:px-12 xl:px-16'}`}>
+        <div className={`grid gap-10 ${forceCompactPreview ? '' : 'lg:grid-cols-[minmax(0,0.9fr)_minmax(34rem,1.1fr)] lg:items-start'}`}>
+          <div data-storefront-anim-item="true">
+            <p
+              data-storefront-field="content.eyebrow"
+              data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+              data-storefront-label="Contact eyebrow"
+              className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500"
+            >
+              {content.eyebrow || base.eyebrow}
+            </p>
+            <h2
+              data-storefront-field="content.heading"
+              data-storefront-source={content.heading || content.title ? 'persisted' : 'fallback'}
+              data-storefront-label="Contact heading"
+              className="mt-3 max-w-xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
+            >
+              {content.heading || content.title || base.title}
+            </h2>
+            <p
+              data-storefront-field="content.body"
+              data-storefront-source={content.body || content.description ? 'persisted' : 'fallback'}
+              data-storefront-label="Contact description"
+              className="mt-4 max-w-xl text-sm leading-6 text-slate-500"
+            >
+              {content.body || content.description || base.description}
             </p>
 
-              <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
-              <div
-                className="mb-5 hidden gap-2 md:grid"
-                style={{ gridTemplateColumns: `repeat(${content.steps.length}, minmax(0, 1fr))` }}
-              >
-                {content.steps.map((step, index) => (
-                  <div
-                    key={step.label}
-                    className="relative flex min-h-[42px] items-center justify-center"
-                  >
-                    <div
-                      className={`relative z-10 flex w-full items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[10px] font-bold uppercase tracking-[0.12em] ring-1 lg:text-[11px] ${
-                        index === 0
-                          ? 'bg-primary text-white ring-primary'
-                          : 'bg-slate-50 text-text-muted ring-slate-200'
-                      }`}
-                    >
-                      <span
-                        className={`grid h-5 w-5 place-items-center rounded-full text-[10px] ${
-                          index === 0
-                            ? 'bg-white/20 text-white'
-                            : 'bg-white text-text-muted ring-1 ring-slate-200'
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      {step.label}
-                    </div>
-                    {index < content.steps.length - 1 && (
-                      <div className="pointer-events-none absolute left-[calc(100%-4px)] top-1/2 z-0 hidden h-px w-4 -translate-y-1/2 bg-primary/25 md:block">
-                        <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-primary/40" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="mt-7 space-y-3 border-t border-slate-200 pt-6">
+              {email ? (
+                <a href={`mailto:${email}`} className="flex w-fit items-center gap-3 text-sm font-medium text-slate-700 transition hover:text-primary">
+                  <Mail size={16} className="text-slate-400" />
+                  {email}
+                </a>
+              ) : null}
+              {phone ? (
+                <a href={`tel:${phone}`} className="flex w-fit items-center gap-3 text-sm font-medium text-slate-700 transition hover:text-primary">
+                  <Phone size={16} className="text-slate-400" />
+                  {phone}
+                </a>
+              ) : null}
+              {website ? (
+                <a href={website} target="_blank" rel="noopener noreferrer" className="flex w-fit items-center gap-3 text-sm font-medium text-slate-700 transition hover:text-primary">
+                  <ArrowUpRight size={16} className="text-slate-400" />
+                  Visit professional website
+                </a>
+              ) : null}
+            </div>
+          </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                {content.steps.map((step, index) => (
-                  <div key={step.title} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                        {index + 1}
-                      </span>
-                      <CheckCircle2 size={14} className="text-primary" />
-                      <h3 className="text-sm font-bold text-text-heading">{step.title}</h3>
-                    </div>
-                    <p className="mt-2 pl-9 text-[12px] leading-5 text-text-muted">{step.description}</p>
+          <div
+            data-storefront-anim-item="true"
+            className={`border-y border-slate-200 py-7 ${forceCompactPreview ? '' : 'lg:border-y-0 lg:border-l lg:py-0 lg:pl-10'}`}
+          >
+            <div className={`grid gap-6 ${forceMobilePreview ? '' : 'sm:grid-cols-2'}`}>
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600">
+                    <CalendarDays size={18} />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Availability</p>
+                    <p data-storefront-field="profile.availability" data-storefront-source="profile" data-storefront-label="Availability" className="mt-1 text-sm font-semibold text-slate-900">{availability}</p>
                   </div>
-                ))}
+                </div>
               </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600">
+                    <Clock3 size={18} />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Response time</p>
+                    <p data-storefront-field="profile.response_time" data-storefront-source="profile" data-storefront-label="Response time" className="mt-1 text-sm font-semibold text-slate-900">{responseTime}</p>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div className="mt-7 border-t border-slate-200 pt-7">
+              <h3 className="text-lg font-bold text-slate-900">Choose how to connect</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                View live appointment times or send your details so {name} can follow up with the right context.
+              </p>
+              <div className={`mt-5 flex flex-col gap-3 ${forceMobilePreview ? '' : 'sm:flex-row'}`}>
+                {calendlyUrl ? (
+                  <a
+                    href={calendlyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleBooking}
+                    data-storefront-field="content.cta_label"
+                    data-storefront-source={content.cta_label || content.appointment_label ? 'persisted' : 'fallback'}
+                    data-storefront-label="Appointment button"
+                    className="storefront-btn inline-flex h-11 w-full items-center justify-center gap-2 bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark sm:w-auto"
+                    style={{ borderRadius: 'var(--storefront-radius)' }}
+                  >
+                    <CalendarDays size={16} />
+                    {appointmentLabel}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleBooking}
+                    data-storefront-field="content.cta_label"
+                    data-storefront-source={content.cta_label || content.appointment_label ? 'persisted' : 'fallback'}
+                    data-storefront-label="Appointment button"
+                    className="storefront-btn inline-flex h-11 w-full items-center justify-center gap-2 bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark sm:w-auto"
+                    style={{ borderRadius: 'var(--storefront-radius)' }}
+                  >
+                    <CalendarDays size={16} />
+                    {appointmentLabel}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onDirectLeadClick}
+                  data-storefront-field="content.secondary_cta_label"
+                  data-storefront-source={content.secondary_cta_label || content.inquiry_label ? 'persisted' : 'fallback'}
+                  data-storefront-label="Inquiry button"
+                  className="storefront-btn inline-flex h-11 w-full items-center justify-center gap-2 border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto"
+                  style={{ borderRadius: 'var(--storefront-radius)' }}
+                >
+                  <MessageSquareText size={16} />
+                  {inquiryLabel}
+                </button>
+              </div>
+              <p
+                data-storefront-field="content.helper_text"
+                data-storefront-source={content.helper_text ? 'persisted' : 'fallback'}
+                data-storefront-label="Button helper text"
+                className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-500"
+              >
+                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                {helperText}
+              </p>
             </div>
           </div>
         </div>
+      </div>
     </section>
   );
 }

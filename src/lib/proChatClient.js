@@ -9,6 +9,8 @@ export async function fetchProChatCallRecords({
   limit = 12,
   status = "",
   callType = "",
+  threadId = "",
+  otherUserId = "",
   from = "",
   to = "",
 }) {
@@ -17,6 +19,8 @@ export async function fetchProChatCallRecords({
   params.set("limit", String(limit));
   if (status) params.set("status", status);
   if (callType) params.set("call_type", callType);
+  if (threadId) params.set("thread_id", threadId);
+  if (otherUserId) params.set("other_user_id", otherUserId);
   if (from) params.set("from", /^\d{4}-\d{2}-\d{2}$/.test(from) ? `${from}T00:00:00.000` : from);
   if (to) params.set("to", /^\d{4}-\d{2}-\d{2}$/.test(to) ? `${to}T23:59:59.999` : to);
   const base = client

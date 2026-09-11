@@ -1,0 +1,80 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { Calculator, ShieldAlert } from 'lucide-react';
+
+const fieldClass = 'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15';
+
+function ToolShell({
+  icon: Icon,
+  title,
+  description,
+  titleField,
+  descriptionField,
+  children,
+}) {
+  return (
+    <section className="border-y border-slate-100 bg-transparent py-12 sm:py-14">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="w-full rounded-xl border border-slate-200 bg-white p-5 sm:p-7" data-storefront-anim-item="true">
+          <div className="mb-5 flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon size={20} /></div>
+            <div className="min-w-0 flex-1">
+              <h2
+                data-storefront-field={titleField}
+                data-storefront-source={titleField ? 'persisted' : undefined}
+                data-storefront-label={titleField ? 'Estimator heading' : undefined}
+                className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"
+              >
+                {title}
+              </h2>
+              <p
+                data-storefront-field={descriptionField}
+                data-storefront-source={descriptionField ? 'persisted' : undefined}
+                data-storefront-label={descriptionField ? 'Estimator description' : undefined}
+                className="mt-1 text-sm leading-6 text-slate-500"
+              >
+                {description}
+              </p>
+            </div>
+          </div>
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function MortgageAffordabilityCalculator() {
+  const [income, setIncome] = useState('');
+  const [downPayment, setDownPayment] = useState('');
+  const [rate, setRate] = useState('5');
+  const [years, setYears] = useState('25');
+  const result = useMemo(() => {
+    const annualIncome = Number(income) || 0;
+    const down = Number(downPayment) || 0;
+    const monthlyBudget = annualIncome * 0.39 / 12;
+    const monthlyRate = (Number(rate) || 0) / 100 / 12;
+    const months = (Number(years) || 25) * 12;
+    const mortgage = monthlyRate > 0 ? monthlyBudget * ((1 - (1 + monthlyRate) ** -months) / monthlyRate) : monthlyBudget * months;
+    return { mortgage, homePrice: mortgage + down };
+  }, [income, downPayment, rate, years]);
+
+  return (
+    <ToolShell icon={Calculator} title="Mortgage affordability planner" description="Explore a rough starting range before speaking with a licensed mortgage professional.">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-medium text-slate-700">Annual household income<input className={fieldClass} inputMode="numeric" value={income} onChange={(e) => setIncome(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 100000" /></label>
+        <label className="text-sm font-medium text-slate-700">Available down payment<input className={fieldClass} inputMode="numeric" value={downPayment} onChange={(e) => setDownPayment(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 80000" /></label>
+        <label className="text-sm font-medium text-slate-700">Illustrative interest rate<input className={fieldClass} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
+        <label className="text-sm font-medium text-slate-700">Amortization years<input className={fieldClass} inputMode="numeric" value={years} onChange={(e) => setYears(e.target.value)} /></label>
+      </div>
+      {Number(income) > 0 && (
+        <div className="mt-5 rounded-xl bg-primary/10 p-4">
+          <p className="text-sm text-slate-600">Illustrative home-price range</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(Math.max(0, result.homePrice))}</p>
+        </div>
+      )}
+      <p className="mt-4 flex gap-2 text-xs leading-5 text-slate-500"><ShieldAlert className="mt-0.5 shrink-0" size={14} />For education only. This is not a rate quote, pre-approval, or lending commitment. Taxes, debts, and lender criteria are not included.</p>
+    </ToolShell>
+  );
+}

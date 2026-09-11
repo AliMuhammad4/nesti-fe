@@ -11,7 +11,13 @@ import { apiClient, API_ENDPOINTS } from "@/lib/api";
 export function useFeatureAccess() {
   const token = useAppSelector((state) => state.auth.token);
   const authUser = useAppSelector((state) => state.auth.user);
-  const { data: profileData } = useQuery({
+  const {
+    data: profileData,
+    isError,
+    error,
+    isPending,
+    isFetched,
+  } = useQuery({
     queryKey: ["profile"],
     enabled: Boolean(token),
     staleTime: 1000 * 60 * 5,
@@ -22,7 +28,14 @@ export function useFeatureAccess() {
         token,
       }),
   });
-  const user = profileData?.user || authUser;
+
+  const sessionInvalid = Boolean(token) && isError && Number(error?.status) === 401;
+  // Wait for the first profile attempt before using Redux fallback for gating.
+  // Falling back while pending (or after 401) previously sent expired sessions to /checkout.
+  const isProfileReady = !token || isFetched || sessionInvalid;
+  const user = sessionInvalid
+    ? null
+    : (profileData?.user || (isPending && token ? null : authUser));
 
   const accountStatus = useMemo(
     () =>
@@ -52,11 +65,15 @@ export function useFeatureAccess() {
 
   return {
     user,
+    token,
     accountStatus,
     planLimits,
     usage,
     hasFeature: can,
     can,
     filterNavItems,
+    sessionInvalid,
+    isProfileReady,
+    isProfilePending: Boolean(token) && isPending,
   };
 }

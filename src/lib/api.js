@@ -3,6 +3,7 @@
 // HTTP client for the Nesti API: Node.js + Express (see `node-backend` in this repo), not NestJS.
 const BASE_URL = String(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 const inFlightReadRequests = new Map();
+let lastAuthExpiredNotifyAt = 0;
 
 /**
  * Fixes mistaken "http://hosthttp://host/path" when the API base was concatenated twice.
@@ -151,6 +152,11 @@ export const API_ENDPOINTS = {
   billing: {
     plans: withBaseUrl("/api/billing/plans"),
     checkoutSession: withBaseUrl("/api/billing/checkout-session"),
+    storefrontTemplates: withBaseUrl("/api/billing/storefront-templates"),
+    storefrontTemplateCheckoutSession: withBaseUrl("/api/billing/storefront-templates/checkout-session"),
+    storefrontTemplateCheckoutConfirm: withBaseUrl("/api/billing/storefront-templates/checkout-session/confirm"),
+    storefrontTemplateCancel: withBaseUrl("/api/billing/storefront-templates/cancel"),
+    storefrontTemplateResume: withBaseUrl("/api/billing/storefront-templates/resume"),
     setupIntent: withBaseUrl("/api/billing/setup-intent"),
     subscriptionMe: withBaseUrl("/api/billing/subscription/me"),
     subscriptionCancel: withBaseUrl("/api/billing/subscription/cancel"),
@@ -322,6 +328,22 @@ export async function apiClient({ url, method = "GET", data, token, rawToken = f
       if (json?.code) error.code = json.code;
       if (json?.limit) error.limit = json.limit;
       if (json?.limits) error.limits = json.limits;
+      if (
+        typeof window !== "undefined" &&
+        token &&
+        response.status === 401
+      ) {
+        // Expired/invalid session: never continue into billing/checkout flows.
+        const now = Date.now();
+        if (now - lastAuthExpiredNotifyAt > 1500) {
+          lastAuthExpiredNotifyAt = now;
+          window.dispatchEvent(
+            new CustomEvent("nesti:auth-expired", {
+              detail: { message, url: fullUrl },
+            }),
+          );
+        }
+      }
       if (
         typeof window !== "undefined" &&
         token &&

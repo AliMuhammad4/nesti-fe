@@ -24,6 +24,7 @@ import { broadcastSubscriptionUpdated } from "@/lib/billingProfileRefresh";
 import PricingPlanCard from "@/components/billing/PricingPlanCard";
 import SubscribeCheckoutModal from "@/components/billing/SubscribeCheckoutModal";
 import SubscriptionBillingPanel from "@/components/billing/SubscriptionBillingPanel";
+import StorefrontTemplateSubscriptionsPanel from "@/components/billing/StorefrontTemplateSubscriptionsPanel";
 
 export default function SubscriptionInfo() {
   const dispatch = useAppDispatch();
@@ -37,7 +38,7 @@ export default function SubscriptionInfo() {
   const [planSwitchTarget, setPlanSwitchTarget] = useState(null);
 
   const billingPlansQuery = useBillingPlans();
-  const subscriptionQuery = useSubscriptionMe();
+  const subscriptionQuery = useSubscriptionMe({ refreshFromStripe: true });
   const { refetch: refetchSubscription } = subscriptionQuery;
   const changePlanMutation = useChangeSubscriptionPlan();
 
@@ -289,6 +290,8 @@ export default function SubscriptionInfo() {
           }}
         />
       ) : null}
+
+      <StorefrontTemplateSubscriptionsPanel />
 
       <SubscribeCheckoutModal
         isOpen={isModalOpen}

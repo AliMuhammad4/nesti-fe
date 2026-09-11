@@ -30,7 +30,7 @@ export default function ClientBillingRouteContent({ canonicalPath, mode = "billi
     setHasCheckoutReturn(readCheckoutReturnFromUrl());
   }, []);
 
-  const fetchSubscription = useCallback(async (refreshFromStripe = false) => {
+  const fetchSubscription = useCallback(async (refreshFromStripe = true) => {
     try {
       setLoading(true);
       const refreshQuery = refreshFromStripe ? "?refresh=1" : "";

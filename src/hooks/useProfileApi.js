@@ -103,18 +103,19 @@ function mapBackendProfileToStore(data) {
   };
 }
 
-/** Multipart upload to Cloudinary; updates User.profile_image or User.cover_image on the server. */
+/** Multipart upload for account or storefront-scoped images. */
 export function useUploadProfileMedia() {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const { token } = useAppSelector((state) => state.auth);
 
   return useMutation({
-    mutationFn: ({ file, kind }) => {
+    mutationFn: ({ file, kind, scope }) => {
       if (!token) throw new Error("missing or invalid Authorization header");
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", kind);
+      if (scope) fd.append("scope", scope);
       return apiClient({
         url: API_ENDPOINTS.professionals.uploadImage,
         method: "POST",
@@ -122,7 +123,9 @@ export function useUploadProfileMedia() {
         token,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      // Storefront-only uploads must not overwrite account-wide profile/cover in Redux.
+      if (variables?.scope === "storefront") return;
       dispatch(
         setPersonalInfo({
           profileImage: data?.profile_image || "",

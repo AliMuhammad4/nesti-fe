@@ -1,0 +1,15 @@
+export { LawyerClassicHero } from './LawyerClassicHero';
+export { LawyerClassicAbout } from './LawyerClassicAbout';
+export { LawyerClassicExpertise } from './LawyerClassicExpertise';
+export { LawyerClassicPracticeAreas } from './LawyerClassicPracticeAreas';
+export { LawyerClassicWhoWeHelp } from './LawyerClassicWhoWeHelp';
+export { LawyerClassicDocumentChecklist } from './LawyerClassicDocumentChecklist';
+export { LawyerClassicFeeGuidance } from './LawyerClassicFeeGuidance';
+export { LawyerClassicConsultationOptions } from './LawyerClassicConsultationOptions';
+export { LawyerClassicStatement } from './LawyerClassicStatement';
+export { LawyerClassicCredentials } from './LawyerClassicCredentials';
+export { LawyerClassicGuidance } from './LawyerClassicGuidance';
+export { LawyerClassicTestimonials } from './LawyerClassicTestimonials';
+export { LawyerClassicFaq } from './LawyerClassicFaq';
+export { LawyerClassicCta } from './LawyerClassicCta';
+export { LawyerClassicFooter } from './LawyerClassicFooter';

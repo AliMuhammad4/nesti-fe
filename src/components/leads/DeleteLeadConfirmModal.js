@@ -14,13 +14,16 @@ export default function DeleteLeadConfirmModal({
   title = "Delete lead?",
   confirmLabel = "Delete",
   pendingLabel = "Deleting...",
+  contained = false,
 }) {
   if (!open) return null;
 
   const bodyText = description != null && String(description).trim() !== "" ? description : DEFAULT_DESCRIPTION;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div
+      className={`${contained ? 'absolute' : 'fixed'} inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm`}
+    >
       <div className="w-full max-w-md rounded-xl border border-border bg-white shadow-2xl p-5">
         <h3 className="text-base font-semibold text-text-heading">{title}</h3>
         <p className="mt-2 text-sm text-text-muted leading-relaxed">

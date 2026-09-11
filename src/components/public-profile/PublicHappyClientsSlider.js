@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import Image from 'next/image';
 import { MapPin, Quote, Star } from 'lucide-react';
+import { publicClientStories } from '@/components/storefront/storefrontContentVisibility';
 
 const US_CA_LOCATIONS = [
   'Austin, TX',
@@ -19,7 +20,7 @@ const US_CA_LOCATIONS = [
   'Ottawa, ON',
 ];
 
-const CARD_HEIGHT = 'h-[304px]';
+const CARD_HEIGHT = 'h-[280px] sm:h-[304px]';
 
 const ROLE_PLACEHOLDERS = {
   mortgage_broker: [
@@ -106,9 +107,13 @@ function storyLocation(index, preferred) {
   return US_CA_LOCATIONS[index % US_CA_LOCATIONS.length];
 }
 
-function ClientCard({ client, className = '' }) {
+function ClientCard({ client, className = '', duplicate = false }) {
   return (
-    <article className={`flex ${CARD_HEIGHT} flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${className}`}>
+    <article
+      data-storefront-anim-item="true"
+      aria-hidden={duplicate ? 'true' : undefined}
+      className={`flex ${CARD_HEIGHT} flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${className}`}
+    >
       <div className="relative h-28 shrink-0 w-full overflow-hidden bg-slate-100">
         {client.story_image ? (
           <Image
@@ -118,10 +123,12 @@ function ClientCard({ client, className = '' }) {
             className="object-cover"
             sizes="(max-width: 1024px) 80vw, 320px"
           />
-        ) : null}
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200" aria-hidden="true" />
+        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-primary-dark">
-          {client.lead_type}
+          {client.is_placeholder ? 'Preview sample' : client.lead_type}
         </div>
       </div>
 
@@ -140,15 +147,15 @@ function ClientCard({ client, className = '' }) {
         </p>
 
         <div className="mt-auto flex shrink-0 items-center gap-2.5 border-t border-slate-100 pt-3">
-          {client.client_photo_url ? (
-            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-100">
+          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-100">
+            {client.client_photo_url ? (
               <Image src={client.client_photo_url} alt={client.client_name} fill className="object-cover" sizes="32px" />
-            </div>
-          ) : (
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-              {initials(client.client_name)}
-            </div>
-          )}
+            ) : (
+              <span className="grid h-full w-full place-items-center bg-primary/10 text-[11px] font-bold text-primary">
+                {initials(client.client_name)}
+              </span>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[12px] font-semibold text-text-heading">{client.client_name}</div>
             <div className="mt-0.5 flex items-center gap-1 text-[10px] text-text-muted">
@@ -169,8 +176,10 @@ function withStoryImage(item, index) {
   };
 }
 
-export default function PublicHappyClientsSlider({ testimonials = [], profile }) {
+export default function PublicHappyClientsSlider({ testimonials = [], profile, content = {} }) {
   const role = profile?.professional_type || 'agent';
+  const isPreview = Boolean(profile?.storefront_builder_preview);
+  const isLawyerClassic = String(profile?.storefront_template_key || '').toLowerCase() === 'lawyer-classic';
   const profileLocation =
     profile?.professional_profile?.location ||
     profile?.professional_profile?.target_neighborhoods ||
@@ -181,60 +190,89 @@ export default function PublicHappyClientsSlider({ testimonials = [], profile })
       withStoryImage({ ...p, is_placeholder: true }, i),
     );
 
-    const fromLeads = (profile?.real_clients || [])
-      .filter((c) => c.client_name && c.text)
+    const profileStories = publicClientStories({
+      ...profile,
+      testimonials,
+    });
+    const approvedStories = profileStories
       .map((c, i) =>
         withStoryImage({
           ...c,
+          client_name: c.client_name || c.name,
+          text: c.text || c.review || c.testimonial,
+          lead_type: c.lead_type || inferLeadType(c, role, i),
           location: storyLocation(i, c.location || profileLocation),
           is_placeholder: false,
         }, i),
       );
 
-    const fromTestimonials = (testimonials || []).map((t, i) =>
-      withStoryImage({
-        client_name: t.client_name || 'Verified Client',
-        client_photo_url: t.client_photo_url || null,
-        rating: t.rating || 5,
-        text: t.text || '',
-        lead_type: inferLeadType(t, role, i),
-        location: storyLocation(i, t.location || profileLocation),
-        is_placeholder: false,
-      }, i),
-    );
-
-    const realStories = fromLeads.length ? fromLeads : fromTestimonials;
-    if (!realStories.length) return placeholders;
+    const realStories = approvedStories;
+    if (!realStories.length) return isPreview ? placeholders : [];
 
     if (realStories.length >= MIN_STORIES) return realStories;
+    if (!isPreview) return realStories;
 
     const filler = placeholders
       .filter((p) => !realStories.some((r) => r.client_name === p.client_name && r.text === p.text))
       .slice(0, MIN_STORIES - realStories.length);
 
     return [...realStories, ...filler];
-  }, [profile?.real_clients, testimonials, role, profileLocation]);
+  }, [isPreview, profile, testimonials, role, profileLocation]);
 
-  const sliderItems = useMemo(() => [...clients, ...clients], [clients]);
+  const useMarquee = clients.length >= 4;
+  const sliderItems = useMemo(
+    () => (useMarquee ? [...clients, ...clients] : clients),
+    [clients, useMarquee],
+  );
+
+  if (!clients.length) return null;
 
   return (
-    <section id="reviews" className="relative bg-transparent py-10 md:py-12">
+    <section id="reviews" className="relative bg-transparent py-8 sm:py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-12">
-        <div className="mb-6 text-center sm:mb-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Happy Clients</p>
-          <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">Success Stories</h3>
-          <p className="mx-auto mt-2 max-w-2xl text-xs leading-5 text-text-muted sm:text-sm">
-            Real outcomes from clients and partners who worked with this professional.
+        <div className={`mb-5 sm:mb-7 ${isLawyerClassic ? 'text-left' : 'text-center'}`}>
+          <p
+            data-storefront-field="content.eyebrow"
+            data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+            data-storefront-label="Testimonials eyebrow"
+            className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary"
+          >
+            {content.eyebrow || 'Happy Clients'}
+          </p>
+          <h2
+            data-storefront-field="content.heading"
+            data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+            data-storefront-label="Testimonials heading"
+            className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl"
+          >
+            {content.heading || 'Success Stories'}
+          </h2>
+          <p
+            data-storefront-field="content.body"
+            data-storefront-source={content.body ? 'persisted' : 'fallback'}
+            data-storefront-label="Testimonials description"
+            className={`${isLawyerClassic ? '' : 'mx-auto '}mt-2 max-w-2xl text-xs leading-5 text-text-muted sm:text-sm`}
+          >
+            {content.body || 'Real outcomes from clients and partners who worked with this professional.'}
           </p>
         </div>
 
-        <div className="relative overflow-hidden py-3">
-          <div className="success-stories-track relative flex w-max items-stretch gap-4 py-1">
+        <div
+          className={`relative py-2.5 sm:py-3 ${
+            useMarquee
+              ? 'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              : ''
+          }`}
+          tabIndex={useMarquee ? 0 : undefined}
+          aria-label={useMarquee ? 'Client stories. Scroll horizontally to review all stories.' : undefined}
+        >
+          <div className={`${useMarquee ? 'success-stories-track flex w-max' : 'grid sm:grid-cols-2 lg:grid-cols-3'} relative items-stretch gap-3.5 py-1 sm:gap-4`}>
             {sliderItems.map((client, index) => (
               <ClientCard
                 key={`${client.client_name}-${index}`}
                 client={client}
-                className="w-[16.5rem] shrink-0 sm:w-[17rem] md:w-[17.5rem]"
+                duplicate={useMarquee && index >= clients.length}
+                className={useMarquee ? 'w-[15.5rem] shrink-0 sm:w-[17rem] md:w-[17.5rem]' : 'w-full'}
               />
             ))}
           </div>

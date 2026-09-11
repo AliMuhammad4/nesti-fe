@@ -68,6 +68,7 @@ import { getOwnPublicProfile } from "@/lib/publicProfileClient";
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || "";
+  const isProfessionalPublicPage = pathname.startsWith("/p/") || pathname.startsWith("/professional/");
   const router = useRouter();
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
@@ -83,7 +84,7 @@ export default function AppChrome({ children }) {
   const userMenuRef = useRef(null);
   const calendlyOAuthBroadcastAt = useRef(0);
   const inviteFinalizeAttemptedRef = useRef(false);
-  const profileQuery = useProfileQuery();
+  const profileQuery = useProfileQuery({ enabled: !isProfessionalPublicPage });
   const { hasFeature } = useFeatureAccess();
   const showPublicProfile = hasFeature(FEATURES.PUBLIC_PROFILE);
   const showCalendar = hasFeature(FEATURES.CALENDAR_INTEGRATION);
@@ -94,6 +95,7 @@ export default function AppChrome({ children }) {
       isMounted && 
       token && 
       showPublicProfile && 
+      !isProfessionalPublicPage &&
       user?.role !== 'client' // Skip for clients
     ),
     staleTime: 60_000,
@@ -102,6 +104,30 @@ export default function AppChrome({ children }) {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted || typeof window === "undefined") return undefined;
+    const onAuthExpired = () => {
+      dispatch(logoutAndClearAll());
+      queryClient.clear();
+      const path = String(window.location.pathname || "");
+      if (
+        path === "/log-in"
+        || path === "/sign-up"
+        || path.startsWith("/forgot-password")
+        || path.startsWith("/verify-")
+        || path.startsWith("/reset-password")
+      ) {
+        return;
+      }
+      toast.info("Your session expired. Please log in again.", {
+        toastId: "session-expired",
+      });
+      router.replace("/log-in");
+    };
+    window.addEventListener("nesti:auth-expired", onAuthExpired);
+    return () => window.removeEventListener("nesti:auth-expired", onAuthExpired);
+  }, [isMounted, dispatch, queryClient, router]);
 
   useEffect(() => {
     if (!isMounted || !token || typeof window === "undefined") return;
@@ -276,7 +302,6 @@ export default function AppChrome({ children }) {
 
   const isChatbotEmbed = pathname.startsWith("/chatbot");
   const isCalendlyCallback = pathname.startsWith("/calendly-callback");
-  const isProfessionalPublicPage = pathname.startsWith("/p/") || pathname.startsWith("/professional/");
   const isStandaloneAuthPage = useMemo(
     () =>
       pathname === "/log-in" ||
@@ -422,7 +447,7 @@ export default function AppChrome({ children }) {
     if (!authCheckReady) return;
     if (token || hasPersistedToken) return;
     if (isPublicAuthPage || isChatbotEmbed || isCalendlyCallback) return;
-    router.replace("/");
+    router.replace("/log-in");
   }, [isMounted, authCheckReady, token, hasPersistedToken, isPublicAuthPage, isChatbotEmbed, isCalendlyCallback, router]);
 
   useEffect(() => {

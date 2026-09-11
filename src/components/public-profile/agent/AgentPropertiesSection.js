@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   Bed, Bath, Maximize2, MapPin, Tag, X,
-  ChevronLeft, ChevronRight, Calendar, MessageCircle,
+  ChevronLeft, ChevronRight, Calendar, Loader2, MessageCircle,
 } from 'lucide-react';
 import { getSellerProperties } from '@/lib/publicProfileClient';
 
@@ -21,47 +21,87 @@ function formatPrice(val) {
 }
 
 /* ─── Property Detail Modal ───────────────────────────────── */
-function PropertyModal({ property, profile, onClose, onInquire }) {
+export function PropertyModal({ property, profile, onClose, onInquire }) {
   const [imgIdx, setImgIdx] = useState(0);
-  const imgs = property.images || [];
+  const [imageLoading, setImageLoading] = useState(true);
+  const imgs = property.images?.length
+    ? property.images
+    : property.photos?.length
+      ? property.photos
+      : property.image_url
+        ? [property.image_url]
+        : [];
+  const displayPrice = property.expected_price || property.price;
+  const activeImage = imgs[imgIdx];
+
+  useEffect(() => {
+    setImgIdx(0);
+  }, [property?.id, property?._id]);
+
+  useEffect(() => {
+    setImageLoading(Boolean(activeImage));
+  }, [activeImage]);
 
   return (
     <div
       className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Close */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow transition hover:bg-slate-100"
+          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/95 p-0 text-slate-700 shadow-lg transition hover:scale-105 hover:bg-white"
           aria-label="Close"
         >
-          <X size={16} className="text-slate-600" />
+          <X size={18} strokeWidth={2.25} />
         </button>
 
         {/* Image carousel */}
-        <div className="relative h-56 w-full overflow-hidden bg-slate-100 sm:h-72">
+        <div className="relative h-56 w-full shrink-0 overflow-hidden bg-slate-950 sm:h-80">
           {imgs.length > 0 ? (
             <>
               <Image
+                key={activeImage}
                 src={imgs[imgIdx]}
                 alt={`Property image ${imgIdx + 1}`}
                 fill
-                className="object-contain object-center"
+                className={`object-contain object-center transition-opacity duration-200 ${
+                  imageLoading ? 'opacity-0' : 'opacity-100'
+                }`}
                 sizes="(max-width: 672px) 100vw, 672px"
+                onLoad={() => setImageLoading(false)}
               />
+              {imageLoading ? (
+                <div className="absolute inset-0 z-[15] bg-slate-950/60">
+                  <div className="pointer-events-none absolute left-1/2 top-1/2 z-[16] -translate-x-1/2 -translate-y-1/2">
+                    <div className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-slate-900/85 px-4 py-2 text-white shadow-xl backdrop-blur-md">
+                      <Loader2 size={15} className="animate-spin" />
+                      <p className="text-[12px] font-semibold tracking-wide">Loading image</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {imgs.length > 1 && (
                 <>
-                  <button onClick={() => setImgIdx((i) => (i === 0 ? imgs.length - 1 : i - 1))}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/40 text-white hover:bg-black/60">
-                    <ChevronLeft size={16} />
+                  <button
+                    type="button"
+                    onClick={() => setImgIdx((i) => (i === 0 ? imgs.length - 1 : i - 1))}
+                    className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-950/65 p-0 text-white shadow-lg backdrop-blur transition hover:scale-105 hover:bg-slate-950/85"
+                    aria-label="Previous property image"
+                  >
+                    <ChevronLeft size={22} strokeWidth={2.5} />
                   </button>
-                  <button onClick={() => setImgIdx((i) => (i === imgs.length - 1 ? 0 : i + 1))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/40 text-white hover:bg-black/60">
-                    <ChevronRight size={16} />
+                  <button
+                    type="button"
+                    onClick={() => setImgIdx((i) => (i === imgs.length - 1 ? 0 : i + 1))}
+                    className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-950/65 p-0 text-white shadow-lg backdrop-blur transition hover:scale-105 hover:bg-slate-950/85"
+                    aria-label="Next property image"
+                  >
+                    <ChevronRight size={22} strokeWidth={2.5} />
                   </button>
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] text-white">
+                  <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/15 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-white shadow backdrop-blur">
                     {imgIdx + 1} / {imgs.length}
                   </div>
                 </>
@@ -72,9 +112,9 @@ function PropertyModal({ property, profile, onClose, onInquire }) {
           )}
 
           {/* Price badge */}
-          {property.expected_price && (
+          {displayPrice && (
             <div className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-[13px] font-bold text-white shadow">
-              {formatPrice(property.expected_price)}
+              {formatPrice(displayPrice)}
             </div>
           )}
         </div>
@@ -106,9 +146,9 @@ function PropertyModal({ property, profile, onClose, onInquire }) {
                 <Bath size={11} className="text-primary" /> {property.bathrooms} Baths
               </span>
             )}
-            {property.square_footage && (
+            {(property.square_footage || property.square_feet) && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[12px] font-medium text-text-body">
-                <Maximize2 size={11} className="text-primary" /> {property.square_footage} sqft
+                <Maximize2 size={11} className="text-primary" /> {property.square_footage || property.square_feet} sqft
               </span>
             )}
             {property.timeline && (
@@ -123,14 +163,15 @@ function PropertyModal({ property, profile, onClose, onInquire }) {
             Listed by <span className="font-semibold text-text-heading">{profile?.professional_name}</span> · Seller: {property.seller_name}
           </p>
 
-          {/* CTA */}
-          <button
-            onClick={() => { onClose(); onInquire(property); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary/90 active:scale-[0.98]"
-          >
-            <MessageCircle size={16} />
-            I&apos;m Interested — Start Inquiry
-          </button>
+          {typeof onInquire === 'function' ? (
+            <button
+              onClick={() => { onClose(); onInquire(property); }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary/90 active:scale-[0.98]"
+            >
+              <MessageCircle size={16} />
+              I&apos;m Interested — Start Inquiry
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -144,6 +185,7 @@ function PropertyCard({ property, onViewDetails }) {
 
   return (
     <div
+      data-storefront-anim-item="true"
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
       onClick={() => onViewDetails(property)}
     >
@@ -216,17 +258,30 @@ function PropertyCard({ property, onViewDetails }) {
 }
 
 /* ─── Main Section ────────────────────────────────────────── */
-export default function AgentPropertiesSection({ profile, onPropertyInquiry }) {
+export default function AgentPropertiesSection({
+  profile,
+  onPropertyInquiry,
+  content = {},
+  sectionStyle = {},
+}) {
   const PAGE_SIZE = 6;
+  const eyebrow = (content.eyebrow || '').trim() || 'Available now';
+  const hasSectionText = Boolean(sectionStyle.textColor);
 
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const hasCustomProperties = Array.isArray(profile?.custom_properties) && profile.custom_properties.length > 0;
+  const [properties, setProperties] = useState(hasCustomProperties ? profile.custom_properties : []);
+  const [loading, setLoading] = useState(!hasCustomProperties);
   const [modalProperty, setModalProperty] = useState(null);
   const [page, setPage] = useState(1);
   const fetchedSlugRef = useRef('');
 
   // Fetch seller properties from the dedicated endpoint
   useEffect(() => {
+    if (hasCustomProperties) {
+      setProperties(profile.custom_properties);
+      setLoading(false);
+      return;
+    }
     if (!profile?.slug) return;
     if (fetchedSlugRef.current === profile.slug) return;
     fetchedSlugRef.current = profile.slug;
@@ -236,7 +291,7 @@ export default function AgentPropertiesSection({ profile, onPropertyInquiry }) {
       .then((data) => setProperties(Array.isArray(data?.properties) ? data.properties : []))
       .catch(() => setProperties([]))
       .finally(() => setLoading(false));
-  }, [profile?.slug]);
+  }, [profile?.slug, hasCustomProperties, profile?.custom_properties]);
 
   // Filter to only properties that have at least a location or price
   const validProperties = useMemo(
@@ -254,11 +309,15 @@ export default function AgentPropertiesSection({ profile, onPropertyInquiry }) {
 
   if (loading) {
     return (
-      <section className="bg-transparent py-12">
+      <section className="bg-transparent py-12" style={{ color: sectionStyle.textColor || undefined }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Available Now</p>
-            <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">Properties for Sale</h3>
+            <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${hasSectionText ? 'text-current' : 'text-primary'}`}>
+              {eyebrow}
+            </p>
+            <h3 className={`mt-1 text-2xl font-bold tracking-tight sm:text-3xl ${hasSectionText ? 'text-current' : 'text-text-heading'}`}>
+              {content.heading || 'Properties for Sale'}
+            </h3>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -278,15 +337,36 @@ export default function AgentPropertiesSection({ profile, onPropertyInquiry }) {
 
   return (
     <>
-      <section id="properties" className="bg-transparent py-12">
+      <section id="properties" className="bg-transparent py-12" style={{ color: sectionStyle.textColor || undefined }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
           <div className="mb-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Available Now</p>
-            <h3 className="mt-1 text-2xl font-bold tracking-tight text-text-heading sm:text-3xl">Properties for Sale</h3>
-            <p className="mt-1.5 text-sm text-text-muted">
-              Browse active listings managed by {profile?.professional_name}. Click any property to view details and start your inquiry.
+            <p
+              data-storefront-field="content.eyebrow"
+              data-storefront-source={content.eyebrow ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties eyebrow"
+              className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${hasSectionText ? 'text-current' : 'text-primary'}`}
+              style={hasSectionText ? { opacity: 0.78 } : undefined}
+            >
+              {eyebrow}
+            </p>
+            <h3
+              data-storefront-field="content.heading"
+              data-storefront-source={content.heading ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties heading"
+              className={`mt-1 text-2xl font-bold tracking-tight sm:text-3xl ${hasSectionText ? 'text-current' : 'text-text-heading'}`}
+            >
+              {content.heading || 'Properties for Sale'}
+            </h3>
+            <p
+              data-storefront-field="content.body"
+              data-storefront-source={content.body ? 'persisted' : 'fallback'}
+              data-storefront-label="Properties description"
+              className={`mt-1.5 text-sm ${hasSectionText ? 'text-current' : 'text-text-muted'}`}
+              style={hasSectionText ? { opacity: 0.86 } : undefined}
+            >
+              {content.body || `Browse active listings managed by ${profile?.professional_name}. Click any property to view details and start your inquiry.`}
             </p>
           </div>
 

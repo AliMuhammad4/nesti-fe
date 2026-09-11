@@ -1,0 +1,211 @@
+import { block, brand, T } from '../shared/blockFactory';
+
+const mortgageBrokerClassic = {
+  id: 'mortgage_broker-classic',
+  role: 'mortgage_broker',
+  experience: 'classic-balanced',
+  label: 'Mortgage Lead Storefront',
+  tagline: 'Attract, qualify, and convert mortgage inquiries',
+  description: 'Focused mortgage broker lead storefront with programs, services, compensation transparency, FAQs, and conversion CTAs.',
+  features: [
+    'Lead-focused hero CTAs',
+    'Programs & services',
+    'Business & commercial financing',
+    'Broker compensation transparency',
+    'Detailed FAQ',
+    'Conversion CTAs',
+  ],
+  brand: brand('#0c2139', '#008fd5', 'Manrope', 'rounded', 'minimal', '#ffffff'),
+  blocks: (ctx) => [
+    block(T.HERO, {
+      broker_design_version: 16,
+      eyebrow: `Welcome to ${ctx.company || ctx.name}`,
+      heading: 'Building a brighter financial future',
+      body: ctx.tagline || 'Attract qualified mortgage inquiries with clear guidance, transparent options, and a path to consultation.',
+      primary_cta_label: 'Find My Mortgage Options',
+      cta_label: 'Get My Personalized Rate',
+      join_label: 'Join Nesti',
+    }, {
+      bg: '#0c2139',
+      color: '#ffffff',
+      padding: 'large',
+      mediaPosition: 'right',
+    }),
+    block(T.ABOUT, {
+      eyebrow: 'Company introductions',
+      heading: 'Mortgage advice shaped around your goals',
+      body: ctx.about || 'Loan solutions that help transform your goals into reality with trusted financial support and flexible repayment options.',
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '2',
+    }),
+    block(T.PRACTICE_SNAPSHOT, {
+      eyebrow: 'Advisor snapshot',
+      heading: 'Mortgage guidance shaped around your needs',
+      body: 'A concise view of financing specialties, service markets, and consultation languages.',
+      practice_focus_label: 'Mortgage focus',
+      practice_focus_subtitle: 'Financing areas supported',
+      markets_label: 'Markets served',
+      markets_subtitle: 'Service areas and communities',
+      languages_label: 'Languages spoken',
+      languages_subtitle: 'Consultation accessibility',
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'medium',
+      columns: '3',
+    }),
+    block(T.MORTGAGE_PROGRAMS, {
+      eyebrow: 'Mortgage programs',
+      heading: 'Financing paths for every stage',
+      body: 'Purchase, refinance, renewal, and first-time buyer guidance with clear next steps.',
+      items: [
+        { id: 'program-first-home', title: 'First-time home buyer', description: 'Plan your down payment, affordability, and pre-approval with clear guidance.', icon: 'home' },
+        { id: 'program-purchase', title: 'Purchase mortgage', description: 'Compare structures and lender options before you make an offer.', icon: 'building' },
+        { id: 'program-refinance', title: 'Refinance', description: 'Review rates, equity access, and payment improvement opportunities.', icon: 'percent' },
+        { id: 'program-renewal', title: 'Renewal', description: 'Assess the market before maturity instead of accepting the first renewal offer.', icon: 'target' },
+        { id: 'program-investor', title: 'Investment property', description: 'Structure financing around rental income, cash flow, and portfolio goals.', icon: 'briefcase' },
+        { id: 'program-commercial', title: 'Commercial mortgage', description: 'Explore financing paths for multi-unit and commercial opportunities.', icon: 'shield' },
+      ],
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '3',
+    }),
+    block(T.SERVICES, {
+      eyebrow: 'Mortgage solutions',
+      heading: 'Advice for every stage of your mortgage',
+      body: 'Explore practical financing strategies backed by clear comparisons, careful preparation, and responsive support.',
+      items: [
+        { id: 'service-purchase', title: 'Purchase financing', description: 'Compare mortgage structures and lender options for your next home.', icon: 'home' },
+        { id: 'service-preapproval', title: 'Pre-approval strategy', description: 'Clarify affordability and strengthen your position before making an offer.', icon: 'shield' },
+        { id: 'service-refinance', title: 'Refinance planning', description: 'Review equity, debt consolidation, and payment-improvement opportunities.', icon: 'percent' },
+        { id: 'service-renewal', title: 'Mortgage renewal', description: 'Assess the market before maturity instead of accepting the first renewal offer.', icon: 'target' },
+        { id: 'service-investor', title: 'Investor mortgages', description: 'Structure financing around rental income, portfolio goals, and cash flow.', icon: 'building' },
+        { id: 'service-self-employed', title: 'Self-employed solutions', description: 'Present business and income documentation through suitable lender programs.', icon: 'briefcase' },
+      ],
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '2',
+    }),
+    block(T.ROLE_DETAILS, {
+      eyebrow: 'Business & commercial',
+      heading: 'Flexible financing for growing businesses',
+      body: 'Fast approvals, affordable repayment plans, and clear documentation pathways for business and commercial needs.',
+      snapshot_eyebrow: 'Business finance snapshot',
+      snapshot_heading: 'Financing structured around your next stage of growth.',
+      cta_label: 'See What I May Qualify For',
+      highlights: [
+        { id: 'highlight-rates', title: 'Competitive rate shopping across lenders' },
+        { id: 'highlight-success', title: 'Clear documentation and file preparation' },
+        { id: 'highlight-flex', title: 'Flexible structures for complex income' },
+      ],
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '2',
+    }),
+    block(T.BROKER_COMPENSATION, {
+      heading: 'Transparent broker compensation',
+      body: 'Clear disclosures help clients understand lender compensation, brokerage fees, and private-mortgage costs.',
+      disclaimer: 'Compensation structures vary by lender, product, and transaction type. This section is informational and does not replace a written disclosure for your specific mortgage.',
+      items: [
+        { id: 'comp-lender', title: 'Lender compensation', description: 'In many cases, compensation is paid by the lender when a mortgage funds — so you may not pay a separate brokerage fee for standard A-lender solutions.', icon: 'building' },
+        { id: 'comp-percentage', title: 'How compensation is typically structured', description: 'Lender compensation can vary by product, term, and lender. Your advisor can explain the structure that applies to your file before you proceed.', icon: 'percent' },
+        { id: 'comp-brokerage', title: 'Brokerage or arrangement fees', description: 'Some private, alternative, or complex files may include an arrangement or brokerage fee. Any fee is disclosed clearly before you commit.', icon: 'briefcase' },
+        { id: 'comp-private', title: 'Private mortgage fees', description: 'Private lending may involve lender fees, brokerage fees, or legal costs depending on the structure. Details are reviewed case by case.', icon: 'home' },
+      ],
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '2',
+    }),
+    block(T.FAQ, {
+      eyebrow: 'Helpful questions',
+      heading: 'What clients often ask',
+      body: 'Clear answers to common mortgage questions before you start.',
+      faqs: [
+        {
+          id: 'faq-approval',
+          q: 'How long does mortgage approval usually take?',
+          a: 'Timelines vary by lender and file complexity, but a well-prepared application can often move from first review to approval within a few business days.',
+        },
+        {
+          id: 'faq-documents',
+          q: 'What documents should I prepare first?',
+          a: 'Income proof, identification, down-payment source, credit consent, and property details (or a target purchase range) help keep the process moving.',
+        },
+        {
+          id: 'faq-preapproval',
+          q: 'Can I get pre-approved before making an offer?',
+          a: 'Yes. Pre-approval clarifies affordability and strengthens your position before you submit an offer on a home.',
+        },
+        {
+          id: 'faq-scope',
+          q: 'Do you only help with purchases?',
+          a: 'No. Support typically covers purchases, refinances, renewals, investor financing, and alternative or private options depending on your goals and lender fit.',
+        },
+        {
+          id: 'faq-qualify',
+          q: 'What information helps qualify my inquiry?',
+          a: 'Sharing your goal (purchase, refinance, renew, invest), estimated price or mortgage amount, down payment, employment, income range, credit range, property type, location, and timeline helps your advisor prepare better options.',
+        },
+        {
+          id: 'faq-commitment',
+          q: 'Will this consultation lock me into a lender?',
+          a: 'No. The first conversation is about fit, options, and next steps. You stay in control of whether to proceed.',
+        },
+        {
+          id: 'faq-next',
+          q: 'What happens after I submit an inquiry?',
+          a: 'Your details are reviewed, clarifying questions may follow if needed, and you receive a clear path for consultation or application support.',
+        },
+      ],
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+      columns: '1',
+    }),
+    block(T.CTA, {
+      eyebrow: 'Mortgage consultation',
+      heading: 'Find the mortgage options that may fit your file',
+      body: 'Share your goals and receive a clear, personalized financing strategy from an experienced mortgage advisor.',
+      cta_label: 'Find My Mortgage Options',
+      secondary_cta_label: 'Book a Consultation',
+    }, {
+      bg: 'transparent',
+      color: '#0c2139',
+      padding: 'large',
+    }),
+    block(T.FOOTER, {
+      heading: ctx.name,
+      role_label: 'Mortgage Advisor',
+      body: 'Trusted mortgage guidance with transparent options, lender access, and responsive support.',
+      links_heading: 'Explore',
+      contact_heading: 'Contact',
+      disclaimer: 'Professional, contextual follow-up.',
+      items: [
+        { id: 'footer-about', label: 'About', target: '#about' },
+        { id: 'footer-programs', label: 'Programs', target: '#programs' },
+        { id: 'footer-services', label: 'Services', target: '#services' },
+        { id: 'footer-faq', label: 'FAQ', target: '#faq' },
+        { id: 'footer-contact', label: 'Contact us', target: '/contact' },
+        { id: 'footer-booking', label: 'Book an appointment', target: '#contact' },
+      ],
+    }, {
+      bg: '#0c2139',
+      color: '#ffffff',
+      padding: 'large',
+    }),
+  ],
+};
+
+export default mortgageBrokerClassic;

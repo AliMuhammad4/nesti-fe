@@ -25,22 +25,26 @@ export function useBillingPlans() {
   });
 }
 
-export function useSubscriptionMe() {
+export function useSubscriptionMe({ refreshFromStripe = false } = {}) {
   const { token } = useAppSelector((state) => state.auth);
+  const refresh = Boolean(refreshFromStripe);
 
   return useQuery({
-    queryKey: ["subscriptionMe"],
+    queryKey: ["subscriptionMe", refresh ? "refresh" : "cached"],
     queryFn: () => {
       if (!token) throw new Error("missing or invalid Authorization header");
+      const url = refresh
+        ? `${API_ENDPOINTS.billing.subscriptionMe}?refresh=1`
+        : API_ENDPOINTS.billing.subscriptionMe;
       return apiClient({
-        url: API_ENDPOINTS.billing.subscriptionMe,
+        url,
         method: "GET",
         token,
       });
     },
     enabled: !!token,
     // Keep subscription status fresh so expiry/cancel UI doesn't lag behind backend
-    staleTime: 10_000,
+    staleTime: refresh ? 5_000 : 10_000,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -79,6 +83,125 @@ export function useCreateCheckoutSession() {
   });
 }
 
+export function useStorefrontTemplateEntitlements() {
+  const { token } = useAppSelector((state) => state.auth);
+
+  return useQuery({
+    queryKey: ["storefrontTemplateEntitlements"],
+    queryFn: () => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplates,
+        method: "GET",
+        token,
+      });
+    },
+    enabled: !!token,
+    staleTime: 10_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useCreateStorefrontTemplateCheckoutSession() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (templateId) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCheckoutSession,
+        method: "POST",
+        data: { template_id: templateId },
+        token,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["storefrontTemplateEntitlements"] });
+      invalidateBillingQueries(queryClient);
+    },
+    onError: toastError,
+  });
+}
+
+export function useConfirmStorefrontTemplateCheckoutSession() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, templateId }) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCheckoutConfirm,
+        method: "POST",
+        data: {
+          session_id: sessionId,
+          template_id: templateId,
+        },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+    },
+  });
+}
+
+export function useCancelStorefrontTemplateSubscription() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ templateId, reason = "" }) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateCancel,
+        method: "POST",
+        data: {
+          template_id: templateId,
+          ...(reason ? { reason } : {}),
+        },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+      toast.success("Template subscription will cancel at the end of the billing period.", {
+        toastId: "storefront-template-cancel-scheduled",
+      });
+    },
+    onError: toastError,
+  });
+}
+
+export function useResumeStorefrontTemplateSubscription() {
+  const { token } = useAppSelector((state) => state.auth);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (templateId) => {
+      if (!token) throw new Error("missing or invalid Authorization header");
+      return apiClient({
+        url: API_ENDPOINTS.billing.storefrontTemplateResume,
+        method: "POST",
+        data: { template_id: templateId },
+        token,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["storefrontTemplateEntitlements"], data);
+      invalidateBillingQueries(queryClient);
+      toast.success("Template subscription will continue renewing.", {
+        toastId: "storefront-template-subscription-resumed",
+      });
+    },
+    onError: toastError,
+  });
+}
+
 export function openCheckoutPlaceholderWindow() {
   const payWindow = window.open("about:blank", "_blank");
   if (!payWindow) return null;
@@ -107,17 +230,26 @@ export function openStripeCheckoutInNewTab(data, targetWindow = null) {
   }
 
   if (targetWindow && !targetWindow.closed) {
-    targetWindow.location.href = url;
     try {
+      targetWindow.location.href = url;
       targetWindow.opener = null;
+      targetWindow.focus?.();
+      return true;
     } catch {
-      // ignore
+      try {
+        targetWindow.close();
+      } catch {
+        // ignore
+      }
     }
-    targetWindow.focus?.();
-    return true;
   }
 
-  const opened = window.open(url, "_blank");
+  let opened = null;
+  try {
+    opened = window.open(url, "_blank");
+  } catch {
+    opened = null;
+  }
   if (!opened) {
     window.location.href = url;
     return true;
@@ -135,7 +267,7 @@ export function redirectToStripeCheckout(data) {
   return openStripeCheckoutInNewTab(data);
 }
 
-export function useBillingInvoices(enabled = true) {
+export function useBillingInvoices(enabled = true, { refetchInterval } = {}) {
   const { token } = useAppSelector((state) => state.auth);
 
   return useQuery({
@@ -149,6 +281,10 @@ export function useBillingInvoices(enabled = true) {
       });
     },
     enabled: !!token && enabled,
+    staleTime: 5_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: refetchInterval || false,
   });
 }
 
