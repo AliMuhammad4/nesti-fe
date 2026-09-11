@@ -3,10 +3,24 @@ import { getPublicPage } from "@/lib/publicPageContent";
 import { getPublicPageMeta } from "@/lib/publicPageMeta";
 
 export const metadata = {
-  title: "About Nesti | Nesti AI",
-  description: "The Future of Intelligent Real Estate Infrastructure",
+  title: {
+    absolute: "About Us | Nesti AI",
+  },
+  description:
+    "Learn about Nesti AI, the company building AI tools that help real estate agents, lawyers, and mortgage brokers grow faster.",
   alternates: {
     canonical: "https://nesti.ca/about",
+  },
+  openGraph: {
+    title: "About Us | Nesti AI",
+    description:
+      "Learn about Nesti AI, the company building AI tools that help real estate agents, lawyers, and mortgage brokers grow faster.",
+    url: "https://nesti.ca/about",
+  },
+  twitter: {
+    title: "About Us | Nesti AI",
+    description:
+      "Learn about Nesti AI, the company building AI tools that help real estate agents, lawyers, and mortgage brokers grow faster.",
   },
 };
 

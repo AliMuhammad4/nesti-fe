@@ -3,10 +3,24 @@ import { getPublicPage } from "@/lib/publicPageContent";
 import { getPublicPageMeta } from "@/lib/publicPageMeta";
 
 export const metadata = {
-  title: "Nesti Journal | Nesti AI",
-  description: "Blog & Insights Hub",
+  title: {
+    absolute: "Our Blog - Insights | Nesti AI",
+  },
+  description:
+    "Explore the Nesti blogs for AI, market trends, and growth strategies built for real estate agents, lawyers, and mortgage brokers.",
   alternates: {
     canonical: "https://nesti.ca/blog",
+  },
+  openGraph: {
+    title: "Our Blog - Insights | Nesti AI",
+    description:
+      "Explore the Nesti blogs for AI, market trends, and growth strategies built for real estate agents, lawyers, and mortgage brokers.",
+    url: "https://nesti.ca/blog",
+  },
+  twitter: {
+    title: "Our Blog - Insights | Nesti AI",
+    description:
+      "Explore the Nesti blogs for AI, market trends, and growth strategies built for real estate agents, lawyers, and mortgage brokers.",
   },
 };
 

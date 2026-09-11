@@ -3,10 +3,24 @@ import { getPublicPage } from "@/lib/publicPageContent";
 import { getPublicPageMeta } from "@/lib/publicPageMeta";
 
 export const metadata = {
-  title: "Frequently Asked Questions | Nesti AI",
-  description: "Common platform answers",
+  title: {
+    absolute: "FAQs - Frequently Asked Questions | Nesti AI",
+  },
+  description:
+    "Get answers to common questions about Nesti AI's pricing, features, onboarding, and support for real estate professionals.",
   alternates: {
     canonical: "https://nesti.ca/faq",
+  },
+  openGraph: {
+    title: "FAQs - Frequently Asked Questions | Nesti AI",
+    description:
+      "Get answers to common questions about Nesti AI's pricing, features, onboarding, and support for real estate professionals.",
+    url: "https://nesti.ca/faq",
+  },
+  twitter: {
+    title: "FAQs - Frequently Asked Questions | Nesti AI",
+    description:
+      "Get answers to common questions about Nesti AI's pricing, features, onboarding, and support for real estate professionals.",
   },
 };
 
