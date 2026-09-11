@@ -161,7 +161,7 @@ const SELLER_HERO_LAYOUT_CSS = `
 const HERO_COPY = {
   classic: { eyebrow: 'Full-service real estate', icon: Compass, proof: 'Clear guidance. Strong advocacy. Every step covered.' },
   luxury: { eyebrow: 'Private property advisory', icon: Gem, proof: 'Discreet representation for exceptional properties.' },
-  firstHome: { eyebrow: 'First-home specialist', icon: HeartHandshake, proof: 'Clear answers for a milestone move.' },
+  firstHome: { eyebrow: 'First-time buyer guidance', icon: HeartHandshake, proof: 'Clear answers for a milestone move.' },
   seller: { eyebrow: 'Seller growth platform', icon: TrendingUp, proof: 'A structured launch flow built for speed and confidence.' },
   community: { eyebrow: 'Neighborhood expert', icon: MapPin, proof: 'Local context for a place that fits your life.' },
 };
@@ -288,16 +288,21 @@ function HeroFrame({ profile, actions, block, variant }) {
   );
   const legacyFirstHomeButton = variant === 'firstHome' && [
     '#f59e0b', '#fb7185', '#c78960', '#e58b5b', '#ed8b62',
+    '#5bd36d', '#5BD36D', '#4ade80', '#22c55e',
   ].includes(String(content.primary_button_background || '').trim().toLowerCase());
   const primaryButtonStyle = {
     backgroundColor: content.primary_button_background && !legacyLuxuryButtonYellow && !legacyFirstHomeButton
       ? content.primary_button_background
-      : (['luxury', 'firstHome', 'community'].includes(variant) ? 'var(--storefront-accent)' : 'var(--storefront-primary)'),
+      : (variant === 'firstHome'
+        ? '#ffffff'
+        : ['luxury', 'community'].includes(variant)
+          ? 'var(--storefront-accent)'
+          : 'var(--storefront-primary)'),
     color: content.primary_button_text_color
       || (variant === 'luxury'
         ? '#14110e'
         : variant === 'firstHome'
-          ? '#ffffff'
+          ? '#0b3d20'
           : variant === 'community'
             ? 'var(--storefront-accent-contrast, #ffffff)'
             : defaultButtonText),
@@ -339,39 +344,51 @@ function HeroFrame({ profile, actions, block, variant }) {
       variant === 'classic'
         ? 'max-w-2xl lg:max-w-lg lg:px-10 lg:py-10 lg:pr-12'
         : variant === 'firstHome'
-          ? 'storefront-first-home-hero-copy max-w-2xl rounded-md lg:max-w-3xl lg:px-12 lg:py-12'
+          ? 'storefront-first-home-hero-copy mx-auto flex w-full max-w-[56rem] flex-col items-center px-5 py-10 text-center sm:px-8 sm:py-12 lg:px-10 lg:py-14'
           : variant === 'community'
             ? 'max-w-4xl'
           : 'max-w-2xl'
     }`}>
-      <div data-storefront-field="content.eyebrow" data-storefront-source={block?.data?.content?.eyebrow ? 'persisted' : 'fallback'} data-storefront-label="Hero eyebrow" className={`inline-flex items-center gap-2 font-bold uppercase ${
+      <div
+        data-storefront-field="content.eyebrow"
+        data-storefront-source={block?.data?.content?.eyebrow ? 'persisted' : 'fallback'}
+        data-storefront-label="Hero eyebrow"
+        className={`inline-flex items-center gap-2.5 font-bold uppercase ${
         variant === 'classic'
           ? 'text-[9px] tracking-[0.22em]'
           : variant === 'firstHome'
-            ? 'bg-white/90 px-4 py-2 text-[10px] tracking-[0.16em] shadow-sm backdrop-blur-sm'
+            ? 'storefront-first-home-hero-eyebrow rounded-full border border-white/40 bg-white/12 px-4 py-2 text-[10px] tracking-[0.2em] text-white shadow-[0_8px_24px_rgba(0,0,0,.18)] backdrop-blur-md'
             : 'text-[10px] tracking-[0.24em]'
-      }`} style={{ color: mutedTextColor }}>
-        {variant !== 'community' ? <Icon size={14} /> : null}
-        {values.eyebrow || copy.eyebrow}
+      }`}
+        style={variant === 'firstHome' ? { color: '#ffffff' } : { color: mutedTextColor }}
+      >
+        {variant === 'firstHome' ? (
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-white/18 text-white ring-1 ring-white/25">
+            <Icon size={11} strokeWidth={2.35} />
+          </span>
+        ) : variant !== 'community' ? <Icon size={14} /> : null}
+        <span className={variant === 'firstHome' ? 'text-white' : undefined}>
+          {values.eyebrow || copy.eyebrow}
+        </span>
       </div>
       <h1 data-storefront-field="content.heading" data-storefront-source={block?.data?.content?.heading ? 'persisted' : 'fallback'} data-storefront-label="Hero heading" className={`font-bold tracking-tight ${
         variant === 'classic'
           ? 'mt-5 max-w-[24rem] text-2xl leading-[1.08] sm:text-[1.75rem] lg:text-[2rem]'
           : variant === 'firstHome'
-            ? 'mt-4 max-w-2xl text-[2rem] font-bold leading-[1.03] sm:text-[2.2rem] lg:text-[2.75rem]'
+            ? 'mt-7 w-full max-w-none whitespace-nowrap text-[clamp(1.55rem,4.6vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.035em] text-white'
             : variant === 'community'
               ? 'mt-5 max-w-4xl text-3xl leading-[1.08] sm:text-4xl lg:text-[2.75rem]'
             : 'mt-5 max-w-xl text-3xl leading-[1.08] sm:text-4xl lg:text-5xl'
-      }`} style={{ color: heroTextColor, ...(variant === 'firstHome' ? { textShadow: '0 8px 22px rgba(0,0,0,.42)' } : {}) }}>
+      }`} style={{ color: heroTextColor, ...(variant === 'firstHome' ? { textShadow: '0 2px 32px rgba(0,0,0,.45)' } : {}) }}>
         {values.heading}
       </h1>
       <p data-storefront-field="content.body" data-storefront-source={block?.data?.content?.body ? 'persisted' : 'fallback'} data-storefront-label="Hero description" className={`max-w-xl leading-7 ${
         variant === 'classic'
           ? 'mt-3 max-w-[25rem] text-[13px] leading-6 sm:text-sm'
           : variant === 'firstHome'
-            ? 'mt-4 max-w-2xl text-[12px] leading-6 sm:text-[13px]'
+            ? 'mx-auto mt-5 max-w-[34rem] text-pretty text-[15px] leading-7 text-white/90 sm:text-[1.05rem] sm:leading-8'
             : 'mt-5 text-sm sm:text-base'
-      }`} style={{ color: mutedTextColor, ...(variant === 'firstHome' ? { textShadow: '0 4px 16px rgba(0,0,0,.35)' } : {}) }}>
+      }`} style={{ color: variant === 'firstHome' ? 'rgba(255,255,255,0.9)' : mutedTextColor, ...(variant === 'firstHome' ? { textShadow: '0 1px 18px rgba(0,0,0,.35)' } : {}) }}>
         {values.body}
       </p>
       {variant === 'community' ? (
@@ -436,12 +453,12 @@ function HeroFrame({ profile, actions, block, variant }) {
         </div>
       ) : (
         <>
-      <div className={`${variant === 'classic' ? 'mt-4' : 'mt-7'} flex flex-wrap items-center gap-2.5`}>
-        <button type="button" onClick={actions.onDirectLeadClick} data-storefront-field="content.primary_cta_label" data-storefront-source={block?.data?.content?.primary_cta_label ? 'persisted' : 'fallback'} data-storefront-label="Primary hero button" className={`inline-flex items-center gap-2 font-bold shadow-lg ${variant === 'classic' ? 'rounded-xl px-3.5 py-2 text-[11px]' : variant === 'firstHome' ? 'rounded px-7 py-3.5 text-xs' : 'rounded-xl px-4 py-2.5 text-sm'}`} style={primaryButtonStyle}>
+      <div className={`${variant === 'classic' ? 'mt-4' : 'mt-8'} flex flex-wrap items-center gap-3 ${variant === 'firstHome' ? 'justify-center' : ''}`}>
+        <button type="button" onClick={actions.onDirectLeadClick} data-storefront-field="content.primary_cta_label" data-storefront-source={block?.data?.content?.primary_cta_label ? 'persisted' : 'fallback'} data-storefront-label="Primary hero button" className={`inline-flex items-center justify-center gap-2 font-bold shadow-lg transition hover:-translate-y-0.5 ${variant === 'classic' ? 'rounded-xl px-3.5 py-2 text-[11px]' : variant === 'firstHome' ? 'min-h-[3rem] min-w-[10.5rem] rounded-full px-7 text-[13px] tracking-[-0.01em] shadow-[0_18px_40px_rgba(0,0,0,.28)] hover:shadow-[0_22px_48px_rgba(0,0,0,.34)]' : 'rounded-xl px-4 py-2.5 text-sm'}`} style={primaryButtonStyle}>
           {values.primaryCta}
           <ArrowRight size={15} />
         </button>
-        <button type="button" onClick={handleConsultationClick} data-storefront-field="content.cta_label" data-storefront-source={block?.data?.content?.cta_label ? 'persisted' : 'fallback'} data-storefront-label="Consultation button" className={`inline-flex items-center gap-2 border font-semibold transition ${variant === 'classic' ? 'rounded-xl border-white/25 bg-white/10 px-3.5 py-2 text-[11px] hover:bg-white/15' : variant === 'firstHome' ? 'rounded border-white/55 bg-black/10 px-7 py-3.5 text-xs hover:border-white hover:bg-white/10' : 'rounded-xl border-white/25 bg-white/10 px-4 py-2.5 text-sm hover:bg-white/15'}`} style={{ color: heroTextColor, ...secondaryButtonStyle }}>
+        <button type="button" onClick={handleConsultationClick} data-storefront-field="content.cta_label" data-storefront-source={block?.data?.content?.cta_label ? 'persisted' : 'fallback'} data-storefront-label="Consultation button" className={`inline-flex items-center justify-center gap-2 border font-semibold transition hover:-translate-y-0.5 ${variant === 'classic' ? 'rounded-xl border-white/25 bg-white/10 px-3.5 py-2 text-[11px] hover:bg-white/15' : variant === 'firstHome' ? 'min-h-[3rem] min-w-[10.5rem] rounded-full border-white/55 bg-white/[0.08] px-7 text-[13px] tracking-[-0.01em] text-white backdrop-blur-md hover:border-white/80 hover:bg-white/16' : 'rounded-xl border-white/25 bg-white/10 px-4 py-2.5 text-sm hover:bg-white/15'}`} style={{ color: heroTextColor, ...secondaryButtonStyle }}>
           {values.cta}
           <span aria-hidden="true" className={variant === 'seller' ? 'text-base leading-none' : 'hidden'}>→</span>
         </button>
@@ -453,16 +470,15 @@ function HeroFrame({ profile, actions, block, variant }) {
         </a>
       ) : null}
       {variant === 'firstHome' && (inviteShareUrl || companyName) ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2.5">
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
           {inviteShareUrl ? (
             <a
               href={inviteShareUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-[11px] font-semibold transition hover:bg-white/15"
-              style={{ color: mutedTextColor }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3.5 py-1.5 text-[11px] font-semibold text-white/88 transition hover:border-white/40 hover:bg-white/14 hover:text-white"
             >
-              <UserPlus size={14} />
+              <UserPlus size={13} />
               Join Nesti
             </a>
           ) : null}
@@ -471,10 +487,9 @@ function HeroFrame({ profile, actions, block, variant }) {
               data-storefront-field="content.hero_company_badge"
               data-storefront-source={content.hero_company_badge ? 'persisted' : 'profile'}
               data-storefront-label="Company name"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold"
-              style={{ color: mutedTextColor }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3.5 py-1.5 text-[11px] font-semibold text-white/82"
             >
-              <Building2 size={13} />
+              <Building2 size={12} />
               {companyName}
             </span>
           ) : null}
@@ -508,8 +523,13 @@ function HeroFrame({ profile, actions, block, variant }) {
           ) : null}
         </div>
       ) : null}
-      {variant !== 'classic' ? (
+      {variant !== 'classic' && variant !== 'firstHome' ? (
         <p className="mt-4 text-xs font-medium" style={{ color: mutedTextColor }}>{copy.proof}</p>
+      ) : null}
+      {variant === 'firstHome' ? (
+        <p className="mt-7 max-w-md text-[12px] font-medium leading-5 tracking-[0.02em] text-white/70">
+          {copy.proof}
+        </p>
       ) : null}
       {!['firstHome', 'seller', 'community'].includes(variant) && companyName ? (
         <span data-storefront-field="content.hero_company_badge" data-storefront-source="profile" data-storefront-label="Company name" className={`${variant === 'classic' ? 'mt-4 text-[10px]' : 'mt-5 text-xs'} inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 font-semibold`} style={{ color: mutedTextColor }}>
@@ -542,11 +562,19 @@ function HeroFrame({ profile, actions, block, variant }) {
   const photo = (heightClass = 'min-h-[17rem]', extraImgClass = '') => (
     <div className={`relative h-full w-full overflow-hidden ${heightClass}`}>
       {cover ? (
-        <Image src={cover} alt={`${values.name} cover`} fill priority sizes="(min-width: 1024px) 50vw, 100vw" className={`object-cover ${extraImgClass}`} style={coverStyle} />
+        <Image
+          src={cover}
+          alt={`${values.name} cover`}
+          fill
+          priority
+          sizes={variant === 'firstHome' ? '100vw' : '(min-width: 1024px) 50vw, 100vw'}
+          className={`object-cover ${extraImgClass}`}
+          style={coverStyle}
+        />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+      <div className={`absolute inset-0 ${variant === 'firstHome' ? 'bg-gradient-to-t from-black/45 via-transparent to-black/20' : 'bg-gradient-to-t from-black/35 via-transparent to-transparent'}`} />
       {portrait && !['classic', 'luxury', 'firstHome', 'seller', 'community'].includes(variant) ? (
         <div className="absolute bottom-5 left-5 h-20 w-20 overflow-hidden rounded-full border-4 border-white/80 shadow-xl sm:h-24 sm:w-24">
           <Image src={portrait} alt={values.name} fill sizes="96px" className="object-cover" style={portraitStyle} />
@@ -690,16 +718,27 @@ function HeroFrame({ profile, actions, block, variant }) {
     </div>
   );
 
-  // FIRST HOME — GreenVilla-inspired full-image property stage.
+  // FIRST HOME — centered full-bleed stage with polished copy plate.
   const firstHomeLayout = (
-    <div className="storefront-first-home-hero grid min-h-[34rem] sm:min-h-[39rem] lg:min-h-[calc(100vh-4rem)]">
+    <div className="storefront-first-home-hero grid min-h-[38rem] sm:min-h-[44rem] lg:min-h-[calc(100vh-4rem)]">
       <div className="col-start-1 row-start-1">
-        {photo('min-h-[34rem] sm:min-h-[39rem] lg:min-h-[calc(100vh-4rem)]', 'storefront-first-home-cover')}
+        {photo('min-h-[38rem] sm:min-h-[44rem] lg:min-h-[calc(100vh-4rem)]', 'storefront-first-home-cover')}
       </div>
-      <div className="pointer-events-none col-start-1 row-start-1 bg-black/28" aria-hidden="true" />
-      <div className="pointer-events-none col-start-1 row-start-1 shadow-[inset_0_-180px_220px_rgba(0,0,0,.46),inset_0_0_130px_rgba(0,0,0,.24)]" aria-hidden="true" />
-      <div className="col-start-1 row-start-1 flex items-end bg-[linear-gradient(90deg,rgba(4,25,13,.9)_0%,rgba(4,25,13,.64)_45%,rgba(4,25,13,.26)_100%)]">
-        {textBlock}
+      <div
+        className="pointer-events-none col-start-1 row-start-1"
+        aria-hidden="true"
+        style={{
+          background: `
+            radial-gradient(ellipse 70% 62% at 50% 48%, rgba(4,25,13,.22) 0%, rgba(4,25,13,.52) 52%, rgba(4,25,13,.78) 100%),
+            linear-gradient(180deg, rgba(4,25,13,.5) 0%, rgba(4,25,13,.18) 36%, rgba(4,25,13,.48) 68%, rgba(4,25,13,.84) 100%)
+          `,
+        }}
+      />
+      <div className="pointer-events-none col-start-1 row-start-1 shadow-[inset_0_0_180px_rgba(0,0,0,.32)]" aria-hidden="true" />
+      <div className="col-start-1 row-start-1 flex items-center justify-center px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="storefront-first-home-hero-plate w-full max-w-[54rem]">
+          {textBlock}
+        </div>
       </div>
     </div>
   );

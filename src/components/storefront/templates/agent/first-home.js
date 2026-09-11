@@ -8,11 +8,12 @@ const agentFirstHome = {
   tagline: 'Fresh guidance for finding a place to call your own',
   description: 'A bright, property-first experience with practical education, curated homes, and clear next steps.',
   features: ['Buyer education', 'Property search', 'Step-by-step guide', 'Friendly CTA'],
-  brand: brand('#0b3d20', '#5bd36d', 'DM Sans', 'square', 'editorial', '#ffffff'),
+  brand: brand('#0b3d20', '#3aa66a', 'DM Sans', 'square', 'editorial', '#ffffff'),
   blocks: (ctx) => [
     block(T.HERO, {
       heading: ctx.headline || 'Find the perfect place to live your next chapter',
       body: ctx.tagline || `${ctx.name} helps first-time buyers compare neighborhoods, budgets, and offers with confidence.`,
+      primary_cta_label: 'Submit inquiry',
       cta_label: 'View properties',
       eyebrow: 'First-time buyer guidance',
     }),

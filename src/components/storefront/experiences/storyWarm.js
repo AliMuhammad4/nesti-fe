@@ -84,18 +84,89 @@ export const storyWarmExperience = {
     }
 
     [data-template-key='agent-first-home'] [data-storefront-block='hero']:hover .storefront-first-home-cover {
-      filter: saturate(.98) contrast(1.04) brightness(.82);
+      filter: saturate(.94) contrast(1.05) brightness(.82);
       transform: scale(1.015);
     }
 
-    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy > div:first-child,
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-eyebrow,
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-eyebrow *,
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy > [data-storefront-field='content.eyebrow'],
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy > [data-storefront-field='content.eyebrow'] * {
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+      fill: currentColor !important;
+      stroke: currentColor !important;
+    }
+
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy {
+      text-align: center !important;
+      align-items: center !important;
+      margin-inline: auto !important;
+      position: relative;
+      z-index: 1;
+    }
+
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy h1,
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-copy [data-storefront-field='content.heading'] {
+      max-width: none !important;
+      white-space: nowrap !important;
+      text-wrap: nowrap !important;
+    }
+
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-plate {
+      position: relative;
+      isolation: isolate;
+      width: 100%;
+      max-width: 58rem;
+      margin-inline: auto;
+      padding: 1.25rem 0.5rem 1.5rem;
+      animation: storefront-first-home-hero-rise 720ms cubic-bezier(.2,.7,.2,1) both;
+    }
+
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-plate::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      width: min(100%, 46rem);
+      height: min(100%, 28rem);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      border-radius: 999px;
+      background: radial-gradient(ellipse at center, rgba(4, 25, 13, 0.42) 0%, rgba(4, 25, 13, 0.18) 48%, transparent 72%);
+      filter: blur(2px);
+      z-index: 0;
+    }
+
+    @keyframes storefront-first-home-hero-rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    [data-template-key='agent-first-home'] .storefront-first-home-hero-eyebrow {
+      background: rgba(255, 255, 255, 0.14) !important;
+      border: 1px solid rgba(255, 255, 255, 0.4) !important;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2) !important;
+      backdrop-filter: blur(14px) saturate(1.15);
+      padding: 0.45rem 1rem !important;
+      border-radius: 999px !important;
+      letter-spacing: 0.2em !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+    }
+
+    [data-template-key='agent-first-home'] [data-storefront-block='hero'] button {
+      border-radius: 999px !important;
+      transition: transform .28s ease, box-shadow .28s ease, background-color .28s ease, border-color .28s ease !important;
+    }
+
     [data-template-key='agent-first-home'] [data-storefront-block]:not([data-storefront-block='hero']) p[class*='uppercase'] {
       color: var(--storefront-accent) !important;
     }
 
     [data-template-key='agent-first-home'] [data-storefront-block] section,
     [data-template-key='agent-first-home'] [data-storefront-block] article,
-    [data-template-key='agent-first-home'] [data-storefront-block] button {
+    [data-template-key='agent-first-home'] [data-storefront-block]:not([data-storefront-block='hero']) button {
       border-radius: 4px;
     }
 
@@ -191,7 +262,7 @@ export const storyWarmExperience = {
     }
 
     [data-template-key='agent-first-home'] [data-storefront-block='cta'] .storefront-first-home-cta-button {
-      background: var(--storefront-accent) !important;
+      background: #0b3d20 !important;
       color: #ffffff !important;
       padding-inline: 1.75rem;
       font-size: .72rem;
@@ -228,8 +299,13 @@ export const storyWarmExperience = {
         grid-template-columns: 1fr;
       }
 
+      [data-template-key='agent-first-home'] .storefront-first-home-hero-plate {
+        padding-block: 0.5rem;
+      }
+
       [data-template-key='agent-first-home'] .storefront-first-home-hero-copy {
-        padding-bottom: 2.25rem;
+        padding-block: 2.25rem !important;
+        padding-inline: 1.1rem !important;
       }
     }
 
