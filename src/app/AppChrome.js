@@ -14,6 +14,7 @@ import TrialCountdownBadge from "@/components/ui/TrialCountdownBadge";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 import AppSidebar from "@/components/layout/AppSidebar";
 import ClientSidebar from "@/components/layout/ClientSidebar";
+import AdminSidebar from "@/components/layout/AdminSidebar";
 import NotificationsBell from "@/components/notifications/NotificationsBell";
 import ConversationsBell from "@/components/prochat/ConversationsBell";
 import {
@@ -30,6 +31,8 @@ import {
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logoutAndClearAll } from "@/store/actions";
+import { clearProfile } from "@/store/profileSlice";
+import { updateProfile } from "@/store/authSlice";
 import {
   CALENDLY_INTEGRATION_TOAST_ID,
   CALENDLY_OAUTH_BROADCAST_CHANNEL,
@@ -38,16 +41,22 @@ import {
 } from "@/lib/calendlyOAuthPopup";
 import { useProfileSetupRedirect } from "@/hooks/useProfileSetupRedirect";
 import { useTrialExpiryRedirect } from "@/hooks/useTrialExpiryRedirect";
+import { useCredentialRedirect } from "@/hooks/useCredentialRedirect";
 import { useProfileQuery } from "@/hooks/useAuthApi";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { FEATURES } from "@/constants/features";
-import { updateProfile } from "@/store/authSlice";
 import {
   isRouteAllowedDuringSetup,
   isProfileSetupLocked,
   notifyProfileSetupLocked,
   isPrivateWorkspaceRoute,
 } from "@/lib/profileSetupGate";
+import {
+  isCredentialLocked,
+  isRouteAllowedDuringCredentialLock,
+  notifyCredentialLocked,
+  getCredentialLockReason,
+} from "@/lib/credentialGate";
 import TrialExpiredPaywallModal from "@/components/billing/TrialExpiredPaywallModal";
 import {
   isAllowedAfterTrial,
@@ -96,7 +105,8 @@ export default function AppChrome({ children }) {
       token && 
       showPublicProfile && 
       !isProfessionalPublicPage &&
-      user?.role !== 'client' // Skip for clients
+      user?.role !== 'client' &&
+      user?.role !== 'admin'
     ),
     staleTime: 60_000,
   });
@@ -104,6 +114,14 @@ export default function AppChrome({ children }) {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Admin sessions should never keep a prior professional profile identity in the header.
+  useEffect(() => {
+    if (!isMounted) return;
+    if (String(user?.role || "").toLowerCase() !== "admin") return;
+    if (!personalInfo && !businessInfo) return;
+    dispatch(clearProfile());
+  }, [isMounted, user?.role, personalInfo, businessInfo, dispatch]);
 
   useEffect(() => {
     if (!isMounted || typeof window === "undefined") return undefined;
@@ -210,6 +228,7 @@ export default function AppChrome({ children }) {
   }, [token]);
 
   useProfileSetupRedirect(isMounted);
+  useCredentialRedirect();
   useTrialExpiryRedirect(isMounted);
 
   useEffect(() => {
@@ -284,18 +303,61 @@ export default function AppChrome({ children }) {
       });
   }, [token, isMounted, pathname, queryClient, router]);
 
+  // Admin sessions must stay in the admin console — never professional workspace/checkout.
+  useEffect(() => {
+    if (!isMounted || !token) return;
+    if (String(user?.role || "").toLowerCase() !== "admin") return;
+    const path = pathname || "";
+    if (path === "/admin" || path.startsWith("/admin/")) return;
+    if (isPublicMarketingRoute(path)) return;
+    if (
+      path === "/log-in"
+      || path === "/sign-up"
+      || path.startsWith("/forgot-password")
+      || path.startsWith("/verify-")
+      || path.startsWith("/reset-password")
+      || path.startsWith("/invite/")
+      || path.startsWith("/p/")
+      || path.startsWith("/professional/")
+      || path.startsWith("/chatbot")
+    ) {
+      return;
+    }
+    if (
+      isPrivateWorkspaceRoute(path)
+      || path.startsWith("/checkout")
+      || path.startsWith("/billing")
+      || path === "/profile"
+      || path.startsWith("/settings")
+      || path.startsWith("/client-dashboard")
+      || path.startsWith("/notifications")
+    ) {
+      router.replace("/admin");
+    }
+  }, [isMounted, token, user?.role, pathname, router]);
+
   const { data: profileData, isSuccess: isProfileSuccess } = useProfileQuery();
   const isProfileLocked = useMemo(
     () => isProfileSetupLocked(user, profileData, isProfileSuccess),
     [user, profileData, isProfileSuccess]
   );
+  const isCredentialGateLocked = useMemo(
+    () => isCredentialLocked(user, profileData, isProfileSuccess),
+    [user, profileData, isProfileSuccess]
+  );
   const isLockedRoute = Boolean(
     isProfileLocked && isPrivateWorkspaceRoute(pathname) && !isRouteAllowedDuringSetup(pathname)
   );
-  const isTrialLocked = useMemo(
-    () => isTrialExpiredOrLocked(user, profileData),
-    [user, profileData]
+  const isCredentialRestrictedRoute = Boolean(
+    isCredentialGateLocked
+    && isPrivateWorkspaceRoute(pathname)
+    && !isRouteAllowedDuringCredentialLock(pathname)
   );
+  const isTrialLocked = useMemo(() => {
+    if (String(user?.role || "").toLowerCase() === "admin") return false;
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) return false;
+    return !isCredentialGateLocked && isTrialExpiredOrLocked(user, profileData);
+  }, [user, profileData, isCredentialGateLocked, pathname]);
   const isTrialRestrictedRoute = Boolean(
     isTrialLocked && !isAllowedAfterTrial(pathname)
   );
@@ -337,7 +399,7 @@ export default function AppChrome({ children }) {
 
   useEffect(() => {
     if (!isMounted || !token || isPublicAuthPage) return;
-    if (isProfileLocked || isTrialLocked) return; // Do not prefetch restricted routes while profile setup is incomplete or trial expired
+    if (isProfileLocked || isCredentialGateLocked || isTrialLocked) return; // Do not prefetch restricted routes while profile setup is incomplete or trial expired
     const isProd = process.env.NODE_ENV === "production";
     const hrefs = isProd
       ? [
@@ -393,6 +455,17 @@ export default function AppChrome({ children }) {
 
   const displayName = useMemo(() => {
     if (!isMounted) return "";
+    const u = user || {};
+    // Admin console must show the authenticated admin account, not leftover
+    // professional personal/business profile state from a prior session.
+    if (String(u.role || "").toLowerCase() === "admin") {
+      return (
+        [u.first_name, u.last_name].filter(Boolean).join(" ").trim()
+        || u.name
+        || u.email
+        || "Administrator"
+      );
+    }
     const fromBusiness = businessInfo?.fullName?.trim();
     if (fromBusiness) return fromBusiness;
     const fromPersonal = [personalInfo?.firstName, personalInfo?.lastName]
@@ -400,7 +473,6 @@ export default function AppChrome({ children }) {
       .join(" ")
       .trim();
     if (fromPersonal) return fromPersonal;
-    const u = user || {};
     const fromUser = [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.name;
     if (fromUser) return fromUser;
     return u.email || "Profile";
@@ -408,6 +480,9 @@ export default function AppChrome({ children }) {
 
   const avatarUrl = useMemo(() => {
     if (!isMounted) return "";
+    if (String(user?.role || "").toLowerCase() === "admin") {
+      return user?.profile_image || user?.img_url || "";
+    }
     const p = personalInfo?.profileImage;
     if (typeof p === "string" && p.trim()) return p.trim();
     return user?.profile_image || user?.img_url || "";
@@ -544,11 +619,17 @@ export default function AppChrome({ children }) {
   // ── Mounted: pick layout based on auth state ──
   if (token && !isPublicAuthPage) {
     const isClient = user?.role === 'client';
-    const SidebarComponent = isClient ? ClientSidebar : AppSidebar;
+    const isAdmin = String(user?.role || "").toLowerCase() === 'admin';
+    const isAdminConsole = isAdmin;
+    const SidebarComponent = isAdmin
+      ? AdminSidebar
+      : isClient
+        ? ClientSidebar
+        : AppSidebar;
     
     return (
       <>
-        <BackgroundElements variant="default" />
+        <BackgroundElements variant={isAdminConsole ? "minimal" : "default"} />
         <div
           className={`relative z-10 flex w-full flex-1 ${
             isFullHeightWorkspaceRoute ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
@@ -560,37 +641,59 @@ export default function AppChrome({ children }) {
           />
           <div
             id="workspace-content"
-            className={`flex w-full flex-1 flex-col lg:pl-60 ${
+            className={`flex w-full flex-1 flex-col ${
+              isAdminConsole ? "lg:pl-[15.5rem]" : "lg:pl-60"
+            } ${
               isFullHeightWorkspaceRoute
                 ? "bg-transparent"
-                : "bg-gradient-to-br from-primary/5 via-white to-primary/10"
+                : isAdminConsole
+                  ? "bg-[#f4f6f8]"
+                  : "bg-gradient-to-br from-primary/5 via-white to-primary/10"
             } ${
               isFullHeightWorkspaceRoute ? "h-full min-h-0 overflow-hidden" : "min-h-screen"
             }`}
           >
-            <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-white/95 px-3 sm:h-16 sm:bg-white/90 sm:px-6 sm:backdrop-blur">
+            <header className={`sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b px-3 sm:h-16 sm:px-6 ${
+              isAdminConsole
+                ? "border-slate-200/80 bg-white/95 backdrop-blur"
+                : "border-border bg-white/95 sm:bg-white/90 sm:backdrop-blur"
+            }`}>
               <div className="flex min-w-0 max-w-[48%] items-center gap-2.5 sm:max-w-none sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setIsSidebarMobileOpen(true)}
-                  className="lg:hidden h-9 w-9 rounded-md border border-border text-text-heading grid place-items-center hover:bg-primary/5 transition"
+                  className={`lg:hidden h-9 w-9 rounded-md border text-text-heading grid place-items-center transition ${
+                    isAdminConsole
+                      ? "border-slate-200 hover:bg-slate-50"
+                      : "border-border hover:bg-primary/5"
+                  }`}
                   aria-label="Open sidebar"
                 >
                   <Menu size={16} />
                 </button>
                 <div className="hidden min-w-0 sm:block">
-                  <div className="truncate text-xs font-semibold text-text-heading sm:text-sm">
-                    {isClient ? "Client Portal" : "Workspace"}
+                  <div className="truncate text-xs font-semibold text-slate-900 sm:text-sm">
+                    {isAdminConsole ? "Admin Console" : isClient ? "Client Portal" : "Workspace"}
                   </div>
-                  <div className="hidden text-[11px] text-text-muted sm:block">
-                    {isClient ? "Your homeownership journey" : "All tools in one place"}
+                  <div className="hidden text-[11px] text-slate-500 sm:block">
+                    {isAdminConsole
+                      ? "Platform operations & monitoring"
+                      : isClient
+                        ? "Your homeownership journey"
+                        : "All tools in one place"}
                   </div>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <TrialCountdownBadge compact />
-                <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />
-                <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />
+                {!isAdmin ? <TrialCountdownBadge compact /> : null}
+                {isAdminConsole ? (
+                  <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />
+                ) : (
+                  <>
+                    <ConversationsBell enabled={workspaceHeaderQueriesEnabled} />
+                    <NotificationsBell enabled={workspaceHeaderQueriesEnabled} />
+                  </>
+                )}
                 <div className="relative" ref={userMenuRef}>
                   <button
                     type="button"
@@ -599,7 +702,11 @@ export default function AppChrome({ children }) {
                     aria-expanded={userMenuOpen}
                     aria-haspopup="menu"
                     aria-controls="workspace-user-menu"
-                    className="group flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-lg border border-border bg-white/90 px-1.5 py-1.5 transition hover:border-primary/35 hover:bg-primary/[0.06] sm:max-w-[18rem] sm:gap-2 sm:px-2.5"
+                    className={`group flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-lg border bg-white/90 px-1.5 py-1.5 transition sm:max-w-[18rem] sm:gap-2 sm:px-2.5 ${
+                      isAdminConsole
+                        ? "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                        : "border-border hover:border-primary/35 hover:bg-primary/[0.06]"
+                    }`}
                   >
                     <span className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-primary/10 text-[11px] font-bold text-primary">
                       {avatarUrl ? (
@@ -625,138 +732,167 @@ export default function AppChrome({ children }) {
                       aria-labelledby="workspace-user-menu-button"
                       className="absolute right-0 top-full z-[100] mt-1.5 min-w-[13rem] overflow-hidden rounded-xl border border-border bg-white py-1 shadow-lg shadow-slate-900/10"
                     >
-                      <Link
-                        href="/"
-                        role="menuitem"
-                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Globe2 size={16} className="text-text-muted" />
-                        Public Website
-                      </Link>
-                      {isProfileLocked ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            notifyProfileSetupLocked("Dashboard");
-                          }}
-                          title="Complete setup to unlock"
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <LayoutDashboard size={16} className="text-text-muted/50" />
-                            {isClient ? "Client Portal" : "Dashboard"}
-                          </span>
-                          <Lock size={13} className="text-text-muted/60" />
-                        </button>
-                      ) : (
-                        <Link
-                          href={isClient ? "/client-dashboard" : "/dashboard"}
-                          role="menuitem"
-                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                          onClick={() => setUserMenuOpen(false)}
-                        >
-                          <LayoutDashboard size={16} className="text-text-muted" />
-                          {isClient ? "Client Portal" : "Dashboard"}
-                        </Link>
-                      )}
-                      {!isClient && (
-                        <Link
-                          href="/profile"
-                          role="menuitem"
-                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                          onClick={() => setUserMenuOpen(false)}
-                        >
-                          <User size={16} className="text-text-muted" />
-                          Profile
-                        </Link>
-                      )}
-                      <Link
-                        href="/settings"
-                        role="menuitem"
-                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Settings size={16} className="text-text-muted" />
-                        Settings
-                      </Link>
-                      {showPublicProfile && !isClient ? (
-                        isProfileLocked ? (
+                      {isAdminConsole ? (
+                        <>
+                          <Link
+                            href="/admin"
+                            role="menuitem"
+                            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-slate-50"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            <LayoutDashboard size={16} className="text-text-muted" />
+                            Admin overview
+                          </Link>
+                          <div className="my-1 h-px bg-border" role="separator" />
                           <button
                             type="button"
                             role="menuitem"
-                            className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                            className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-700 transition hover:bg-red-50"
                             onClick={() => {
                               setUserMenuOpen(false);
-                              notifyProfileSetupLocked("Web Page");
+                              handleLogout();
                             }}
-                            title="Complete setup to unlock"
                           >
-                            <span className="flex items-center gap-2.5">
-                              <Globe2 size={16} className="text-text-muted/50" />
-                              Web Page
-                            </span>
-                            <Lock size={13} className="text-text-muted/60" />
+                            <LogOut size={16} />
+                            Log out
                           </button>
-                        ) : (
+                        </>
+                      ) : (
+                        <>
                           <Link
-                            href={publicProfileHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href="/"
                             role="menuitem"
                             className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
                             onClick={() => setUserMenuOpen(false)}
                           >
                             <Globe2 size={16} className="text-text-muted" />
-                            Web Page
+                            Public Website
                           </Link>
-                        )
-                      ) : null}
-                      {showCalendar && !isClient ? (
-                        isProfileLocked ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
-                            onClick={() => {
-                              setUserMenuOpen(false);
-                              notifyProfileSetupLocked("Calendar");
-                            }}
-                            title="Complete setup to unlock"
-                          >
-                            <span className="flex items-center gap-2.5">
-                              <CalendarDays size={16} className="text-text-muted/50" />
-                              Calendar
-                            </span>
-                            <Lock size={13} className="text-text-muted/60" />
-                          </button>
-                        ) : (
+                          {isProfileLocked ? (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                              onClick={() => {
+                                setUserMenuOpen(false);
+                                notifyProfileSetupLocked("Dashboard");
+                              }}
+                              title="Complete setup to unlock"
+                            >
+                              <span className="flex items-center gap-2.5">
+                                <LayoutDashboard size={16} className="text-text-muted/50" />
+                                {isClient ? "Client Portal" : "Dashboard"}
+                              </span>
+                              <Lock size={13} className="text-text-muted/60" />
+                            </button>
+                          ) : (
+                            <Link
+                              href={isClient ? "/client-dashboard" : isAdmin ? "/admin" : "/dashboard"}
+                              role="menuitem"
+                              className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              <LayoutDashboard size={16} className="text-text-muted" />
+                              {isClient ? "Client Portal" : isAdmin ? "Admin Console" : "Dashboard"}
+                            </Link>
+                          )}
+                          {!isClient && (
+                            <Link
+                              href="/profile"
+                              role="menuitem"
+                              className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                              onClick={() => setUserMenuOpen(false)}
+                            >
+                              <User size={16} className="text-text-muted" />
+                              Profile
+                            </Link>
+                          )}
                           <Link
-                            href="/calendar"
+                            href="/settings"
                             role="menuitem"
                             className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
                             onClick={() => setUserMenuOpen(false)}
                           >
-                            <CalendarDays size={16} className="text-text-muted" />
-                            Calendar
+                            <Settings size={16} className="text-text-muted" />
+                            Settings
                           </Link>
-                        )
-                      ) : null}
-                      <div className="my-1 h-px bg-border" role="separator" />
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-700 transition hover:bg-red-50"
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          handleLogout();
-                        }}
-                      >
-                        <LogOut size={16} />
-                        Log out
-                      </button>
+                          {showPublicProfile && !isClient ? (
+                            isProfileLocked ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                                onClick={() => {
+                                  setUserMenuOpen(false);
+                                  notifyProfileSetupLocked("Web Page");
+                                }}
+                                title="Complete setup to unlock"
+                              >
+                                <span className="flex items-center gap-2.5">
+                                  <Globe2 size={16} className="text-text-muted/50" />
+                                  Web Page
+                                </span>
+                                <Lock size={13} className="text-text-muted/60" />
+                              </button>
+                            ) : (
+                              <Link
+                                href={publicProfileHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                role="menuitem"
+                                className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                                onClick={() => setUserMenuOpen(false)}
+                              >
+                                <Globe2 size={16} className="text-text-muted" />
+                                Web Page
+                              </Link>
+                            )
+                          ) : null}
+                          {showCalendar && !isClient ? (
+                            isProfileLocked ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-text-muted/65 opacity-70 cursor-not-allowed hover:bg-slate-50"
+                                onClick={() => {
+                                  setUserMenuOpen(false);
+                                  notifyProfileSetupLocked("Calendar");
+                                }}
+                                title="Complete setup to unlock"
+                              >
+                                <span className="flex items-center gap-2.5">
+                                  <CalendarDays size={16} className="text-text-muted/50" />
+                                  Calendar
+                                </span>
+                                <Lock size={13} className="text-text-muted/60" />
+                              </button>
+                            ) : (
+                              <Link
+                                href="/calendar"
+                                role="menuitem"
+                                className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-heading transition hover:bg-primary/[0.06]"
+                                onClick={() => setUserMenuOpen(false)}
+                              >
+                                <CalendarDays size={16} className="text-text-muted" />
+                                Calendar
+                              </Link>
+                            )
+                          ) : null}
+                          <div className="my-1 h-px bg-border" role="separator" />
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-700 transition hover:bg-red-50"
+                            onClick={() => {
+                              setUserMenuOpen(false);
+                              handleLogout();
+                            }}
+                          >
+                            <LogOut size={16} />
+                            Log out
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -789,6 +925,26 @@ export default function AppChrome({ children }) {
                         className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-3 text-sm font-bold text-white shadow-md shadow-primary/20 hover:from-primary-dark hover:to-primary transition"
                       >
                         View Subscription Plans
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : isCredentialRestrictedRoute ? (
+                <div className="flex min-h-[65vh] flex-1 items-center justify-center p-6 sm:p-10">
+                  <div className="mx-auto max-w-md w-full space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xl">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-900/5 text-slate-800 ring-1 ring-slate-200">
+                      <Lock size={26} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-text-heading">Verification required</h2>
+                    <p className="text-sm leading-relaxed text-text-body">
+                      {getCredentialLockReason(profileData)}
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        href="/settings?tab=verification"
+                        className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800"
+                      >
+                        Go to Verification
                       </Link>
                     </div>
                   </div>

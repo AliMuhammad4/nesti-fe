@@ -28,6 +28,7 @@ import {
   MessageSquare,
   PhoneCall,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -43,11 +44,18 @@ import {
   notifyProfileSetupLocked,
 } from "@/lib/profileSetupGate";
 import {
+  isCredentialLocked,
+  isRouteAllowedDuringCredentialLock,
+  isSettingsTabAllowedDuringCredentialLock,
+  notifyCredentialLocked,
+} from "@/lib/credentialGate";
+import {
   isAllowedAfterTrial,
   isTrialExpiredOrLocked,
   openTrialExpiredModal,
   notifyTrialExpired,
 } from "@/lib/trialSubscriptionGate";
+import { isProfessionalRole } from "@/constants/auth";
 
 const REFERRAL_DIRECTION_ITEMS = [
   { id: "referral-inbound", label: "Inbound", href: "/referrals?direction=inbound", icon: Inbox },
@@ -71,6 +79,7 @@ const PRIMARY_ITEMS = [
 const SETTINGS_ITEMS = [
   { id: "personal", label: "Personal Information", tab: "personal", icon: User },
   { id: "business", label: "Business Information", tab: "business", icon: Building2 },
+  { id: "verification", label: "Verification", tab: "verification", icon: ShieldCheck },
   { id: "icp", label: "Ideal Client Profile", tab: "icp", icon: Target },
   { id: "subscription", label: "Subscription", tab: "subscription", icon: CreditCard },
   { id: "chatbot", label: "Chatbot", tab: "chatbot", icon: Code2 },
@@ -150,7 +159,11 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
   const { user } = useAppSelector((state) => state.auth);
   const { filterNavItems, hasFeature } = useFeatureAccess();
   const visiblePrimaryItems = useMemo(() => filterNavItems(PRIMARY_ITEMS), [filterNavItems]);
-  const visibleSettingsItems = useMemo(() => filterNavItems(SETTINGS_ITEMS), [filterNavItems]);
+  const visibleSettingsItems = useMemo(() => {
+    const items = filterNavItems(SETTINGS_ITEMS);
+    if (isProfessionalRole(String(user?.role || "").toLowerCase())) return items;
+    return items.filter((item) => item.id !== "verification");
+  }, [filterNavItems, user?.role]);
   const showCalendarNav = hasFeature(FEATURES.CALENDAR_INTEGRATION);
   const shouldPrefetch = process.env.NODE_ENV === "production";
   const personalInfo = useAppSelector((state) => state.profile.personalInfo);
@@ -178,17 +191,23 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
     () => isProfileSetupLocked(user, profileData, isProfileSuccess),
     [user, profileData, isProfileSuccess]
   );
-  const isTrialLocked = useMemo(
-    () => isTrialExpiredOrLocked(user, profileData),
-    [user, profileData]
+  const isCredentialGateLocked = useMemo(
+    () => isCredentialLocked(user, profileData, isProfileSuccess),
+    [user, profileData, isProfileSuccess]
   );
-  const isAnyLocked = isProfileLocked || isTrialLocked;
+  const isTrialLocked = useMemo(
+    () => !isCredentialGateLocked && isTrialExpiredOrLocked(user, profileData),
+    [user, profileData, isCredentialGateLocked]
+  );
+  const isAnyLocked = isProfileLocked || isCredentialGateLocked || isTrialLocked;
 
   const handleLockedItemClick = (e, label) => {
     e.preventDefault();
     e.stopPropagation();
     if (isProfileLocked) {
       notifyProfileSetupLocked(label);
+    } else if (isCredentialGateLocked) {
+      notifyCredentialLocked(label);
     } else if (isTrialLocked) {
       openTrialExpiredModal(label);
       notifyTrialExpired(label);
@@ -199,7 +218,7 @@ export default function AppSidebar({ isMobileOpen, onCloseMobile }) {
     // In dev, aggressive prefetch can trigger on-demand route compilation storms
     // and make navigation feel slower. Keep eager prefetch for production only.
     if (process.env.NODE_ENV !== "production") return;
-    if (isProfileLocked || isTrialLocked) return;
+    if (isProfileLocked || isCredentialGateLocked || isTrialLocked) return;
     const hrefs = [
       "/dashboard",
       "/leads",
@@ -385,6 +404,7 @@ setReferralsOpen(false);
             const leadsHere = leadsNavInWorkspace(item);
             const isItemLocked =
               (isProfileLocked && !isRouteAllowedDuringSetup(item.href)) ||
+              (isCredentialGateLocked && !isRouteAllowedDuringCredentialLock(item.href)) ||
               (isTrialLocked && !isAllowedAfterTrial(item.href));
 
             return (
@@ -712,6 +732,11 @@ setReferralsOpen(false);
                         : pathname === "/settings" && settingsTab === item.tab;
                       const isSettingLocked =
                         (isProfileLocked && !isRouteAllowedDuringSetup(href)) ||
+                        (isCredentialGateLocked
+                          && (
+                            !isRouteAllowedDuringCredentialLock(href)
+                            || (item.tab && !isSettingsTabAllowedDuringCredentialLock(item.tab))
+                          )) ||
                         (isTrialLocked && !isAllowedAfterTrial(href));
 
                       if (isSettingLocked) {
@@ -721,7 +746,15 @@ setReferralsOpen(false);
                             type="button"
                             onClick={(e) => handleLockedItemClick(e, item.label)}
                             className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-medium leading-snug text-text-muted/65 opacity-65 cursor-not-allowed transition hover:bg-slate-50/70"
-                            title={isProfileLocked ? "Complete setup to unlock" : isTrialLocked ? "Trial expired — Upgrade to unlock" : undefined}
+                            title={
+                              isProfileLocked
+                                ? "Complete setup to unlock"
+                                : isCredentialGateLocked
+                                  ? "Complete credential verification to unlock"
+                                  : isTrialLocked
+                                    ? "Trial expired — Upgrade to unlock"
+                                    : undefined
+                            }
                             aria-disabled="true"
                           >
                             <span className="flex min-w-0 items-center gap-2">

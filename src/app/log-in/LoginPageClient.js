@@ -27,8 +27,7 @@ import {
   getOrCreateInviteVisitorId,
   saveInviteAttribution,
 } from "@/lib/inviteAttributionStorage";
-import { getDashboardRoute, getPostLoginRoute } from "@/lib/roleUtils";
-import { isTrialExpiredOrLocked } from "@/lib/trialSubscriptionGate";
+import { getPostLoginRoute } from "@/lib/roleUtils";
 
 export default function LoginPageClient() {
   const router = useRouter();
@@ -119,7 +118,7 @@ export default function LoginPageClient() {
         {
           onSuccess: (data) => {
             const userRole = data?.user?.role || data?.role;
-            const dashboardRoute = getDashboardRoute(userRole);
+            const dashboardRoute = getPostLoginRoute(data?.user || { role: userRole });
             setRedirectOverlay({
               isVisible: true,
               title: "Welcome Back!",
@@ -182,7 +181,7 @@ export default function LoginPageClient() {
         invite_token: inviteToken || undefined,
       });
       const userRole = data?.user?.role || data?.role;
-      const dashboardRoute = getDashboardRoute(userRole);
+      const dashboardRoute = getPostLoginRoute(data?.user || { role: userRole });
       setIsRedirecting(true);
       setRedirectOverlay({
         isVisible: true,

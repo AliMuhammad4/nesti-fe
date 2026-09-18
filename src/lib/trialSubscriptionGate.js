@@ -1,5 +1,6 @@
 import { toast } from "react-toastify";
 import { ACCOUNT_STATUS } from "@/constants/features";
+import { PROFESSIONAL_ROLE_VALUES } from "@/constants/auth";
 import { isPublicMarketingRoute } from "@/lib/publicRoutes";
 import { getActivePlanLimitStates } from "@/lib/planLimitUtils";
 
@@ -22,9 +23,32 @@ export function isAllowedAfterTrial(pathname) {
   if (isPublicMarketingRoute(pathname)) return true;
   if (pathname.startsWith("/invite/")) return true;
   if (pathname.startsWith("/p/") || pathname.startsWith("/professional/")) return true;
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   return ALLOWED_AFTER_TRIAL_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`) || pathname.startsWith(`${prefix}?`)
   );
+}
+
+/**
+ * Pros awaiting credential approval have no trial yet (backend returns accountStatus=expired).
+ * That must not be treated as a paid-plan / trial-expired lock.
+ */
+export function isAwaitingCredentialApproval(user, profileData = null) {
+  const effectiveUser = profileData?.user || user;
+  if (!effectiveUser) return false;
+  const role = String(effectiveUser.role || "").toLowerCase();
+  if (!PROFESSIONAL_ROLE_VALUES.includes(role)) return false;
+
+  const gate = profileData?.credential_gate;
+  if (gate && typeof gate.locked === "boolean") return Boolean(gate.locked);
+
+  const status = String(
+    effectiveUser.credential_status
+      || profileData?.professionalProfile?.credential_status
+      || ""
+  ).toLowerCase();
+  if (!status) return false;
+  return status !== "approved";
 }
 
 export function isTrialExpiredOrLocked(user, profileData = null) {
@@ -33,6 +57,11 @@ export function isTrialExpiredOrLocked(user, profileData = null) {
 
   const role = String(effectiveUser.role || "").toLowerCase();
   if (role === "admin") return false;
+
+  // Credential verification comes before trial billing for professionals.
+  if (isAwaitingCredentialApproval(effectiveUser, profileData)) {
+    return false;
+  }
 
   const accountStatus = String(
     effectiveUser.accountStatus || effectiveUser.account_status || ""

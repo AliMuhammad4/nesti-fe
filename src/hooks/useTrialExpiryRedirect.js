@@ -11,9 +11,11 @@ import { getActivePlanLimitStates } from "@/lib/planLimitUtils";
 import { getTrialRemainingMs } from "@/components/ui/TrialCountdownBadge";
 import {
   isAllowedAfterTrial,
+  isAwaitingCredentialApproval,
   isTrialExpiredOrLocked,
   getUpgradeBillingRoute,
 } from "@/lib/trialSubscriptionGate";
+import { isProfileSetupLocked } from "@/lib/profileSetupGate";
 
 function isAuthEntryPath(pathname) {
   return (
@@ -28,10 +30,12 @@ function isAuthEntryPath(pathname) {
 export function useTrialExpiryRedirect(isMounted) {
   const pathname = usePathname() || "";
   const router = useRouter();
-  const { token } = useAppSelector((state) => state.auth);
+  const { token, user: authUser } = useAppSelector((state) => state.auth);
   const [now, setNow] = useState(Date.now());
   const [quotaRedirectRequested, setQuotaRedirectRequested] = useState(false);
   const allowedPath = isAllowedAfterTrial(pathname);
+  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  const authRole = String(authUser?.role || "").toLowerCase();
 
   const {
     data: profileData,
@@ -56,33 +60,51 @@ export function useTrialExpiryRedirect(isMounted) {
   // Expired tokens previously fell through to checkout because Redux still had trial=expired.
   const sessionInvalid = profileIsError && Number(profileError?.status) === 401;
   const effectiveUser = profileIsSuccess ? profileData?.user : null;
+  const effectiveRole = String(effectiveUser?.role || authRole || "").toLowerCase();
+  // Admins never go through free-trial / subscription paywalls.
+  const isAdmin = effectiveRole === "admin" || authRole === "admin" || isAdminPath;
 
   const accountStatus = String(
     effectiveUser?.accountStatus || effectiveUser?.account_status || ""
   ).toLowerCase();
-  const isClient = String(effectiveUser?.role || "").toLowerCase() === "client";
+  const isClient = effectiveRole === "client";
   const trialEndsAt = effectiveUser?.trialEndsAt || effectiveUser?.trial_ends_at;
   const planLimits = effectiveUser?.planLimits || effectiveUser?.plan_limits || null;
   const usage = effectiveUser?.usage || null;
   const trialRemainingMs = useMemo(() => getTrialRemainingMs(trialEndsAt, now), [trialEndsAt, now]);
   const trialStillActive =
+    !isAdmin &&
     accountStatus === ACCOUNT_STATUS.FREE_TRIAL &&
     Boolean(trialEndsAt) &&
     trialRemainingMs > 0;
+
+  const setupIncomplete = !isAdmin && isProfileSetupLocked(effectiveUser, profileData, profileIsSuccess);
+  const credentialsPending = !isAdmin && isAwaitingCredentialApproval(effectiveUser, profileData);
+
+  // Profile setup + credential verification must finish before billing/trial paywall.
+  const deferTrialPaywall = isAdmin || setupIncomplete || credentialsPending;
+
   const trialHasEnded =
-    accountStatus === ACCOUNT_STATUS.EXPIRED ||
-    (accountStatus === ACCOUNT_STATUS.FREE_TRIAL && Boolean(trialEndsAt) && trialRemainingMs <= 0) ||
-    isTrialExpiredOrLocked(effectiveUser);
+    !isAdmin &&
+    !deferTrialPaywall &&
+    (
+      accountStatus === ACCOUNT_STATUS.EXPIRED ||
+      (accountStatus === ACCOUNT_STATUS.FREE_TRIAL && Boolean(trialEndsAt) && trialRemainingMs <= 0) ||
+      isTrialExpiredOrLocked(effectiveUser, profileData)
+    );
   const trialQuotaExhausted =
+    !isAdmin &&
+    !deferTrialPaywall &&
     accountStatus === ACCOUNT_STATUS.FREE_TRIAL &&
     !trialStillActive &&
     getActivePlanLimitStates(planLimits, usage).length > 0;
 
   useEffect(() => {
+    if (isAdmin) return;
     if (!isMounted || !token || !effectiveUser || accountStatus !== ACCOUNT_STATUS.FREE_TRIAL || !trialEndsAt) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [isMounted, token, effectiveUser, accountStatus, trialEndsAt]);
+  }, [isAdmin, isMounted, token, effectiveUser, accountStatus, trialEndsAt]);
 
   // Dead session → login (apiClient also emits nesti:auth-expired; this covers /checkout).
   useEffect(() => {
@@ -91,8 +113,33 @@ export function useTrialExpiryRedirect(isMounted) {
     router.replace("/log-in");
   }, [isMounted, sessionInvalid, pathname, router]);
 
+  // Stuck on checkout while still onboarding / awaiting credentials → send back to Settings.
   useEffect(() => {
+    if (isAdmin) return;
+    if (!isMounted || !token || sessionInvalid || !effectiveUser || !profileIsSuccess) return;
+    if (!pathname.startsWith("/checkout")) return;
+    if (!deferTrialPaywall) return;
+    const next = setupIncomplete
+      ? "/settings?tab=personal&setup=required"
+      : "/settings?tab=verification";
+    router.replace(next);
+  }, [
+    isAdmin,
+    isMounted,
+    token,
+    sessionInvalid,
+    effectiveUser,
+    profileIsSuccess,
+    pathname,
+    deferTrialPaywall,
+    setupIncomplete,
+    router,
+  ]);
+
+  useEffect(() => {
+    if (isAdmin) return;
     if (!isMounted || !token || sessionInvalid || !effectiveUser) return;
+    if (deferTrialPaywall) return;
     const shouldHonorQuotaRedirect = quotaRedirectRequested && !trialStillActive;
     if (!trialHasEnded && !trialQuotaExhausted && !shouldHonorQuotaRedirect) return;
     if (allowedPath) return;
@@ -115,9 +162,11 @@ export function useTrialExpiryRedirect(isMounted) {
 
     router.replace(upgradeRoute);
   }, [
+    isAdmin,
     isMounted,
     token,
     sessionInvalid,
+    deferTrialPaywall,
     trialHasEnded,
     trialQuotaExhausted,
     quotaRedirectRequested,
@@ -130,12 +179,13 @@ export function useTrialExpiryRedirect(isMounted) {
   ]);
 
   useEffect(() => {
+    if (isAdmin) return;
     if (!isMounted || !token || sessionInvalid) return;
     const onQuotaRequired = () => {
-      if (trialStillActive) return;
+      if (trialStillActive || deferTrialPaywall) return;
       setQuotaRedirectRequested(true);
     };
     window.addEventListener("nesti:subscription-quota-required", onQuotaRequired);
     return () => window.removeEventListener("nesti:subscription-quota-required", onQuotaRequired);
-  }, [isMounted, token, sessionInvalid, trialStillActive]);
+  }, [isAdmin, isMounted, token, sessionInvalid, trialStillActive, deferTrialPaywall]);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -14,8 +15,27 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react";
+import { useAppSelector } from "@/store";
+import { getPostLoginRoute } from "@/lib/roleUtils";
 
 export default function HeroSection() {
+  const { token, user } = useAppSelector((state) => state.auth);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Keep SSR + first client paint identical to avoid hydration mismatches.
+  const workspaceHref =
+    mounted && token && user ? getPostLoginRoute(user) : "/log-in";
+  const workspaceLabel =
+    !mounted || !token || !user
+      ? "See It In Action (1 Min)"
+      : String(user?.role || "").toLowerCase() === "admin"
+        ? "Open Admin Console"
+        : "Open Workspace";
+
   const stats = [
     {
       label: "Active Professionals",
@@ -103,10 +123,10 @@ export default function HeroSection() {
                 </Link>
 
                 <Link
-                  href="/log-in"
+                  href={workspaceHref}
                   className="group inline-flex min-h-[48px] flex-1 items-center justify-between gap-3 rounded-2xl border border-border/80 bg-white/90 px-5 py-3 text-sm font-semibold text-text-heading shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white"
                 >
-                  <span className="lg:whitespace-nowrap">See It In Action (1 Min)</span>
+                  <span className="lg:whitespace-nowrap">{workspaceLabel}</span>
                   <ChevronRight
                     size={17}
                     className="shrink-0 transition-transform duration-300 group-hover:translate-x-0.5"

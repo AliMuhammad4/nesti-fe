@@ -7,6 +7,7 @@ import { apiClient, API_ENDPOINTS } from "@/lib/api";
 import { clearInviteAttribution } from "@/lib/inviteAttributionStorage";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { loginSuccess, updateProfile } from "@/store/authSlice";
+import { clearProfile } from "@/store/profileSlice";
 import { logoutAndClearAll } from "@/store/actions";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -130,6 +131,10 @@ export function useLogin() {
       }),
     onSuccess: (data, variables) => {
       const token = data.token || null;
+      // Drop any previous professional personal/business profile cache so the
+      // header does not keep showing another account's name/photo.
+      dispatch(clearProfile());
+      queryClient.clear();
       dispatch(loginSuccess({ user: data.user || null, token }));
       if (variables?.invite_token) {
         clearInviteAttribution();
@@ -312,6 +317,8 @@ export function useGoogleLogin() {
       }),
     onSuccess: (data, variables) => {
       const token = data.token || null;
+      dispatch(clearProfile());
+      queryClient.clear();
       dispatch(loginSuccess({ user: data.user || null, token }));
       if (variables?.invite_token) {
         clearInviteAttribution();

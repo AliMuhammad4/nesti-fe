@@ -287,6 +287,10 @@ export default function NotificationDetailModal({ notification, onClose }) {
     display?.action?.type === "open_calendar"
       ? String(display?.action?.href || "").trim() || "/calendar"
       : null;
+  const openUrlHref =
+    display?.action?.type === "open_url"
+      ? String(display?.action?.url || display?.action?.href || "").trim()
+      : null;
   const rejoinMeta = rejoinActionMeta(display);
   const isPendingRejoinRequest = rejoinMeta?.status === "pending";
   const requesterName =
@@ -586,6 +590,22 @@ export default function NotificationDetailModal({ notification, onClose }) {
               className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
             >
               Open calendar
+            </button>
+          ) : null}
+          {openUrlHref && !isLoading && !isError ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (/^https?:\/\//i.test(openUrlHref)) {
+                  window.open(openUrlHref, "_blank", "noopener,noreferrer");
+                } else {
+                  router.push(openUrlHref);
+                }
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Open
             </button>
           ) : null}
           {isPendingRejoinRequest && !isLoading && !isError ? (

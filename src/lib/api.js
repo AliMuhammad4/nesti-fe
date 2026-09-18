@@ -182,6 +182,10 @@ export const API_ENDPOINTS = {
     icp: withBaseUrl("/api/professionals/icp"),
     uploadImage: withBaseUrl("/api/professionals/upload-image"),
     coverAdjustments: withBaseUrl("/api/professionals/cover-adjustments"),
+    credentials: withBaseUrl("/api/professionals/me/credentials"),
+    credentialDocuments: withBaseUrl("/api/professionals/me/credentials/documents"),
+    credentialDocument: withBaseUrl((docId) => `/api/professionals/me/credentials/documents/${docId}`),
+    credentialSubmit: withBaseUrl("/api/professionals/me/credentials/submit"),
   },
   properties: {
     list: withBaseUrl("/api/properties"),
@@ -240,6 +244,31 @@ export const API_ENDPOINTS = {
     clientCallArtifacts: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/artifacts`),
     clientCallTranscript: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/transcript`),
     clientCallMinutes: withBaseUrl((id) => `/api/pro-chat/client/calls/${id}/minutes`),
+  },
+  admin: {
+    overview: withBaseUrl("/api/admin/overview"),
+    analytics: withBaseUrl("/api/admin/analytics"),
+    suspendUser: withBaseUrl((id) => `/api/admin/accounts/${id}/suspend`),
+    unsuspendUser: withBaseUrl((id) => `/api/admin/accounts/${id}/unsuspend`),
+    professionals: withBaseUrl("/api/admin/professionals"),
+    professionalDetail: withBaseUrl((id) => `/api/admin/professionals/${id}`),
+    clients: withBaseUrl("/api/admin/clients"),
+    clientDetail: withBaseUrl((id) => `/api/admin/clients/${id}`),
+    leads: withBaseUrl("/api/admin/leads"),
+    leadDetail: withBaseUrl((id) => `/api/admin/leads/${id}`),
+    properties: withBaseUrl("/api/admin/properties"),
+    propertyDetail: withBaseUrl((id) => `/api/admin/properties/${id}`),
+    subscriptions: withBaseUrl("/api/admin/subscriptions"),
+    subscriptionDetail: withBaseUrl((userId) => `/api/admin/subscriptions/${userId}`),
+    referrals: withBaseUrl("/api/admin/referrals"),
+    referralDetail: withBaseUrl((id) => `/api/admin/referrals/${id}`),
+    verifications: withBaseUrl("/api/admin/verifications"),
+    verificationDetail: withBaseUrl((userId) => `/api/admin/verifications/${userId}`),
+    verificationDocument: withBaseUrl(
+      (userId, docId) => `/api/admin/verifications/${userId}/documents/${docId}`
+    ),
+    verificationApprove: withBaseUrl((userId) => `/api/admin/verifications/${userId}/approve`),
+    verificationReject: withBaseUrl((userId) => `/api/admin/verifications/${userId}/reject`),
   },
 };
 

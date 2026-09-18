@@ -21,6 +21,19 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
 
+  // pdfjs-dist ships ESM that Next should transpile for App Router clients.
+  transpilePackages: ["pdfjs-dist"],
+
+  webpack: (config) => {
+    // pdfjs optional native deps — not used in browser preview.
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      canvas: false,
+      encoding: false,
+    };
+    return config;
+  },
+
   // Dev indicators configuration (updated for Next.js 15)
   devIndicators: {
     position: "bottom-right",
@@ -100,7 +113,7 @@ const nextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; base-uri 'self'; object-src 'self' data: blob:; frame-src https://calendly.com https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; ${imageSrc} font-src 'self' data: https:; ${connectSrc} form-action 'self'`,
+            value: `default-src 'self'; base-uri 'self'; object-src 'self' data: blob:; frame-src 'self' blob: data: https://calendly.com https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; ${imageSrc} font-src 'self' data: https:; ${connectSrc} form-action 'self'`,
           },
           {
             key: "Strict-Transport-Security",

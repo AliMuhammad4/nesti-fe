@@ -72,6 +72,7 @@ function updateRejoinStatusCacheValue(value, meta) {
 export default function NotificationsBell({ enabled = true }) {
   const { openNotificationDetail } = useNotificationsUi();
   const token = useAppSelector((s) => s.auth.token);
+  const userRole = useAppSelector((s) => s.auth.user?.role);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -352,6 +353,14 @@ export default function NotificationsBell({ enabled = true }) {
                           >
                             Review drafts →
                           </button>
+                        ) : n.action?.type === "open_url" && (n.action?.url || n.action?.href) ? (
+                          <button
+                            type="button"
+                            onClick={() => openItem(n)}
+                            className="mt-1 block text-[11px] font-semibold text-primary"
+                          >
+                            Open →
+                          </button>
                         ) : null}
                       </div>
                     );
@@ -363,7 +372,7 @@ export default function NotificationsBell({ enabled = true }) {
         </div>
         <div className="border-t border-border/80 px-3 py-2">
           <Link
-            href="/notifications"
+            href={userRole === "admin" ? "/admin/verifications" : "/notifications"}
             className="block w-full text-center text-sm font-semibold text-primary hover:underline"
             onClick={() => setOpen(false)}
           >

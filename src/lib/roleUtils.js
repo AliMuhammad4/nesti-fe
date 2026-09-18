@@ -7,11 +7,16 @@ import { isTrialExpiredOrLocked, getUpgradeBillingRoute } from '@/lib/trialSubsc
  * @returns {string} - Dashboard route path
  */
 export function getDashboardRoute(role) {
-  if (role === CLIENT_ROLE) {
+  const normalized = String(role || "").toLowerCase();
+  if (normalized === CLIENT_ROLE) {
     return '/client-dashboard';
   }
+
+  if (normalized === 'admin') {
+    return '/admin';
+  }
   
-  if (PROFESSIONAL_ROLE_VALUES.includes(role) || role === 'admin') {
+  if (PROFESSIONAL_ROLE_VALUES.includes(normalized)) {
     return '/dashboard';
   }
   
@@ -28,10 +33,13 @@ export function getDashboardRoute(role) {
  */
 export function getPostLoginRoute(user) {
   if (!user) return '/dashboard';
+  const role = String(user?.role || "").toLowerCase();
+  // Admins never belong in professional checkout / trial paywalls.
+  if (role === 'admin') return '/admin';
   if (isTrialExpiredOrLocked(user)) {
     return getUpgradeBillingRoute(user);
   }
-  return getDashboardRoute(user?.role);
+  return getDashboardRoute(role);
 }
 
 /**

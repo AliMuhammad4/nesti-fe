@@ -66,6 +66,7 @@ export default function TrialCountdownBadge({ compact = false }) {
 
   if (!isMounted) return null;
   if (!user) return null;
+  if (String(user.role || "").toLowerCase() === "admin") return null;
   if (accountStatus !== ACCOUNT_STATUS.FREE_TRIAL) return null;
   if (!trialEndsAt) return null;
 

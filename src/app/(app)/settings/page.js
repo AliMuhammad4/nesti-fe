@@ -10,6 +10,7 @@ import PersonalInfo from "@/components/settings/PersonalInfo";
 import SubscriptionInfo from "@/components/settings/SubscriptionInfo";
 import ChatbotEmbed from "@/components/settings/ChatbotEmbed";
 import BusinessInformation from "@/components/settings/BusinessInformation";
+import VerificationSettings from "@/components/settings/verification/VerificationSettings";
 import IcpIntegrationCard from "@/components/settings/IcpIntegrationCard";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useProfileQuery } from "@/hooks/useAuthApi";
@@ -25,11 +26,17 @@ import {
   CALENDLY_OAUTH_MESSAGE_SOURCE,
   CALENDLY_OAUTH_WINDOW_NAME,
 } from "@/lib/calendlyOAuthPopup";
+import {
+  isCredentialLocked,
+  isSettingsTabAllowedDuringCredentialLock,
+} from "@/lib/credentialGate";
+import { isProfessionalRole } from "@/constants/auth";
 
 const VALID_TABS = [
   "personal",
   "professional",
   "business",
+  "verification",
   "icp",
   "subscription",
   "subscriptions",
@@ -203,6 +210,15 @@ function SettingsPageContent() {
     }
   }, [role, router, searchParams]);
 
+  useEffect(() => {
+    if (!profileQuery.isSuccess) return;
+    if (!isCredentialLocked(profileQuery.data?.user, profileQuery.data, true)) return;
+    const tab = String(searchParams.get("tab") || activeTab || "personal").toLowerCase();
+    const normalized = tab === "subscriptions" ? "subscription" : tab === "professional" ? "business" : tab;
+    if (isSettingsTabAllowedDuringCredentialLock(normalized)) return;
+    router.replace("/settings?tab=verification");
+  }, [activeTab, profileQuery.data, profileQuery.isSuccess, router, searchParams]);
+
   // Keep settings forms in sync with `/auth/profile`.
   // PersonalInfo/BusinessInformation read from `state.profile.*` (profileSlice),
   // so we must hydrate the slice from the profile query response.
@@ -316,29 +332,54 @@ function SettingsPageContent() {
     setActiveTab("business");
     const next = new URLSearchParams(searchParams.toString());
     next.set("tab", "business");
+    next.delete("setup");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : `${pathname}?tab=business`, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  /**
-   * After business "Save changes": go to dashboard only on first-time completion (signup onboarding).
-   * Returning users who already completed setup stay on Settings when updating.
-   */
-  const onBusinessSaveSuccess = useCallback(async () => {
-    const snapshot = queryClient.getQueryData(["profile"]);
-    const wasIncomplete =
-      onboardingIncompleteOnEntryRef.current ?? !snapshot?.profile_setup?.is_complete;
-    await queryClient.refetchQueries({ queryKey: ["profile"] });
-    const data = queryClient.getQueryData(["profile"]);
-    if (data?.profile_setup?.is_complete && wasIncomplete) {
-      onboardingIncompleteOnEntryRef.current = false;
-      router.replace("/dashboard");
-    }
-  }, [queryClient, router]);
+  const goToVerificationTab = useCallback(() => {
+    setActiveTab("verification");
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("tab", "verification");
+    next.delete("setup");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : `${pathname}?tab=verification`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   /**
-   * After personal save: dashboard only if this save finished first-time onboarding; else business tab if still incomplete.
-   * If profile was already complete, stay on Personal (normal edits).
+   * After business save: professionals continue to Verification until credentials are approved.
+   */
+  const onBusinessSaveSuccess = useCallback(async () => {
+    await queryClient.refetchQueries({ queryKey: ["profile"] });
+    const data = queryClient.getQueryData(["profile"]);
+
+    if (isProfessionalRole(role)) {
+      const approved =
+        data
+        && !isCredentialLocked(data?.user, data, true)
+        && String(data?.credential_gate?.status || data?.user?.credential_status || "").toLowerCase() === "approved";
+
+      if (!approved) {
+        onboardingIncompleteOnEntryRef.current = false;
+        goToVerificationTab();
+        return;
+      }
+
+      if (data?.profile_setup?.is_complete && onboardingIncompleteOnEntryRef.current) {
+        onboardingIncompleteOnEntryRef.current = false;
+        router.replace("/dashboard");
+      }
+      return;
+    }
+
+    if (data?.profile_setup?.is_complete && onboardingIncompleteOnEntryRef.current) {
+      onboardingIncompleteOnEntryRef.current = false;
+      router.replace(role === "admin" ? "/admin" : "/client-dashboard");
+    }
+  }, [queryClient, router, role, goToVerificationTab]);
+
+  /**
+   * After personal save: professionals with incomplete setup go to Business next.
    */
   const onPersonalSaveSuccess = useCallback(async () => {
     const snapshot = queryClient.getQueryData(["profile"]);
@@ -346,15 +387,28 @@ function SettingsPageContent() {
       onboardingIncompleteOnEntryRef.current ?? !snapshot?.profile_setup?.is_complete;
     await queryClient.refetchQueries({ queryKey: ["profile"] });
     const data = queryClient.getQueryData(["profile"]);
-    if (data?.profile_setup?.is_complete && wasIncomplete) {
+    const setupComplete = Boolean(data?.profile_setup?.is_complete);
+    const businessComplete = Boolean(data?.profile_setup?.business_complete);
+
+    if (isProfessionalRole(role)) {
+      if (!setupComplete || !businessComplete) {
+        goToBusinessTab();
+        return;
+      }
+      if (wasIncomplete || isCredentialLocked(data?.user, data, true)) {
+        onboardingIncompleteOnEntryRef.current = false;
+        if (isCredentialLocked(data?.user, data, true)) {
+          goToVerificationTab();
+          return;
+        }
+      }
+    }
+
+    if (setupComplete && wasIncomplete) {
       onboardingIncompleteOnEntryRef.current = false;
-      router.replace("/dashboard");
-      return;
+      router.replace(role === "client" ? "/client-dashboard" : role === "admin" ? "/admin" : "/dashboard");
     }
-    if (role !== "client" && !data?.profile_setup?.is_complete) {
-      goToBusinessTab();
-    }
-  }, [queryClient, router, goToBusinessTab, role]);
+  }, [queryClient, router, goToBusinessTab, goToVerificationTab, role]);
 
   const tabContent = useMemo(() => {
     switch (activeTab) {
@@ -368,13 +422,14 @@ function SettingsPageContent() {
         return <ChatbotEmbed />;
       case "business":
         return <BusinessInformation onSaveSuccess={onBusinessSaveSuccess} />;
+      case "verification":
+        return <VerificationSettings />;
       case "icp":
         return <IcpIntegrationCard />;
       default:
         return <PersonalInfo onSaveSuccess={onPersonalSaveSuccess} clientSettingsSection="basic" />;
     }
   }, [activeTab, onPersonalSaveSuccess, onBusinessSaveSuccess]);
-
   const profileSetup = profileQuery.data?.profile_setup;
   const setupIncomplete =
     profileQuery.isSuccess && profileSetup && !profileSetup.is_complete;
@@ -399,12 +454,14 @@ function SettingsPageContent() {
                 <strong>Home Acquisition Profile</strong> (your home goals and buying profile). Other areas of the app stay
                 locked until both are done.
               </>
-            ) : (
+            ) : isProfessionalRole(role) ? (
               <>
-                Complete <strong>Personal Information</strong> (name, email, phone, and company details) and{" "}
-                <strong>Business Information</strong> (where you serve clients). Other areas of the app stay
-                locked until both are done.
+                Complete <strong>Personal Information</strong>, then <strong>Business Information</strong>, then{" "}
+                <strong>Verification</strong> (upload credentials for admin approval). Other areas stay locked until setup
+                and verification are done.
               </>
+            ) : (
+              <>Complete your account details to continue.</>
             )}
           </p>
           <ul className="mt-2 list-inside list-disc text-xs text-amber-900/85">
@@ -414,11 +471,13 @@ function SettingsPageContent() {
                   <>
                     Personal: add your phone number, confirm your name and email, and set your language and contact preferences.
                   </>
-                ) : (
+                ) : isProfessionalRole(role) ? (
                   <>
                     Personal: add your phone number, confirm your name and email, and enter your{" "}
                     <strong>company / brokerage</strong>.
                   </>
+                ) : (
+                  <>Personal: confirm your name, email, and phone number.</>
                 )}
               </li>
             ) : null}
@@ -428,11 +487,13 @@ function SettingsPageContent() {
                   <>
                     Home Acquisition Profile: complete your home goal, budget, financial profile, and buying readiness.
                   </>
-                ) : (
+                ) : isProfessionalRole(role) ? (
                   <>
                     Business: add at least one <strong>service area</strong> under{" "}
                     <strong>Where do you work?</strong> (search for a city, province, state, or region).
                   </>
+                ) : (
+                  <>Finish any remaining required account fields.</>
                 )}
               </li>
             ) : null}

@@ -79,10 +79,14 @@ export default function DashboardPage() {
   const canUseCalendarIntegration = hasFeature(FEATURES.CALENDAR_INTEGRATION);
   const activeUser = profile?.user || profile?.data || user;
 
-  // Redirect clients to client dashboard
+  // Redirect clients / admins away from the professional dashboard
   useEffect(() => {
     if (activeUser?.role === 'client') {
       router.replace('/client-dashboard');
+      return;
+    }
+    if (String(activeUser?.role || "").toLowerCase() === 'admin') {
+      router.replace('/admin');
     }
   }, [activeUser?.role, router]);
 

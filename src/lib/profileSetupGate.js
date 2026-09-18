@@ -10,6 +10,7 @@ export const SETUP_ALLOWED_PREFIXES = [
 ];
 
 export const PRIVATE_WORKSPACE_PREFIXES = [
+  "/admin",
   "/dashboard",
   "/leads",
   "/conversations",
