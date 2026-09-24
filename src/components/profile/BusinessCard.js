@@ -1,7 +1,7 @@
 "use client";
 
 import { Briefcase, BadgeCheck, Layers, CreditCard, MessageSquare, MapPin, Award } from "lucide-react";
-import { InfoCard, InfoGrid } from "./ProfileInfoCard";
+import { InfoCard, InfoGrid, DetailList } from "./ProfileInfoCard";
 import { formatBusinessInfoForDisplay } from "@/lib/profileFieldDisplay";
 
 const hasAny = (...vals) => vals.some((v) => v !== undefined && v !== null && v !== "");
@@ -13,70 +13,66 @@ function normalizeRole(value) {
     .replace(/[\s-]+/g, "_");
 }
 
-function ChipRow({ label, items }) {
-  if (!items?.length) return null;
-  return (
-    <div className="min-w-0 w-full space-y-1.5">
-      <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">{label}</p>
-      <div className="flex w-full flex-wrap gap-1.5">
-        {items.map((item) => (
-          <span
-            key={item}
-            className="inline-flex items-center rounded-md border border-primary/15 bg-primary/[0.06] px-2 py-0.5 text-[11px] font-medium text-primary/80"
-          >
-            {item}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+function balancedColumns(count, preferred = 3) {
+  if (count <= 1) return 1;
+  if (count === 2) return 2;
+  if (count % preferred === 0) return preferred;
+  if (count % 2 === 0) return 2;
+  if (preferred === 3 && count % 3 === 2) return 3;
+  return 2;
 }
 
 export default function BusinessCard({ businessInfo }) {
   const rawRole = normalizeRole(businessInfo?.professionalType);
   const isMortgageBroker = rawRole === "mortgage_broker";
-  const b = formatBusinessInfoForDisplay(businessInfo);
+  const b = formatBusinessInfoForDisplay(businessInfo || {});
   const valueLabel = isMortgageBroker ? "Typical Loan Size" : "Avg Sale Price";
 
-  const chipSections = [
+  const listSections = [
     { label: "Specializations", items: b.specializations || [] },
     { label: "Communication", items: b.communicationChannels || [] },
     { label: "Preferred clients", items: b.preferredClients || [] },
   ].filter((section) => section.items.length > 0);
 
-  const hasChips = chipSections.length > 0;
-
-  const gridItems = [
-    { label: "Professional Type", value: b.professionalType, icon: Briefcase },
+  // Top row stays 3 columns (unchanged).
+  const topRow = [
+    ...(hasAny(b.companyName) ? [{ label: "Company Name", value: b.companyName, icon: Briefcase }] : []),
     { label: "License Number", value: b.licenseNumber, icon: BadgeCheck },
+    { label: "Availability", value: b.availability, icon: MapPin },
+  ].filter((item) => hasAny(item.value));
+
+  // Last row: Experience, Avg Sale Price, Response Time, Awards — 4 columns.
+  const bottomRow = [
     { label: "Experience", value: b.experience, icon: Layers },
     { label: valueLabel, value: b.avgSalePrice, icon: CreditCard },
     { label: "Response Time", value: b.responseTime, icon: MessageSquare },
-    { label: "Availability", value: b.availability, icon: MapPin },
-    ...(hasAny(b.companyName) ? [{ label: "Company Name", value: b.companyName, icon: Briefcase }] : []),
     ...(hasAny(b.awards) ? [{ label: "Awards", value: b.awards, icon: Award }] : []),
   ].filter((item) => hasAny(item.value));
 
+  const hasGrid = topRow.length > 0 || bottomRow.length > 0;
+
   return (
     <InfoCard delay={0.1}>
-      {gridItems.length ? (
-        <InfoGrid className="lg:grid-cols-4" items={gridItems} />
+      {hasGrid ? (
+        <div className="space-y-3">
+          {topRow.length ? <InfoGrid columns={3} items={topRow} /> : null}
+          {bottomRow.length ? <InfoGrid columns={4} items={bottomRow} /> : null}
+        </div>
       ) : (
-        <p className="text-xs italic text-slate-400">No business details added yet.</p>
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-sm italic text-slate-400">
+          No business details added yet.
+        </p>
       )}
 
-      {hasChips ? (
-        <div
-          className={`mt-4 grid w-full gap-4 border-t border-slate-100 pt-4 ${
-            chipSections.length >= 3
-              ? "grid-cols-1 lg:grid-cols-3"
-              : chipSections.length === 2
-                ? "grid-cols-1 md:grid-cols-2"
-                : "grid-cols-1"
-          }`}
-        >
-          {chipSections.map((section) => (
-            <ChipRow key={section.label} label={section.label} items={section.items} />
+      {listSections.length ? (
+        <div className="mt-4 space-y-3">
+          {listSections.map((section) => (
+            <DetailList
+              key={section.label}
+              label={section.label}
+              items={section.items}
+              columns={balancedColumns(section.items.length, 3)}
+            />
           ))}
         </div>
       ) : null}

@@ -11,8 +11,6 @@ function AdminGuard({ children }) {
   const router = useRouter();
   const token = useAppSelector((state) => state.auth.token);
   const user = useAppSelector((state) => state.auth.user);
-  // Auth is hydrated from localStorage on the client only — wait until mount
-  // so server HTML and the first client render match (avoids h1 hydration errors).
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -43,12 +41,12 @@ function AdminGuard({ children }) {
 
 export default function AdminLayout({ children }) {
   return (
-    <AppChromeShell>
-      <AdminGuard>
-        <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-9">
-          {children}
-        </div>
-      </AdminGuard>
-    </AppChromeShell>
+    <div className="admin-poppins min-h-screen">
+      <AppChromeShell>
+        <AdminGuard>
+          <div className="w-full min-w-0">{children}</div>
+        </AdminGuard>
+      </AppChromeShell>
+    </div>
   );
 }

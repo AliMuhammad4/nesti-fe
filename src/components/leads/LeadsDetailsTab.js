@@ -442,7 +442,7 @@ export default function LeadsDetailsTab({
   return (
     <div className={outerClassName}>
       {closeSummaryBanner}
-      {selectedConversation ? (
+      {selectedConversation || (embedded && lead) ? (
         <>
           {formatMetaEntries(conversationMeta).length > 0 ? (
             <div className="flex items-center justify-between p-3 rounded-md bg-primary/5 border border-primary/10">

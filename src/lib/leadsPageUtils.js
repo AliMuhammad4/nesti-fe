@@ -142,7 +142,31 @@ export function isDirectInquiryLead(lead) {
   if (lead.is_direct_public_inquiry) return true;
   if (isClientDashboardPropertyInquiry(lead)) return true;
   const source = String(lead.source || "").trim().toLowerCase();
-  return source === "public_web_form" || source === "public_inquiry";
+  if (source === "public_web_form" || source === "public_inquiry" || source === "client_property_inquiry") {
+    return true;
+  }
+  const inquirySource = String(lead.inquiry_source || "").trim().toLowerCase();
+  if (inquirySource === "form") return true;
+  if (inquirySource === "direct_inquiry") {
+    return source !== "client_professional_inquiry";
+  }
+  return false;
+}
+
+/** Form / listing inquiries have no chatbot transcript — hide the Conversation tab. */
+export function shouldHideLeadConversationTab(lead) {
+  if (!lead || typeof lead !== "object") return false;
+  if (lead.conversation_id || lead.conversationId) return false;
+  if (isDirectInquiryLead(lead)) return true;
+  const source = String(lead.source || "").trim().toLowerCase();
+  if (source === "client_professional_inquiry") {
+    const clientId =
+      lead.compatibility_factors?.client_user_id ||
+      lead.inquirer?.id ||
+      lead.inquirer?._id;
+    return !clientId;
+  }
+  return false;
 }
 
 export function normalizeLeadIntent(intent, leadType) {

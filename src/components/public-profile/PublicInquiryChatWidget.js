@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import ChatWidget from '@/components/chatbot/ChatWidget';
+import { trackAnalyticsEvent } from '@/lib/publicProfileClient';
+import { generateSessionId, generateVisitorId } from '@/utils/sessionHelpers';
 
 function resolveProfilePhoto(profile) {
   return profile?.profile_photo_url
@@ -43,6 +46,25 @@ function getGreeting(profile, propertyContext) {
 }
 
 export default function PublicInquiryChatWidget({ profile, isOpen, onClose, inquiryType = 'contact', propertyContext = null }) {
+  const trackedOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      trackedOpenRef.current = false;
+      return;
+    }
+    const slug = profile?.slug;
+    if (!slug || trackedOpenRef.current) return;
+    trackedOpenRef.current = true;
+    void trackAnalyticsEvent({
+      slug,
+      event_type: 'chatbot_open',
+      session_id: generateSessionId(),
+      visitor_id: generateVisitorId(),
+      cta_type: inquiryType || 'contact',
+    }).catch(() => {});
+  }, [isOpen, profile?.slug, inquiryType]);
+
   if (!isOpen) return null;
 
   // If the professional hasn't configured (or has deleted) their embed URL,

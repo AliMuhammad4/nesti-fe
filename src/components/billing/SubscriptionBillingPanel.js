@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { CreditCard, ExternalLink, Loader2, ShieldCheck, X } from "lucide-react";
+import { CreditCard, ExternalLink, LayoutTemplate, Loader2, ShieldCheck, X } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { updateProfile } from "@/store/authSlice";
 import { ACCOUNT_STATUS } from "@/constants/features";
 import { planLabel, findPlanByKey } from "@/lib/billingPlans";
 import { apiClient } from "@/lib/api";
-import { useBillingInvoices, useCancelSubscription, useResumeSubscription, useSubscriptionMe } from "@/hooks/useBillingApi";
+import { useBillingInvoices, useCancelSubscription, useCancelStorefrontTemplateSubscription, useResumeSubscription, useResumeStorefrontTemplateSubscription, useSubscriptionMe } from "@/hooks/useBillingApi";
 
 function formatDate(value) {
   if (!value) return null;
@@ -245,9 +245,14 @@ export default function SubscriptionBillingPanel({
   });
   const cancelMutation = useCancelSubscription();
   const resumeMutation = useResumeSubscription();
+  const cancelTemplateMutation = useCancelStorefrontTemplateSubscription();
+  const resumeTemplateMutation = useResumeStorefrontTemplateSubscription();
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const subscription = subscriptionQuery.data?.subscription;
+  const templateSubscriptions = Array.isArray(subscription?.templateSubscriptions)
+    ? subscription.templateSubscriptions
+    : [];
   const userStatus = String(user?.accountStatus || user?.account_status || "").toLowerCase();
   const subscriptionStatus = String(
     subscription?.accountStatus || subscription?.account_status || ""
@@ -502,6 +507,80 @@ export default function SubscriptionBillingPanel({
           ) : null}
         </div>
       </section>
+
+      {templateSubscriptions.length ? (
+        <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
+          <div className="border-b border-border/60 px-5 py-4 sm:px-6">
+            <h3 className="text-base font-black text-text-heading">Storefront templates</h3>
+            <p className="mt-1 text-sm text-text-muted">
+              These renew monthly on the same Stripe customer as your professional plan. Cancel anytime; access stays through the period end.
+            </p>
+          </div>
+          <div className="divide-y divide-border/60">
+            {templateSubscriptions.map((template) => {
+              const renewLabel = formatRenewalLabel(template.current_period_end);
+              const pending = (
+                (cancelTemplateMutation.isPending && cancelTemplateMutation.variables?.templateId === template.template_id)
+                || (resumeTemplateMutation.isPending && resumeTemplateMutation.variables === template.template_id)
+              );
+              return (
+                <div key={template.template_id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                      <LayoutTemplate size={16} aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-bold text-text-heading">{template.name}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          template.cancel_at_period_end
+                            ? "bg-amber-50 text-amber-800"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}>
+                          {template.cancel_at_period_end ? "Ends at period end" : "Renewing"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-text-muted">
+                        {template.display_amount}
+                        {" · "}
+                        {template.cancel_at_period_end ? "Access through" : "Renews"}{" "}
+                        {renewLabel || "the current billing period"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {template.manageable && !template.cancel_at_period_end ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => cancelTemplateMutation.mutate({
+                          templateId: template.template_id,
+                          reason: "Canceled from subscription settings",
+                        })}
+                        className="rounded-md px-2 py-1 text-[10px] font-medium text-text-muted/70 transition hover:bg-background-light hover:text-text-muted disabled:opacity-40"
+                      >
+                        {pending ? <Loader2 size={12} className="animate-spin" /> : null}
+                        Cancel at period end
+                      </button>
+                    ) : null}
+                    {template.manageable && template.cancel_at_period_end ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => resumeTemplateMutation.mutate(template.template_id)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
+                      >
+                        {pending ? <Loader2 size={16} className="animate-spin" /> : null}
+                        Continue subscription
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_14px_38px_rgba(15,23,42,0.04)]">
         <div className="border-b border-border/60 px-5 py-4 sm:px-6">

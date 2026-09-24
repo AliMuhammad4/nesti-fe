@@ -60,6 +60,9 @@ export default function LeadsActionsTab({
   conversationReferrals,
   activeReferralId,
   setActiveReferralId,
+  /** Optional override (e.g. admin API). Must return { items: [{ id, full_name, ... }] } where id is the user id. */
+  fetchProfessionalsOverride = null,
+  canWrite = true,
 }) {
   const { hasFeature } = useFeatureAccess();
   const canUseReferralInviteLinks = hasFeature(FEATURES.REFERRALS_INVITES);
@@ -71,15 +74,22 @@ export default function LeadsActionsTab({
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const professionalsQuery = useQuery({
-    queryKey: ["referral-professionals", token, role],
-    enabled: Boolean(token && role),
+    queryKey: ["referral-professionals", token, role, Boolean(fetchProfessionalsOverride)],
+    enabled: Boolean(token && role && canWrite),
     queryFn: () =>
-      fetchProfessionals({
-        token,
-        role,
-        page: 1,
-        limit: 100,
-      }),
+      typeof fetchProfessionalsOverride === "function"
+        ? fetchProfessionalsOverride({
+            token,
+            role,
+            page: 1,
+            limit: 100,
+          })
+        : fetchProfessionals({
+            token,
+            role,
+            page: 1,
+            limit: 100,
+          }),
     staleTime: 60_000,
   });
   const createLeadInviteMutation = useMutation({
@@ -130,9 +140,9 @@ export default function LeadsActionsTab({
   );
 
   const canSubmitReferral =
-    Boolean(selectedLeadId && String(referralForm?.target_user_id || "").trim()) &&
+    canWrite && (Boolean(selectedLeadId && String(referralForm?.target_user_id || "").trim()) &&
     !hasActiveReferralForSelectedProfessional &&
-    !createReferralMutation.isPending;
+    !createReferralMutation.isPending);
   const sortedReferrals = useMemo(() => {
     return [...conversationReferrals].sort((a, b) => {
       const aTs = new Date(a?.updated_at || a?.created_at || 0).getTime();

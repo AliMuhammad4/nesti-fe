@@ -289,9 +289,9 @@ export default function SubscriptionInfo() {
             await refetchSubscription();
           }}
         />
-      ) : null}
-
-      <StorefrontTemplateSubscriptionsPanel />
+      ) : (
+        <StorefrontTemplateSubscriptionsPanel />
+      )}
 
       <SubscribeCheckoutModal
         isOpen={isModalOpen}

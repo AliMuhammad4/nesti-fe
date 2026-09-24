@@ -19,6 +19,7 @@ import {
   inquiredPropertyFromLead,
   normalizeInquiredPropertyImages,
 } from "@/lib/inquiredPropertyUtils";
+import { leadApiRowToConversationShape } from "@/lib/leadAdapters";
 import LeadsProfileTab from "@/components/leads/LeadsProfileTab";
 import {
   extractMeta,
@@ -55,7 +56,10 @@ export default function LeadsPropertyMatchesTab({
     setPage(1);
   }, [selectedLeadKey, propertyMatches.length]);
 
-  const inquiredSellerConversationMeta = extractMeta(inquiredSellerConversation);
+  const resolvedSellerConversation =
+    inquiredSellerConversation ||
+    (inquiredSellerLeadDetail ? leadApiRowToConversationShape(inquiredSellerLeadDetail) : null);
+  const inquiredSellerConversationMeta = extractMeta(resolvedSellerConversation);
 
   useEffect(() => {
     if (!selectedMatch) return;
@@ -419,13 +423,13 @@ export default function LeadsPropertyMatchesTab({
                 ) : inquiredSellerLeadDetail ? (
                   <div className="mt-4 space-y-5 rounded-lg border border-border/60 bg-white px-4 py-4">
                     <LeadsProfileTab
-                      selectedConversation={inquiredSellerConversation}
+                      selectedConversation={resolvedSellerConversation}
                       lead={inquiredSellerLeadDetail}
                       patchLeadPending={false}
                       embedded
                     />
                     <LeadsDetailsTab
-                      selectedConversation={inquiredSellerConversation}
+                      selectedConversation={resolvedSellerConversation}
                       lead={inquiredSellerLeadDetail}
                       messageMeta={{}}
                       getConversationMeta={getConversationMeta}

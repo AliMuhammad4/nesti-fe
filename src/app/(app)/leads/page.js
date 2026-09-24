@@ -53,7 +53,7 @@ import {
   getConversationMeta,
   getLeadMatchId,
   getPropertyMatchesTabLabel,
-  isDirectInquiryLead,
+  shouldHideLeadConversationTab,
   matchesSearch,
   normalizeLeadIntent,
   normalizeList,
@@ -373,7 +373,10 @@ function LeadsPageContent() {
     return leadApiRowToConversationShape(inquiredSellerLeadDetail);
   }, [inquiredSellerLeadDetail]);
 
-  const hideConversationTab = useMemo(() => isDirectInquiryLead(leadDetail), [leadDetail]);
+  const hideConversationTab = useMemo(
+    () => shouldHideLeadConversationTab(leadDetail),
+    [leadDetail],
+  );
   const visibleWorkspaceTabs = useMemo(() => {
     let tabs = filterLeadWorkspaceTabsForPlan(roleFilteredTabs, hasFeature);
     if (hideConversationTab) {

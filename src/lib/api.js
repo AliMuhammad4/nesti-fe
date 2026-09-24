@@ -252,10 +252,46 @@ export const API_ENDPOINTS = {
     unsuspendUser: withBaseUrl((id) => `/api/admin/accounts/${id}/unsuspend`),
     professionals: withBaseUrl("/api/admin/professionals"),
     professionalDetail: withBaseUrl((id) => `/api/admin/professionals/${id}`),
+    professionalStorefront: withBaseUrl((id) => `/api/admin/professionals/${id}/storefront`),
+    professionalStorefrontDraft: withBaseUrl((id) => `/api/admin/professionals/${id}/storefront/draft`),
+    professionalStorefrontProperties: withBaseUrl(
+      (id) => `/api/admin/professionals/${id}/storefront/properties`,
+    ),
+    professionalStorefrontPublish: withBaseUrl(
+      (id) => `/api/admin/professionals/${id}/storefront/publish`,
+    ),
+    professionalStorefrontGenerate: withBaseUrl(
+      (id) => `/api/admin/professionals/${id}/storefront/generate`,
+    ),
+    professionalStorefrontUploadImage: withBaseUrl(
+      (id) => `/api/admin/professionals/${id}/storefront/upload-image`,
+    ),
+    professionalChatbotEmbeds: withBaseUrl((id) => `/api/admin/professionals/${id}/chatbot/embeds`),
+    professionalChatbotEmbedGenerate: withBaseUrl(
+      (id) => `/api/admin/professionals/${id}/chatbot/embeds/generate`,
+    ),
+    professionalChatbotEmbed: withBaseUrl(
+      (id, embedId) => `/api/admin/professionals/${id}/chatbot/embeds/${embedId}`,
+    ),
     clients: withBaseUrl("/api/admin/clients"),
     clientDetail: withBaseUrl((id) => `/api/admin/clients/${id}`),
     leads: withBaseUrl("/api/admin/leads"),
     leadDetail: withBaseUrl((id) => `/api/admin/leads/${id}`),
+    leadConversation: withBaseUrl((id) => `/api/admin/leads/${id}/conversation`),
+    leadPropertyMatches: withBaseUrl((id) => `/api/admin/leads/${id}/property-matches`),
+    leadInquiredProperty: withBaseUrl((id) => `/api/admin/leads/${id}/inquired-property`),
+    leadInsights: withBaseUrl((id) => `/api/admin/leads/${id}/insights/analyze`),
+    leadConversationMessage: withBaseUrl((id) => `/api/admin/leads/${id}/conversation/message`),
+    leadNurtureDraft: withBaseUrl((id) => `/api/admin/leads/${id}/nurture/draft`),
+    leadNurtureRefine: withBaseUrl((id) => `/api/admin/leads/${id}/nurture/refine`),
+    leadNurturePreview: withBaseUrl((id) => `/api/admin/leads/${id}/nurture/preview`),
+    leadNurtureSend: withBaseUrl((id) => `/api/admin/leads/${id}/nurture/send`),
+    leadNurtureLogs: withBaseUrl((id) => `/api/admin/leads/${id}/nurture/logs`),
+    leadReferrals: withBaseUrl((id) => `/api/admin/leads/${id}/referrals`),
+    leadCalendlyCancel: withBaseUrl((id) => `/api/admin/leads/${id}/calendly/cancel-booking`),
+    referralLeadDetails: withBaseUrl((id) => `/api/admin/referrals/${id}/lead-details`),
+    referralProcess: withBaseUrl((id) => `/api/admin/referrals/${id}/process`),
+    referralAsProfessional: withBaseUrl((id) => `/api/admin/referrals/${id}/as-professional`),
     properties: withBaseUrl("/api/admin/properties"),
     propertyDetail: withBaseUrl((id) => `/api/admin/properties/${id}`),
     subscriptions: withBaseUrl("/api/admin/subscriptions"),
@@ -357,6 +393,7 @@ export async function apiClient({ url, method = "GET", data, token, rawToken = f
       if (json?.code) error.code = json.code;
       if (json?.limit) error.limit = json.limit;
       if (json?.limits) error.limits = json.limits;
+      if (json?.current_revision) error.currentRevision = json.current_revision;
       if (
         typeof window !== "undefined" &&
         token &&

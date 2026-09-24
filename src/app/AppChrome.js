@@ -381,7 +381,9 @@ export default function AppChrome({ children }) {
     pathname === "/referrals" ||
     pathname === "/clients";
   const isMessageThreadRoute = pathname.startsWith("/messages/");
-  const isFullHeightWorkspaceRoute = isFixedTableListRoute || isMessageThreadRoute;
+  const isAdminProfessionalDetailRoute = /^\/admin\/professionals\/[^/]+\/?$/.test(pathname);
+  const isFullHeightWorkspaceRoute =
+    isFixedTableListRoute || isMessageThreadRoute || isAdminProfessionalDetailRoute;
   const isPublicAuthPage = useMemo(
     () =>
       pathname === "/" ||

@@ -160,7 +160,10 @@ export function useLogin() {
       toast.success(data?.message || "Logged in successfully!");
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: toastError,
+    onError: (error) => {
+      if (error?.code === "ACCOUNT_SUSPENDED") return;
+      toastError(error);
+    },
   });
 }
 
@@ -268,16 +271,18 @@ export function useChangePassword() {
 // Response: { success, user, professionalProfile }
 export function useProfileQuery({ enabled = true } = {}) {
   const token = useAppSelector((state) => state.auth.token);
+  const role = useAppSelector((state) => state.auth.user?.role);
   const dispatch = useAppDispatch();
+  const isAdmin = String(role || "").toLowerCase() === "admin";
 
   const query = useQuery({
     queryKey: ["profile"],
     enabled: Boolean(token && enabled),
-    staleTime: 1000 * 60 * 5,
+    staleTime: isAdmin ? 0 : 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: isAdmin ? "always" : true,
     queryFn: () =>
       apiClient({
         url: API_ENDPOINTS.auth.profile,
@@ -327,7 +332,10 @@ export function useGoogleLogin() {
       toast.success(data?.message || "Logged in with Google!");
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: toastError,
+    onError: (error) => {
+      if (error?.code === "ACCOUNT_SUSPENDED") return;
+      toastError(error);
+    },
   });
 }
 

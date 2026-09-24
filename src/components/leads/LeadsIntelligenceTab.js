@@ -120,14 +120,23 @@ function LoadingSkeleton() {
   );
 }
 
-export default function LeadsIntelligenceTab({ token, leadId, lead }) {
+export default function LeadsIntelligenceTab({
+  token,
+  leadId,
+  lead,
+  hasAccessOverride,
+  analyzeInsights = analyzeLeadInsights,
+}) {
   const { hasFeature } = useFeatureAccess();
   const resolvedLeadId = leadId || lead?.lead_match_id || lead?.id || "";
-  const canViewInsights = hasFeature(FEATURES.LEADS_INSIGHTS_ADVANCED);
+  const canViewInsights =
+    typeof hasAccessOverride === "boolean"
+      ? hasAccessOverride
+      : hasFeature(FEATURES.LEADS_INSIGHTS_ADVANCED);
   const insightsQuery = useQuery({
     queryKey: ["lead-ai-insights", token, resolvedLeadId],
     enabled: Boolean(token && resolvedLeadId && canViewInsights),
-    queryFn: () => analyzeLeadInsights({ token, leadId: resolvedLeadId }),
+    queryFn: () => analyzeInsights({ token, leadId: resolvedLeadId }),
     staleTime: 5 * 60 * 1000,
   });
   const intelligence = insightsQuery.data?.intelligence || null;

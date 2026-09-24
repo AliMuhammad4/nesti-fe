@@ -84,6 +84,10 @@ export default function StorefrontBuilderWorkspace({
   saving,
   saveState,
   deleteConfirm = null,
+  templateEntitlements = null,
+  professionalId = null,
+  loadEmbedLinks = null,
+  loadStorefrontProperties = null,
 }) {
   const [activePanel, setActivePanel] = useState('layers');
   const [selectedId, setSelectedId] = useState(null);
@@ -117,13 +121,18 @@ export default function StorefrontBuilderWorkspace({
   const frameContentRef = useRef(null);
 
   const { data: embedData } = useQuery({
-    queryKey: ['embed-links'],
+    queryKey: professionalId
+      ? ['admin-professional-embed-links', professionalId]
+      : ['embed-links'],
     enabled: Boolean(accessToken),
-    queryFn: async () => apiClient({
-      url: API_ENDPOINTS.embed.list,
-      method: 'GET',
-      token: accessToken,
-    }),
+    queryFn: async () => {
+      if (typeof loadEmbedLinks === 'function') return loadEmbedLinks();
+      return apiClient({
+        url: API_ENDPOINTS.embed.list,
+        method: 'GET',
+        token: accessToken,
+      });
+    },
   });
   const embeds = useMemo(() => {
     if (Array.isArray(embedData?.embeds)) return embedData.embeds;
@@ -131,7 +140,7 @@ export default function StorefrontBuilderWorkspace({
     if (Array.isArray(embedData?.data)) return embedData.data;
     return [];
   }, [embedData]);
-  const embedToken = embeds[0]?.token || embeds[0]?.embed_token || '';
+  const embedToken = embeds[0]?.unique_token || embeds[0]?.token || embeds[0]?.embed_token || '';
   const hasChatbot = Boolean(embedToken);
 
   const normalized = useBuilderNormalizedBlocks({
@@ -369,6 +378,7 @@ export default function StorefrontBuilderWorkspace({
     accessToken,
     media,
     selectedElement,
+    storefrontPropertiesLoader: loadStorefrontProperties,
   });
 
   const rendererBlocks = useMemo(() => toRendererBlocks(normalized), [normalized]);
@@ -536,6 +546,7 @@ export default function StorefrontBuilderWorkspace({
               canRedo={future.length > 0}
               onMediaUpload={onMediaUpload}
               media={media}
+              templateEntitlements={templateEntitlements}
             />
           )}
         </aside>

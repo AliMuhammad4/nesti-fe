@@ -79,6 +79,7 @@ export default function LoginPageClient() {
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [formNotice, setFormNotice] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [redirectOverlay, setRedirectOverlay] = useState({
     isVisible: false,
@@ -130,6 +131,13 @@ export default function LoginPageClient() {
           onError: (error) => {
             setIsRedirecting(false);
             setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
+            if (error?.code === "ACCOUNT_SUSPENDED") {
+              setFormNotice(
+                error.message
+                || "Your account is suspended. You cannot sign in until an administrator restores access.",
+              );
+              return;
+            }
             const msg = String(error?.message || "").toLowerCase();
             if (error?.status === 404 || msg.includes("no google account found")) {
               toast.info("No Google account found. Redirecting to Google signup...");
@@ -151,6 +159,7 @@ export default function LoginPageClient() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+    setFormNotice("");
   };
 
   const validate = () => {
@@ -174,6 +183,7 @@ export default function LoginPageClient() {
     if (errs.email || errs.password) return;
 
     setIsLoggingIn(true);
+    setFormNotice("");
     try {
       const data = await loginMutation.mutateAsync({
         email: form.email.trim(),
@@ -194,12 +204,19 @@ export default function LoginPageClient() {
       setIsLoggingIn(false);
       setIsRedirecting(false);
       setRedirectOverlay((prev) => ({ ...prev, isVisible: false }));
+      if (err?.code === "ACCOUNT_SUSPENDED") {
+        setFormNotice(
+          err.message
+          || "Your account is suspended. You cannot sign in until an administrator restores access.",
+        );
+      }
       console.error("Login error:", err);
     }
   };
 
   const handleGoogleLogin = () => {
     if (isFormDisabled) return;
+    setFormNotice("");
     googleLogin();
   };
 
@@ -221,6 +238,14 @@ export default function LoginPageClient() {
           />
 
           <form onSubmit={handleSubmit} className="space-y-3">
+            {formNotice ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm leading-5 text-rose-800"
+              >
+                {formNotice}
+              </div>
+            ) : null}
             <FormField
               label="Email Address"
               name="email"

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { sanitizeInternalReturnPath } from "@/lib/leadsPageUtils";
 import {
   LayoutDashboard,
   UserRound,
@@ -32,13 +33,29 @@ const NAV_ITEMS = [
   { id: "referrals", label: "Referrals", href: "/admin/referrals", icon: Handshake },
 ];
 
-function isActive(pathname, href) {
+function contextNavHref(pathname, searchParams) {
+  const isNestedRecord =
+    /^\/admin\/leads\/[^/]+\/?$/.test(pathname) ||
+    /^\/admin\/referrals\/[^/]+\/?$/.test(pathname);
+  if (!isNestedRecord) return null;
+  const back = sanitizeInternalReturnPath(searchParams?.get?.("back"));
+  if (!back) return null;
+  const pathOnly = back.split("?")[0] || "";
+  if (pathOnly.startsWith("/admin/professionals")) return "/admin/professionals";
+  if (pathOnly.startsWith("/admin/clients")) return "/admin/clients";
+  return null;
+}
+
+function isActive(pathname, href, contextHref) {
+  if (contextHref) return href === contextHref;
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function AdminSidebar({ isMobileOpen = false, onCloseMobile }) {
   const pathname = usePathname() || "";
+  const searchParams = useSearchParams();
+  const contextHref = contextNavHref(pathname, searchParams);
   const router = useRouter();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -78,7 +95,7 @@ export default function AdminSidebar({ isMobileOpen = false, onCloseMobile }) {
           Operations
         </div>
         {NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href);
+          const active = isActive(pathname, item.href, contextHref);
           const Icon = item.icon;
           const showPendingBadge = item.id === "verifications" && pendingVerifications > 0;
           return (

@@ -19,6 +19,18 @@ import LeadsNurtureTab from "@/components/leads/LeadsNurtureTab";
 import LeadPipelineNotesPanel from "@/components/leads/LeadPipelineNotesPanel";
 import LeadPipelineStageControl from "@/components/leads/LeadPipelineStageControl";
 import { fetchLeadById, patchLead } from "@/lib/leadsClient";
+import {
+  adminFetchLeadById,
+  adminFetchNurtureLogs,
+  adminFetchReferralLeadDetails,
+  adminPatchLead,
+  adminPostNurtureDraft,
+  adminPostNurturePreview,
+  adminPostNurtureRefine,
+  adminProcessReferralRequest,
+  adminSendNurtureEmail,
+  adminUpdateReferral,
+} from "@/lib/adminActingReferralApi";
 import { formatLeadIntakeSlug } from "@/lib/leadsPageUtils";
 import {
   hasInquiredPropertyContext,
@@ -235,8 +247,11 @@ export default function ReferralLeadWorkspace({
   fromPipelineReferrals = false,
   listPage = 1,
   referralDirection = "inbound",
+  /** When set, all workspace calls run through admin routes as this professional. */
+  adminActingUserId = "",
 }) {
   const queryClient = useQueryClient();
+  const actingAsProfessional = String(adminActingUserId || "").trim();
   const [detailTab, setDetailTab] = useState("details");
   const [processModalOpen, setProcessModalOpen] = useState(false);
   const [nurtureForm, setNurtureForm] = useState({
@@ -250,9 +265,18 @@ export default function ReferralLeadWorkspace({
   });
 
   const detailQuery = useQuery({
-    queryKey: ["referral-lead-details", token, referralId],
+    queryKey: [
+      "referral-lead-details",
+      token,
+      referralId,
+      actingAsProfessional || null,
+      referralDirection || null,
+    ],
     enabled: Boolean(token && referralId),
-    queryFn: () => fetchReferralLeadDetails({ token, id: referralId }),
+    queryFn: () =>
+      actingAsProfessional
+        ? adminFetchReferralLeadDetails({ token, id: referralId, actingUserId: actingAsProfessional })
+        : fetchReferralLeadDetails({ token, id: referralId }),
     retry: false,
   });
 
@@ -301,9 +325,18 @@ export default function ReferralLeadWorkspace({
   const activeConversationId = String(lead?.conversation_id || "").trim();
 
   const leadDetailQuery = useQuery({
-    queryKey: ["referral-lead-detail-full", token, activeLeadMatchId, isTarget],
+    queryKey: [
+      "referral-lead-detail-full",
+      token,
+      activeLeadMatchId,
+      isTarget,
+      actingAsProfessional || null,
+    ],
     enabled: Boolean(token && activeLeadMatchId && viewerOwnsLeadMatch),
-    queryFn: () => fetchLeadById({ token, id: activeLeadMatchId }),
+    queryFn: () =>
+      actingAsProfessional
+        ? adminFetchLeadById({ token, id: activeLeadMatchId })
+        : fetchLeadById({ token, id: activeLeadMatchId }),
     retry: false,
   });
   const fullLead = leadDetailQuery.data?.lead || null;
@@ -323,53 +356,82 @@ export default function ReferralLeadWorkspace({
   }, [activeLeadMatchId, nurtureSuggestedEmail]);
 
   const processMutation = useMutation({
-    mutationFn: () => processReferralRequest({ token, id: referralId }),
+    mutationFn: () =>
+      actingAsProfessional
+        ? adminProcessReferralRequest({ token, id: referralId, actingUserId: actingAsProfessional })
+        : processReferralRequest({ token, id: referralId }),
     onSuccess: (data) => {
       toast.success(data?.message || "Referral processed.");
       setProcessModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["referral-lead-details", token, referralId] });
+      queryClient.invalidateQueries({
+        queryKey: ["referral-lead-details", token, referralId, actingAsProfessional || null],
+      });
       queryClient.invalidateQueries({ queryKey: ["chat-referrals"] });
     },
     onError: (err) => toast.error(err?.message || "Failed to process referral"),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: () => updateReferral({ token, id: referralId, payload: { status: "rejected" } }),
+    mutationFn: () =>
+      actingAsProfessional
+        ? adminUpdateReferral({
+            token,
+            id: referralId,
+            payload: { status: "rejected" },
+            actingUserId: actingAsProfessional,
+          })
+        : updateReferral({ token, id: referralId, payload: { status: "rejected" } }),
     onSuccess: () => {
       toast.success("Referral rejected.");
       setProcessModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["referral-lead-details", token, referralId] });
+      queryClient.invalidateQueries({
+        queryKey: ["referral-lead-details", token, referralId, actingAsProfessional || null],
+      });
       queryClient.invalidateQueries({ queryKey: ["chat-referrals"] });
     },
     onError: (err) => toast.error(err?.message || "Could not reject referral"),
   });
 
   const patchLeadMutation = useMutation({
-    mutationFn: (payload) => patchLead({ token, id: activeLeadMatchId, ...payload }),
+    mutationFn: (payload) =>
+      actingAsProfessional
+        ? adminPatchLead({ token, id: activeLeadMatchId, ...payload })
+        : patchLead({ token, id: activeLeadMatchId, ...payload }),
     onSuccess: () => {
       toast.success("Lead updated");
-      queryClient.invalidateQueries({ queryKey: ["referral-lead-detail-full", token, activeLeadMatchId] });
+      queryClient.invalidateQueries({
+        queryKey: ["referral-lead-detail-full", token, activeLeadMatchId],
+      });
     },
     onError: (err) => toast.error(err?.message || "Could not update lead"),
   });
 
   const nurtureLogsQuery = useQuery({
-    queryKey: ["referrals-nurture-logs", token, activeLeadMatchId],
+    queryKey: [
+      "referrals-nurture-logs",
+      token,
+      activeLeadMatchId,
+      actingAsProfessional || null,
+    ],
     enabled: Boolean(token && activeLeadMatchId),
-    queryFn: () => fetchNurtureLogs({ token, leadMatchId: activeLeadMatchId }),
+    queryFn: () =>
+      actingAsProfessional
+        ? adminFetchNurtureLogs({ token, leadMatchId: activeLeadMatchId })
+        : fetchNurtureLogs({ token, leadMatchId: activeLeadMatchId }),
   });
 
   const nurtureDraftMutation = useMutation({
-    mutationFn: () =>
-      postNurtureDraft({
-        token,
-        payload: {
+    mutationFn: () => {
+      const payload = {
           lead_match_id: activeLeadMatchId,
           goal: nurtureForm.goal?.trim() || undefined,
           tone: nurtureForm.tone?.trim() || undefined,
           referral_context: referralDraftContext,
-        },
-      }),
+        };
+      return actingAsProfessional
+        ? adminPostNurtureDraft({ token, leadMatchId: activeLeadMatchId, payload })
+        : postNurtureDraft({ token, payload });
+    },
     onSuccess: (data) => {
       const d = data?.draft;
       if (d) {
@@ -385,17 +447,18 @@ export default function ReferralLeadWorkspace({
   });
 
   const nurtureRefineMutation = useMutation({
-    mutationFn: () =>
-      postNurtureRefine({
-        token,
-        payload: {
+    mutationFn: () => {
+      const payload = {
           lead_match_id: activeLeadMatchId,
           subject: nurtureForm.subject,
           body: nurtureForm.body,
           instruction: nurtureForm.refine_instruction.trim(),
           referral_context: referralDraftContext,
-        },
-      }),
+        };
+      return actingAsProfessional
+        ? adminPostNurtureRefine({ token, leadMatchId: activeLeadMatchId, payload })
+        : postNurtureRefine({ token, payload });
+    },
     onSuccess: (data) => {
       const d = data?.draft;
       if (d) {
@@ -412,10 +475,8 @@ export default function ReferralLeadWorkspace({
   });
 
   const nurtureMutation = useMutation({
-    mutationFn: () =>
-      sendNurtureEmail({
-        token,
-        payload: {
+    mutationFn: () => {
+      const payload = {
           lead_match_id: activeLeadMatchId,
           conversation_id: activeConversationId || undefined,
           to_email: nurtureForm.to_email?.trim() || undefined,
@@ -423,28 +484,34 @@ export default function ReferralLeadWorkspace({
           body: nurtureForm.body,
           include_property_cards: nurtureForm.include_property_cards,
           referral_context: referralDraftContext,
-        },
-      }),
+        };
+      return actingAsProfessional
+        ? adminSendNurtureEmail({ token, leadMatchId: activeLeadMatchId, payload })
+        : sendNurtureEmail({ token, payload });
+    },
     onSuccess: () => {
       toast.success("Nurture email sent");
-      queryClient.invalidateQueries({ queryKey: ["referrals-nurture-logs", token, activeLeadMatchId] });
+      queryClient.invalidateQueries({
+        queryKey: ["referrals-nurture-logs", token, activeLeadMatchId, actingAsProfessional || null],
+      });
     },
     onError: (err) => toast.error(err?.message || "Failed to send nurture email"),
   });
 
   const nurturePreviewMutation = useMutation({
-    mutationFn: () =>
-      postNurturePreview({
-        token,
-        payload: {
+    mutationFn: () => {
+      const payload = {
           lead_match_id: activeLeadMatchId,
           conversation_id: activeConversationId || undefined,
           subject: nurtureForm.subject,
           body: nurtureForm.body,
           include_property_cards: nurtureForm.include_property_cards,
           referral_context: referralDraftContext,
-        },
-      }),
+        };
+      return actingAsProfessional
+        ? adminPostNurturePreview({ token, leadMatchId: activeLeadMatchId, payload })
+        : postNurturePreview({ token, payload });
+    },
     onError: (err) => toast.error(err?.message || "Failed to build email preview"),
   });
 

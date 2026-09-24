@@ -1,25 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
+  Ban,
   Briefcase,
-  CheckCircle2,
   FileStack,
   ShieldCheck,
   User,
-  CreditCard,
 } from "lucide-react";
-import { useAdminProfessional } from "@/hooks/useAdminApi";
 import {
+  useAdminProfessional,
+  useAdminSuspendUser,
+  useAdminUnsuspendUser,
+} from "@/hooks/useAdminApi";
+import {
+  AdminConfirmModal,
   AdminErrorState,
+  AdminTabs,
+  adminDangerButtonClass,
   adminGhostButtonClass,
   formatAdminLabel,
   formatPersonName,
 } from "@/components/admin/AdminUi";
+import AdminProfessionalInsights from "@/components/admin/AdminProfessionalInsights";
+import AdminProfessionalBilling, {
+  AdminProfessionalInvoices,
+} from "@/components/admin/AdminProfessionalBilling";
+import AdminProfessionalStorefront from "@/components/admin/AdminProfessionalStorefront";
+import AdminProfessionalLeadsPanel from "@/components/admin/AdminProfessionalLeadsPanel";
+import AdminProfessionalReferralsPanel from "@/components/admin/AdminProfessionalReferralsPanel";
+import AdminProfessionalChatbotPanel from "@/components/admin/AdminProfessionalChatbotPanel";
 import PersonalCard from "@/components/profile/PersonalCard";
 import BusinessCard from "@/components/profile/BusinessCard";
+import { DetailList } from "@/components/profile/ProfileInfoCard";
 import CredentialDocumentPreview, {
   isPreviewableDocument,
 } from "@/components/admin/CredentialDocumentPreview";
@@ -27,6 +43,8 @@ import CredentialPdfThumb from "@/components/admin/CredentialPdfThumb";
 import CredentialImageThumb from "@/components/admin/CredentialImageThumb";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 import { useAppSelector } from "@/store";
+import { useAdminCanWrite } from "@/hooks/useAdminPermissions";
+import { ADMIN_PERMISSION } from "@/lib/adminPermissions";
 
 function humanizeToken(value) {
   return String(value || "")
@@ -43,6 +61,45 @@ function toArray(value) {
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
+}
+
+function uniqueLabels(values = []) {
+  const seen = new Set();
+  return values
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function serviceAreaChips(professional = {}) {
+  const fromLists = uniqueLabels([
+    ...(Array.isArray(professional.service_area_primary_zones) ? professional.service_area_primary_zones : []),
+    ...(Array.isArray(professional.service_area_cities) ? professional.service_area_cities : []),
+    ...(Array.isArray(professional.service_area_regions) ? professional.service_area_regions : []),
+  ]);
+  if (fromLists.length) return fromLists;
+  const fallback = String(professional.target_neighborhoods || professional.location || "").trim();
+  return fallback ? [fallback] : [];
+}
+
+function toLabelList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (item && typeof item === "object") {
+          return String(item.label || item.name || item.value || "").trim();
+        }
+        return String(item || "").trim();
+      })
+      .filter(Boolean)
+      .map(humanizeToken);
+  }
+  return toArray(value).map(humanizeToken);
 }
 
 function formatWhen(value) {
@@ -64,36 +121,72 @@ function isImageDoc(doc) {
   return /\.(jpe?g|png|webp|gif)$/i.test(String(doc?.file_name || ""));
 }
 
-const STATUS_STYLES = {
-  pending_review: "bg-sky-50 text-sky-800 ring-sky-200",
-  rejected: "bg-rose-50 text-rose-800 ring-rose-200",
-  approved: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  pending_docs: "bg-amber-50 text-amber-900 ring-amber-200",
-  not_started: "bg-slate-100 text-slate-700 ring-slate-200",
-};
+const PROFESSIONAL_TABS = [
+  "overview",
+  "storefront",
+  "subscriptions",
+  "invoices",
+  "leads",
+  "referrals",
+  "chatbot",
+];
+
+function tabFromSearchParams(searchParams) {
+  const raw = String(searchParams.get("tab") || "overview").trim().toLowerCase();
+  return PROFESSIONAL_TABS.includes(raw) ? raw : "overview";
+}
 
 export default function AdminProfessionalDetailPage() {
   const { id } = useParams();
   const authToken = useAppSelector((state) => state.auth.token);
+  const canWriteProfessionals = useAdminCanWrite(ADMIN_PERMISSION.PROFESSIONALS_WRITE);
+  const canWriteUsers = useAdminCanWrite(ADMIN_PERMISSION.USERS_WRITE);
   const { data, isLoading, isError, error, refetch, isFetching } = useAdminProfessional(id);
+  const suspend = useAdminSuspendUser();
+  const unsuspend = useAdminUnsuspendUser();
   const [previewIndex, setPreviewIndex] = useState(null);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [tab, setTab] = useState(() => tabFromSearchParams(searchParams));
+
+  useEffect(() => {
+    setTab(tabFromSearchParams(searchParams));
+  }, [searchParams]);
+
+  const setProfessionalTab = (next) => {
+    setTab(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "overview") params.delete("tab");
+    else params.set("tab", next);
+    // Drop list-only params so page/pipeline/direction never leak across tabs.
+    if (next !== "referrals") {
+      params.delete("direction");
+    }
+    if (next !== "leads") {
+      params.delete("pipeline");
+    }
+    // Always reset pagination when changing tabs (including leads <-> referrals).
+    params.delete("page");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const [accountAction, setAccountAction] = useState(null);
 
   const professional = data?.professional;
-  const user = professional?.user || {};
+  const user = useMemo(() => professional?.user || {}, [professional?.user]);
   const userId = user.id;
   const verification = data?.verification || {};
   const documents = data?.documents || verification.documents || [];
-  const subscription = data?.subscription;
-  const completeness = data?.completeness || {};
-  const recentLeads = data?.recent_leads || [];
   const stats = data?.stats || {};
+  const publicPage = data?.public_page;
+  const billing = data?.billing;
+  const traffic = data?.traffic;
 
   const name = useMemo(() => {
+    const fromUser = [user.first_name, user.last_name].filter(Boolean).join(" ");
     const full = String(professional?.full_name || "").trim();
-    if (full) return formatPersonName(full);
-    return formatPersonName(
-      [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email || "Professional"
-    );
+    return formatPersonName(fromUser || full || user.email || "Professional");
   }, [professional, user]);
 
   if (isLoading) return <WorkspaceLoader />;
@@ -108,12 +201,6 @@ export default function AdminProfessionalDetailPage() {
   }
   if (!professional) return null;
 
-  const coverPos = user.cover_image_position || {};
-  const coverX = Math.min(100, Math.max(0, Number(coverPos.x) || 50));
-  const coverY = Math.min(100, Math.max(0, Number(coverPos.y) || 50));
-  const coverZoomRaw = Number(user.cover_image_zoom || 1);
-  const coverZoom = Number.isFinite(coverZoomRaw) ? Math.min(3, Math.max(1, coverZoomRaw)) : 1;
-
   const personalInfo = {
     fullName: name,
     email: user.email || "",
@@ -121,13 +208,12 @@ export default function AdminProfessionalDetailPage() {
     website: professional.website || "",
     calendlyUrl: professional.calendly_link || "",
     location: professional.location || "",
-    role: humanizeToken(professional.professional_type || user.role || ""),
+    role: professional.professional_type ? formatAdminLabel(professional.professional_type) : "",
     profileImage: user.profile_image || "",
-    coverImage: user.cover_image || "",
   };
 
   const businessInfo = {
-    professionalType: humanizeToken(professional.professional_type || user.role || ""),
+    professionalType: professional.professional_type ? formatAdminLabel(professional.professional_type) : "",
     companyName: professional.company_name || "",
     website: professional.website || "",
     phone: professional.phone || "",
@@ -147,154 +233,246 @@ export default function AdminProfessionalDetailPage() {
     awards: professional.awards || "",
     bio: professional.bio || "",
     targetNeighborhoods: professional.target_neighborhoods || "",
-    specializations: toArray(professional.specializations).map(humanizeToken),
-    communicationChannels: toArray(professional.communication_channels).map(humanizeToken),
-    preferredClients: toArray(professional.preferred_clients).map(humanizeToken),
+    specializations: toLabelList(professional.specializations),
+    communicationChannels: toLabelList(professional.communication_channels),
+    preferredClients: toLabelList(professional.preferred_clients),
     location: professional.location || "",
   };
 
-  const hasCover = Boolean(personalInfo.coverImage);
   const credStatus = verification.credential_status || professional.credential_status || "not_started";
-  const statusTone = STATUS_STYLES[credStatus] || STATUS_STYLES.not_started;
   const previewDoc = previewIndex != null ? documents[previewIndex] : null;
+  const accountActive = user.is_active !== false;
+  const checklist = (verification.checklist || []).filter((item) => !item.extra);
+  const missingDocs = checklist.filter((item) => !item.uploaded);
+  const areas = serviceAreaChips(professional);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Professional profile</p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{name}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {formatAdminLabel(professional.professional_type)} · {stats.leads_owned ?? 0} leads ·{" "}
-            {user.is_active === false ? "Suspended" : "Active"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {userId ? (
-            <Link href={`/admin/verifications/${userId}`} className={adminGhostButtonClass}>
-              Open verification
-            </Link>
-          ) : null}
-          <Link href="/admin/professionals" className={adminGhostButtonClass}>
-            Back
-          </Link>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative aspect-[16/5] w-full min-h-[10rem]">
-          {hasCover ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={personalInfo.coverImage}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{
-                  objectPosition: `${coverX}% ${coverY}%`,
-                  transform: coverZoom > 1 ? `scale(${coverZoom})` : undefined,
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            </>
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-600" />
-          )}
-        </div>
-        <div className="relative flex items-end gap-4 px-5 pb-5 sm:px-7">
-          <div className="relative z-[1] -mt-8 shrink-0 sm:-mt-10">
-            <div className="relative flex h-[5rem] w-[5rem] items-center justify-center overflow-hidden rounded-xl border-[3px] border-white bg-slate-50 text-xl font-bold text-slate-700 shadow-md sm:h-[6rem] sm:w-[6rem]">
+    <div className="admin-poppins flex min-h-full w-full min-w-0 flex-1 flex-col bg-slate-50">
+      <section className="w-full shrink-0 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-5 lg:px-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-slate-100 text-xl font-bold text-slate-700 shadow-md ring-1 ring-slate-200">
               {personalInfo.profileImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={personalInfo.profileImage} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={personalInfo.profileImage}
+                  alt={`${name}'s profile`}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 name.slice(0, 1).toUpperCase()
               )}
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                Professional profile
+              </p>
+              <p className="truncate text-xl font-semibold tracking-tight text-slate-950">{name}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-slate-500">
+                  {businessInfo.companyName || personalInfo.role || "Professional"}
+                </span>
+                {accountActive ? null : (
+                  <>
+                    <span className="h-1 w-1 rounded-full bg-slate-300" aria-hidden="true" />
+                    <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                      Suspended
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0 pb-1">
-            <h2 className="truncate text-lg font-semibold text-slate-950">{name}</h2>
-            <p className="text-sm text-slate-500">{personalInfo.role || "Professional"}</p>
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            {userId && canWriteUsers ? (
+              <button
+                type="button"
+                className={`${accountActive ? adminDangerButtonClass : adminGhostButtonClass} gap-1.5`}
+                onClick={() => setAccountAction(accountActive ? "suspend" : "unsuspend")}
+              >
+                <Ban size={14} />
+                {accountActive ? "Suspend account" : "Restore account"}
+              </button>
+            ) : null}
+            {userId ? (
+              <Link
+                href={`/admin/verifications/${userId}`}
+                className={`${adminGhostButtonClass} gap-1.5`}
+              >
+                <ShieldCheck size={14} />
+                Open verification
+              </Link>
+            ) : null}
+            <Link href="/admin/professionals" className={`${adminGhostButtonClass} gap-1.5`}>
+              <ArrowLeft size={14} />
+              Back
+            </Link>
           </div>
-          <span className={`mb-1 ml-auto inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${statusTone}`}>
-            {formatAdminLabel(credStatus)}
-          </span>
         </div>
+      </section>
+
+      <div className="w-full border-b border-slate-200 bg-white px-4 py-2 sm:px-6 lg:px-8">
+        <AdminTabs
+          tabs={[
+            { value: "overview", label: "Overview" },
+            { value: "storefront", label: "Storefront" },
+            { value: "leads", label: "Leads" },
+            { value: "referrals", label: "Referrals" },
+            { value: "chatbot", label: "Chatbot" },
+            { value: "subscriptions", label: "Subscriptions" },
+            { value: "invoices", label: "Invoices" },
+          ]}
+          value={tab}
+          onChange={setProfessionalTab}
+        />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500">
-            <ShieldCheck size={14} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">Verification</span>
+      <div
+        className={`w-full min-w-0 flex-1 overflow-x-hidden bg-slate-50 ${
+          tab === "overview" ? "" : "px-4 py-5 sm:px-6 sm:py-6 lg:px-8"
+        }`}
+      >
+      {tab === "leads" ? (
+        <AdminProfessionalLeadsPanel
+          userId={userId}
+          professionalProfileId={id}
+          professionalRole={professional?.professional_type || user?.role || ""}
+        />
+      ) : tab === "referrals" ? (
+        <AdminProfessionalReferralsPanel
+          userId={userId}
+          professionalProfileId={id}
+        />
+      ) : tab === "chatbot" ? (
+        <AdminProfessionalChatbotPanel
+          professionalId={id}
+          professionalRole={professional?.professional_type || user?.role || ""}
+        />
+      ) : tab === "storefront" ? (
+        <AdminProfessionalStorefront professionalId={id} />
+      ) : tab === "subscriptions" ? (
+        <AdminProfessionalBilling billing={billing} />
+      ) : tab === "invoices" ? (
+        <AdminProfessionalInvoices billing={billing} />
+      ) : (
+        <div className="w-full min-w-0 space-y-0 bg-slate-50/80">
+      <AdminProfessionalInsights
+        publicPage={publicPage}
+        traffic={traffic}
+        stats={stats}
+      />
+
+      <article className="w-full border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+              <ShieldCheck size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Verification
+              </p>
+              <p className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                {formatAdminLabel(credStatus)}
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                {verification.credential_reviewed_at
+                  ? `Reviewed ${formatWhen(verification.credential_reviewed_at)}${
+                      verification.reviewed_by?.name ? ` by ${verification.reviewed_by.name}` : ""
+                    }`
+                  : verification.credential_submitted_at
+                    ? `Submitted ${formatWhen(verification.credential_submitted_at)} · not reviewed yet`
+                    : "Not submitted yet"}
+              </p>
+            </div>
           </div>
-          <p className="mt-2 text-sm font-semibold text-slate-950">{formatAdminLabel(credStatus)}</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Reviewed {formatWhen(verification.credential_reviewed_at)}
-            {verification.reviewed_by?.name ? ` by ${verification.reviewed_by.name}` : ""}
-          </p>
+          {missingDocs.length ? (
+            <span className="inline-flex w-fit shrink-0 items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+              {missingDocs.length} document{missingDocs.length === 1 ? "" : "s"} missing
+            </span>
+          ) : (
+            <span className="inline-flex w-fit shrink-0 items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+              Documents complete
+            </span>
+          )}
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500">
-            <CreditCard size={14} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">Subscription</span>
+
+        {credStatus === "rejected" && verification.credential_reject_reason ? (
+          <p className="mt-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm leading-relaxed text-rose-700 ring-1 ring-rose-100">
+            {verification.credential_reject_reason}
+          </p>
+        ) : null}
+
+        {checklist.length ? (
+          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200/80">
+            <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Document checklist
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {missingDocs.length
+                  ? `${missingDocs.length} of ${checklist.length} still missing`
+                  : `All ${checklist.length} documents on file`}
+              </p>
+            </div>
+            <ul className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2 lg:grid-cols-3">
+              {checklist.map((item) => {
+                const isMissing = !item.uploaded;
+                return (
+                  <li
+                    key={item.type || item.label}
+                    className="flex min-h-[3.5rem] items-start justify-between gap-3 bg-white px-4 py-3.5 sm:px-5"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span
+                        className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                          isMissing ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium leading-snug text-slate-800">
+                          {item.label || formatAdminLabel(item.type)}
+                        </p>
+                        {!item.required ? (
+                          <p className="mt-0.5 text-[11px] text-slate-400">Recommended</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
+                        isMissing
+                          ? "bg-amber-50 text-amber-800 ring-amber-200"
+                          : "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                      }`}
+                    >
+                      {isMissing ? "Missing" : "On file"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <p className="mt-2 text-sm font-semibold text-slate-950">
-            {subscription
-              ? `${formatAdminLabel(subscription.plan_key || "plan")} · ${formatAdminLabel(subscription.status)}`
-              : "No subscription"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {subscription?.trial_end
-              ? `Trial ends ${formatWhen(subscription.trial_end)}`
-              : subscription?.current_period_end
-                ? `Period ends ${formatWhen(subscription.current_period_end)}`
-                : "—"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500">
-            <CheckCircle2 size={14} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">Completeness</span>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-950">
-            {completeness.is_complete ? "Profile complete" : "Incomplete"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {(completeness.missing_fields || []).length
-              ? `Missing: ${(completeness.missing_fields || []).map(formatAdminLabel).join(", ")}`
-              : "Personal + business basics filled"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-500">
-            <FileStack size={14} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">Activity</span>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-950">
-            {stats.leads_owned ?? 0} leads · {stats.referrals_sent ?? 0} sent / {stats.referrals_received ?? 0} recv
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Joined {formatWhen(user.createdAt)}</p>
-        </div>
-      </div>
+        ) : null}
+      </article>
 
       {documents.length ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="w-full border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
           <header className="mb-4 flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-transparent text-slate-500">
               <FileStack size={14} />
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Documents</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Documents</p>
             <div className="flex-1 border-t border-slate-100" />
           </header>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {documents.map((doc, index) => (
               <button
                 key={doc.id}
                 type="button"
                 disabled={!isPreviewableDocument(doc)}
                 onClick={() => setPreviewIndex(index)}
-                className="overflow-hidden rounded-xl border border-slate-200 text-left hover:border-slate-300"
+                className="overflow-hidden rounded-xl border border-slate-200/70 bg-transparent text-left hover:border-slate-300 disabled:cursor-default disabled:opacity-70"
               >
                 <div className="aspect-[4/3] bg-slate-50">
                   {isImageDoc(doc) ? (
@@ -324,38 +502,12 @@ export default function AdminProfessionalDetailPage() {
         </section>
       ) : null}
 
-      {recentLeads.length ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <header className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Recent leads</h3>
-            <Link href="/admin/leads" className="text-xs font-semibold text-slate-600 hover:text-slate-900">
-              View all
-            </Link>
-          </header>
-          <ul className="divide-y divide-slate-100">
-            {recentLeads.map((lead) => (
-              <li key={lead.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{lead.title}</p>
-                  <p className="text-xs text-slate-500">
-                    {formatAdminLabel(lead.lead_type)} · {formatWhen(lead.createdAt)}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs font-semibold text-slate-600">
-                  {formatAdminLabel(lead.match_status)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       {(verification.events || []).length ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Verification timeline</h3>
+        <section className="w-full border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Verification timeline</p>
           <ol className="mt-3 space-y-2">
             {(verification.events || []).slice(0, 8).map((ev) => (
-              <li key={ev.id || `${ev.type}-${ev.at}`} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+              <li key={ev.id || `${ev.type}-${ev.at}`} className="bg-transparent py-1 text-sm">
                 <span className="font-semibold text-slate-900">{formatAdminLabel(ev.type)}</span>
                 <span className="text-slate-500"> · {formatWhen(ev.at)}</span>
                 {ev.actor?.name ? <span className="text-slate-500"> · {ev.actor.name}</span> : null}
@@ -366,33 +518,40 @@ export default function AdminProfessionalDetailPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <section className="w-full border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
         <header className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-            <User size={14} />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+            <User size={15} />
           </div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Contact & role</h3>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">Contact & role</p>
           <div className="flex-1 border-t border-slate-100" />
         </header>
         <PersonalCard
           displayFullName={name}
           personalInfo={personalInfo}
           businessInfo={businessInfo}
-          compact
-          professionalLineLayout
+          columns={3}
         />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <section className="w-full border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
         <header className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-            <Briefcase size={14} />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+            <Briefcase size={15} />
           </div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Business & expertise</h3>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">Business & expertise</p>
           <div className="flex-1 border-t border-slate-100" />
         </header>
-        <BusinessCard businessInfo={businessInfo} />
+        <BusinessCard businessInfo={businessInfo} columns={3} />
+        {areas.length ? (
+          <div className="mt-4">
+            <DetailList label="Service areas" items={areas} columns={3} />
+          </div>
+        ) : null}
       </section>
+        </div>
+      )}
+      </div>
 
       <CredentialDocumentPreview
         open={previewIndex != null && Boolean(previewDoc)}
@@ -407,6 +566,40 @@ export default function AdminProfessionalDetailPage() {
         }
         authToken={authToken || ""}
         userId={userId || ""}
+      />
+      <AdminConfirmModal
+        open={accountAction === "suspend"}
+        onClose={() => setAccountAction(null)}
+        title="Suspend this professional?"
+        message="They will lose access until an admin unsuspends the account."
+        confirmLabel="Suspend"
+        tone="danger"
+        requireReason
+        pending={suspend.isPending}
+        onConfirm={async (reason) => {
+          try {
+            await suspend.mutateAsync({ id: userId, reason });
+            setAccountAction(null);
+          } catch {
+            /* mutation toast */
+          }
+        }}
+      />
+      <AdminConfirmModal
+        open={accountAction === "unsuspend"}
+        onClose={() => setAccountAction(null)}
+        title="Restore this professional?"
+        message="They will be able to sign in again."
+        confirmLabel="Unsuspend"
+        pending={unsuspend.isPending}
+        onConfirm={async () => {
+          try {
+            await unsuspend.mutateAsync({ id: userId });
+            setAccountAction(null);
+          } catch {
+            /* mutation toast */
+          }
+        }}
       />
     </div>
   );

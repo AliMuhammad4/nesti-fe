@@ -167,7 +167,7 @@ export default function AgentListingsSection({
       return;
     }
 
-    if (!['featured', 'sold'].includes(type) || (!profileSlug && !builderAccessToken)) {
+    if (!['featured', 'sold'].includes(type) || (!profileSlug && !builderAccessToken && typeof profile?.storefront_properties_loader !== 'function')) {
       setResolvedListings([]);
       setLoadingLiveListings(false);
       return;
@@ -178,8 +178,10 @@ export default function AgentListingsSection({
     if (!resolvedListingsRef.current.length) {
       setLoadingLiveListings(true);
     }
-    const propertiesRequest = preview && builderAccessToken
-      ? getOwnStorefrontProperties(builderAccessToken)
+    const propertiesRequest = preview && (builderAccessToken || profile?.storefront_properties_loader)
+      ? (typeof profile?.storefront_properties_loader === 'function'
+        ? profile.storefront_properties_loader()
+        : getOwnStorefrontProperties(builderAccessToken))
       : getSellerProperties(profileSlug);
     propertiesRequest
       .then((data) => {
@@ -207,7 +209,7 @@ export default function AgentListingsSection({
     return () => {
       cancelled = true;
     };
-  }, [builderAccessToken, listings, preview, profileSlug, type]);
+  }, [builderAccessToken, listings, preview, profile, profileSlug, type]);
 
   const handleListingClick = (listing) => {
     if (preview || type === 'sold') return;

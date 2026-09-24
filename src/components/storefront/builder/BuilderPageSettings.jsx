@@ -320,13 +320,19 @@ export default function PageSettings({
   canUndo = false,
   canRedo = false,
   canResetTemplateDefaults = true,
+  templateEntitlements = null,
 }) {
   const templates = listTemplatesForRole(role);
   const expandedPanelRef = useRef(null);
   const [expandedTemplateId, setExpandedTemplateId] = useState(null);
-  const templateEntitlementsQuery = useStorefrontTemplateEntitlements();
+  const templateEntitlementsQuery = useStorefrontTemplateEntitlements({
+    enabled: !templateEntitlements,
+  });
+  const entitlementTemplates = templateEntitlements?.templates
+    || templateEntitlementsQuery.data?.templates
+    || [];
   const templateAccessById = new Map(
-    (templateEntitlementsQuery.data?.templates || []).map((template) => [template.template_id, template]),
+    entitlementTemplates.map((template) => [template.template_id, template]),
   );
 
   const accessForTemplate = (template) => templateAccessById.get(template.id) || fallbackTemplateAccess(template);

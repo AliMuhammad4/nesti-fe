@@ -1,4 +1,9 @@
 import "./globals.css";
+import "@fontsource/poppins/300.css";
+import "@fontsource/poppins/400.css";
+import "@fontsource/poppins/500.css";
+import "@fontsource/poppins/600.css";
+import "@fontsource/poppins/700.css";
 import { Cormorant_Garamond, Inter, Poppins, Source_Sans_3 } from "next/font/google";
 import Script from "next/script";
 

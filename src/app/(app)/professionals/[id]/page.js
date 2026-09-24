@@ -284,7 +284,7 @@ export default function ProfessionalDetailPage() {
                   personalInfo={personalInfo}
                   businessInfo={businessInfo}
                   compact
-                  professionalLineLayout
+                  columns={3}
                 />
               </section>
 

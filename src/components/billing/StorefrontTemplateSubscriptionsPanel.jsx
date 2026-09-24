@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2, Lock, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import {
   useCancelStorefrontTemplateSubscription,
   useResumeStorefrontTemplateSubscription,
@@ -23,10 +23,9 @@ function formatDate(value) {
 
 function statusLabel(subscription) {
   if (!subscription) return "";
-  if (subscription.legacy_lifetime) return "Lifetime unlock";
   if (subscription.cancel_at_period_end) return "Cancels at period end";
   const status = String(subscription.status || "").toLowerCase();
-  if (status === "active" || status === "trialing") return "Active monthly";
+  if (status === "active" || status === "trialing" || status === "lifetime") return "Active monthly";
   if (status === "past_due") return "Past due";
   return status || "Inactive";
 }
@@ -117,9 +116,7 @@ export default function StorefrontTemplateSubscriptionsPanel() {
                     <span className={`rounded-full px-2 py-0.5 font-semibold ${
                       subscription.cancel_at_period_end
                         ? "bg-amber-50 text-amber-700"
-                        : subscription.legacy_lifetime
-                          ? "bg-slate-200 text-slate-700"
-                          : "bg-emerald-50 text-emerald-700"
+                        : "bg-emerald-50 text-emerald-700"
                     }`}>
                       {statusLabel(subscription)}
                     </span>
@@ -128,17 +125,13 @@ export default function StorefrontTemplateSubscriptionsPanel() {
                         {subscription.cancel_at_period_end ? "Ends" : "Renews"}{" "}
                         {formatDate(subscription.current_period_end)}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="text-slate-500">Renews monthly</span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  {subscription.legacy_lifetime ? (
-                    <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-500">
-                      <Lock size={12} />
-                      Lifetime
-                    </span>
-                  ) : null}
                   {subscription.manageable && !subscription.cancel_at_period_end ? (
                     <button
                       type="button"
@@ -161,7 +154,7 @@ export default function StorefrontTemplateSubscriptionsPanel() {
                       className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                     >
                       {pending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                      Keep subscription
+                      Continue subscription
                     </button>
                   ) : null}
                 </div>

@@ -142,7 +142,7 @@ export default function LeadsProfileTab({
 
   return (
     <div className={outerClassName}>
-      {selectedConversation ? (
+      {selectedConversation || (embedded && lead) ? (
         <>
           <div className={sectionClassName}>
             <div className="text-sm font-semibold text-text-heading">User details</div>

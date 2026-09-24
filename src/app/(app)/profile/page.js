@@ -272,7 +272,7 @@ function ProfilePageContent() {
               personalInfo={resolvedPersonal || {}}
               businessInfo={resolvedBusiness || {}}
               compact
-              professionalLineLayout
+              columns={3}
             />
           </section>
 

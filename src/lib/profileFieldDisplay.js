@@ -122,7 +122,10 @@ export function formatBusinessInfoForDisplay(businessInfo = {}) {
       "Experience",
       b.experience || b.experienceLevel || "",
     ),
-    responseTime: formatProfileBusinessField("Response Time", b.responseTime),
+    responseTime: formatProfileBusinessField(
+      "Response Time",
+      b.responseTime || b.responseTime || "",
+    ),
     availability: formatProfileBusinessField("Availability", b.availability),
     avgSalePrice: formatProfileBusinessField("Avg Sale Price", b.avgSalePrice),
     transactionVolume: formatProfileBusinessField("Transaction Volume", b.transactionVolume),
@@ -130,9 +133,16 @@ export function formatBusinessInfoForDisplay(businessInfo = {}) {
     negotiationStyle: formatProfileBusinessField("Negotiation Style", b.negotiationStyle),
     salesApproach: formatProfileBusinessField("Sales Approach", b.salesApproach),
     energyStyle: formatProfileBusinessField("Energy Style", b.energyStyle),
-    personalityTag: formatProfileBusinessField("Personality", b.personalityTag),
+    personalityTag: formatProfileBusinessField(
+      "Personality",
+      b.personalityTag || b.personalityTag || "",
+    ),
     specializations: (b.specializations || []).map(formatProfileChipLabel),
-    communicationChannels: (b.communicationChannels || []).map(formatProfileChipLabel),
-    preferredClients: (b.preferredClients || []).map(formatProfileChipLabel),
+    communicationChannels: (
+      b.communicationChannels ||
+      b.communicationChannels ||
+      []
+    ).map(formatProfileChipLabel),
+    preferredClients: (b.preferredClients || b.preferredClients || []).map(formatProfileChipLabel),
   };
 }

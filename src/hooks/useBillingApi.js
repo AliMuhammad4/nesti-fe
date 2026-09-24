@@ -83,8 +83,9 @@ export function useCreateCheckoutSession() {
   });
 }
 
-export function useStorefrontTemplateEntitlements() {
+export function useStorefrontTemplateEntitlements(options = {}) {
   const { token } = useAppSelector((state) => state.auth);
+  const enabled = options.enabled !== false;
 
   return useQuery({
     queryKey: ["storefrontTemplateEntitlements"],
@@ -96,7 +97,7 @@ export function useStorefrontTemplateEntitlements() {
         token,
       });
     },
-    enabled: !!token,
+    enabled: !!token && enabled,
     staleTime: 10_000,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,

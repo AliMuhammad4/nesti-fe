@@ -45,8 +45,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        heading: ['Inter', 'sans-serif'],
-        body: ['Poppins', 'sans-serif'],
+        heading: ["Poppins", "var(--font-poppins)", "Segoe UI", "sans-serif"],
+        body: ["Poppins", "var(--font-poppins)", "Segoe UI", "sans-serif"],
+        sans: ["Poppins", "var(--font-poppins)", "Segoe UI", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },

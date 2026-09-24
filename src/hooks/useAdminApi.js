@@ -61,8 +61,13 @@ export function useAdminSuspendUser() {
         data: { reason: reason || "" },
         token,
       }),
-    onSuccess: () => {
-      toast.success("User suspended");
+    onSuccess: (data) => {
+      if (data?.email_notified) {
+        toast.success("Account suspended. A notice was emailed to the professional.");
+      } else {
+        toast.success("Account suspended");
+        toast.warning("The suspension email could not be delivered.");
+      }
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
@@ -81,19 +86,24 @@ export function useAdminUnsuspendUser() {
         method: "POST",
         token,
       }),
-    onSuccess: () => {
-      toast.success("User unsuspended");
+    onSuccess: (data) => {
+      if (data?.email_notified) {
+        toast.success("Account reinstated. A notice was emailed to the professional.");
+      } else {
+        toast.success("Account reinstated");
+        toast.warning("The reinstatement email could not be delivered.");
+      }
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: toastError,
   });
 }
 
-export function useAdminProfessionals(params = {}) {
+export function useAdminProfessionals(params = {}, enabled = true) {
   const token = useAdminToken();
   return useQuery({
     queryKey: ["admin", "professionals", params],
-    enabled: Boolean(token),
+    enabled: Boolean(token && enabled),
     queryFn: () =>
       apiClient({
         url: `${API_ENDPOINTS.admin.professionals}${toQuery(params)}`,
@@ -173,11 +183,11 @@ export function useAdminPatchClient() {
   });
 }
 
-export function useAdminLeads(params = {}) {
+export function useAdminLeads(params = {}, enabled = true) {
   const token = useAdminToken();
   return useQuery({
     queryKey: ["admin", "leads", params],
-    enabled: Boolean(token),
+    enabled: Boolean(token && enabled),
     queryFn: () =>
       apiClient({
         url: `${API_ENDPOINTS.admin.leads}${toQuery(params)}`,
@@ -192,6 +202,36 @@ export function useAdminLead(id) {
     queryKey: ["admin", "lead", id],
     enabled: Boolean(token && id),
     queryFn: () => apiClient({ url: API_ENDPOINTS.admin.leadDetail(id), token }),
+  });
+}
+
+export function useAdminLeadConversation(id, enabled = true) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "lead", id, "conversation"],
+    enabled: Boolean(token && id && enabled),
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.leadConversation(id), token }),
+  });
+}
+
+export function useAdminLeadPropertyMatches(id, enabled = true) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "lead", id, "property-matches"],
+    enabled: Boolean(token && id && enabled),
+    queryFn: () => apiClient({
+      url: `${API_ENDPOINTS.admin.leadPropertyMatches(id)}?page=1&limit=100`,
+      token,
+    }),
+  });
+}
+
+export function useAdminLeadInquiredProperty(id, enabled = true) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "lead", id, "inquired-property"],
+    enabled: Boolean(token && id && enabled),
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.leadInquiredProperty(id), token }),
   });
 }
 
@@ -320,11 +360,11 @@ export function useAdminPatchSubscription() {
   });
 }
 
-export function useAdminReferrals(params = {}) {
+export function useAdminReferrals(params = {}, enabled = true) {
   const token = useAdminToken();
   return useQuery({
     queryKey: ["admin", "referrals", params],
-    enabled: Boolean(token),
+    enabled: Boolean(token && enabled),
     queryFn: () =>
       apiClient({
         url: `${API_ENDPOINTS.admin.referrals}${toQuery(params)}`,
@@ -425,5 +465,208 @@ export function useAdminRejectVerification() {
       queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
     },
     onError: toastError,
+  });
+}
+
+
+export function useAdminLeadNurtureLogs(id, enabled = true) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "lead-nurture-logs", id],
+    enabled: Boolean(token && id && enabled),
+    queryFn: () =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadNurtureLogs(id),
+        token,
+      }),
+  });
+}
+
+export function useAdminLeadReferrals(id, enabled = true) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "lead-referrals", id],
+    enabled: Boolean(token && id && enabled),
+    queryFn: () =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadReferrals(id),
+        token,
+      }),
+  });
+}
+
+export function useAdminPostLeadConversationMessage() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadConversationMessage(id),
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "lead", vars.id, "conversation"] });
+    },
+  });
+}
+
+export function useAdminLeadNurtureDraft() {
+  const token = useAdminToken();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadNurtureDraft(id),
+        method: "POST",
+        data,
+        token,
+      }),
+  });
+}
+
+export function useAdminLeadNurtureRefine() {
+  const token = useAdminToken();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadNurtureRefine(id),
+        method: "POST",
+        data,
+        token,
+      }),
+  });
+}
+
+export function useAdminLeadNurturePreview() {
+  const token = useAdminToken();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadNurturePreview(id),
+        method: "POST",
+        data,
+        token,
+      }),
+  });
+}
+
+export function useAdminLeadNurtureSend() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadNurtureSend(id),
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "lead-nurture-logs", vars.id] });
+    },
+  });
+}
+
+export function useAdminCreateLeadReferral() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadReferrals(id),
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "lead-referrals", vars.id] });
+    },
+  });
+}
+
+export function useAdminCancelLeadCalendly() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.leadCalendlyCancel(id),
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "lead", vars.id] });
+    },
+  });
+}
+
+export function useAdminProfessionalChatbotEmbeds(professionalId) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "professional-chatbot-embeds", professionalId],
+    enabled: Boolean(token && professionalId),
+    queryFn: () =>
+      apiClient({
+        url: API_ENDPOINTS.admin.professionalChatbotEmbeds(professionalId),
+        token,
+      }),
+  });
+}
+
+export function useAdminGenerateProfessionalChatbotEmbed() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ professionalId, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.professionalChatbotEmbedGenerate(professionalId),
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "professional-chatbot-embeds", vars.professionalId],
+      });
+    },
+  });
+}
+
+export function useAdminPatchProfessionalChatbotEmbed() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ professionalId, embedId, data }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.professionalChatbotEmbed(professionalId, embedId),
+        method: "PATCH",
+        data,
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "professional-chatbot-embeds", vars.professionalId],
+      });
+    },
+  });
+}
+
+export function useAdminDeleteProfessionalChatbotEmbed() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ professionalId, embedId }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.professionalChatbotEmbed(professionalId, embedId),
+        method: "DELETE",
+        token,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "professional-chatbot-embeds", vars.professionalId],
+      });
+    },
   });
 }

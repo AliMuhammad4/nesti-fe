@@ -9,6 +9,7 @@ export function buildBuilderPreviewProfile({
   accessToken,
   media,
   selectedElement,
+  storefrontPropertiesLoader = null,
 }) {
   return {
     ...profile,
@@ -17,6 +18,7 @@ export function buildBuilderPreviewProfile({
     storefront_blocks: normalized,
     embed_token: embedToken || profile?.embed_token,
     storefront_builder_access_token: accessToken,
+    storefront_properties_loader: storefrontPropertiesLoader || profile?.storefront_properties_loader || null,
     storefront_builder_selection: selectedElement,
     storefront_logo_url: brandKit.logo_url || profile?.storefront_logo_url,
     storefront_logo_dark_url: brandKit.logo_dark_url || '',
@@ -58,6 +60,7 @@ export function useBuilderPreviewProfile(args) {
     accessToken,
     media,
     selectedElement,
+    storefrontPropertiesLoader,
   } = args;
 
   return useMemo(
@@ -70,6 +73,7 @@ export function useBuilderPreviewProfile(args) {
       accessToken,
       media,
       selectedElement,
+      storefrontPropertiesLoader,
     }),
     [
       profile,
@@ -80,6 +84,7 @@ export function useBuilderPreviewProfile(args) {
       accessToken,
       media,
       selectedElement,
+      storefrontPropertiesLoader,
     ],
   );
 }

@@ -21,6 +21,8 @@ function LeadDirectChatPanel({
   messagesQuery,
   myUserId,
   participantName,
+  sendMessageOverride,
+  attachmentsDisabled = false,
 }) {
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
@@ -192,6 +194,19 @@ function LeadDirectChatPanel({
   };
 
   const sendMessage = async () => {
+    if (typeof sendMessageOverride === "function") {
+      const overrideText = String(draft || "").trim();
+      if (!overrideText) return;
+      try {
+        setDraft("");
+        await sendMessageOverride({ body: overrideText, leadId, threadId });
+        messagesQuery?.refetch?.();
+      } catch (err) {
+        toast.error(err?.message || "Could not send message");
+        setDraft(overrideText);
+      }
+      return;
+    }
     const text = String(draft || "").trim();
     const atts = Array.isArray(draftAttachments) ? draftAttachments : [];
     if (!text && atts.length < 1) return;
@@ -318,7 +333,12 @@ function LeadDirectChatPanel({
             setDraftAttachments={setDraftAttachments}
             uploadingAttachments={uploadingAttachments}
             setUploadingAttachments={setUploadingAttachments}
-            onUploadAttachment={(args) => uploadProChatThreadAttachment(args)}
+            onUploadAttachment={
+              attachmentsDisabled
+                ? undefined
+                : (args) => uploadProChatThreadAttachment(args)
+            }
+            attachmentsDisabled={attachmentsDisabled}
             onSendMessage={sendMessage}
             onEmitTyping={emitTyping}
             typingTimeoutRef={typingTimeoutRef}
@@ -343,6 +363,8 @@ export default function LeadsConversationTab({
   token,
   myUserId,
   leadId,
+  sendMessageOverride,
+  attachmentsDisabled = false,
 }) {
   const scrollRef = useRef(null);
   const directChat = messagesQuery.data?.direct_chat || null;
@@ -392,6 +414,8 @@ export default function LeadsConversationTab({
               messagesQuery={messagesQuery}
               myUserId={myUserId}
               participantName={participantName}
+              sendMessageOverride={sendMessageOverride}
+              attachmentsDisabled={attachmentsDisabled || Boolean(sendMessageOverride)}
             />
           ) : (
             <div className="flex h-[65vh] min-h-[460px] max-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-white via-primary/[0.025] to-primary/[0.08]">

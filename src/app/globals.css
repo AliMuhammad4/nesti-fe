@@ -5,8 +5,7 @@
 :root {
   --background: #ffffff;
   --foreground: #1a202c;
-  --font-inter: var(--font-inter);
-  --font-poppins: var(--font-poppins);
+  /* next/font sets --font-inter / --font-poppins on <body>; do not self-reference here */
 }
 
 * {
@@ -15,7 +14,7 @@
 
 body {
   @apply m-0 bg-background text-text-body;
-  font-family: var(--font-poppins), sans-serif;
+  font-family: "Poppins", var(--font-poppins), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 h1,
@@ -25,7 +24,8 @@ h4,
 h5,
 h6 {
   @apply text-text-heading;
-  font-family: var(--font-inter), sans-serif;
+  /* Prefer Poppins when Inter (Google) fails to download */
+  font-family: "Poppins", var(--font-inter), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
 }
 
@@ -45,6 +45,38 @@ h6 {
 }
 
 @layer utilities {
+  /*
+   * Admin console: always Poppins (self-hosted via @fontsource/poppins).
+   * Named "Poppins" first so it works even when next/font Google download fails.
+   */
+  .admin-poppins,
+  .admin-poppins h1,
+  .admin-poppins h2,
+  .admin-poppins h3,
+  .admin-poppins h4,
+  .admin-poppins h5,
+  .admin-poppins h6,
+  .admin-poppins button,
+  .admin-poppins input,
+  .admin-poppins select,
+  .admin-poppins textarea,
+  .admin-poppins a,
+  .admin-poppins p,
+  .admin-poppins span,
+  .admin-poppins li,
+  .admin-poppins label,
+  .admin-poppins td,
+  .admin-poppins th {
+    font-family: "Poppins", var(--font-poppins), "Segoe UI", ui-sans-serif, system-ui, sans-serif !important;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-poppins h1,
+  .admin-poppins h2,
+  .admin-poppins h3 {
+    letter-spacing: -0.02em;
+  }
+
   .text-balance {
     text-wrap: balance;
   }

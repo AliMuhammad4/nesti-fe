@@ -521,12 +521,12 @@ export function AdminDonutChart({ data = [] }) {
 
 export function AdminPageHeader({ title, subtitle, actions = null }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-4">
-      <div className="max-w-3xl">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+      <div className="min-w-0 max-w-3xl">
         <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-950">{title}</h1>
         {subtitle ? <p className="mt-1.5 text-sm leading-6 text-slate-500">{subtitle}</p> : null}
       </div>
-      {actions}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -672,7 +672,7 @@ export function AdminEmptyState({ title, hint }) {
 
 export function AdminTabs({ tabs = [], value, onChange }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+    <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab) => {
         const active = value === tab.value;
         return (
@@ -680,10 +680,11 @@ export function AdminTabs({ tabs = [], value, onChange }) {
             key={tab.value}
             type="button"
             onClick={() => onChange?.(tab.value)}
-            className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
+            aria-current={active ? "page" : undefined}
+            className={`relative shrink-0 rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition-all duration-200 ${
               active
-                ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             {tab.label}
