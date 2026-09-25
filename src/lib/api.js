@@ -305,6 +305,14 @@ export const API_ENDPOINTS = {
     ),
     verificationApprove: withBaseUrl((userId) => `/api/admin/verifications/${userId}/approve`),
     verificationReject: withBaseUrl((userId) => `/api/admin/verifications/${userId}/reject`),
+    voiceCalls: withBaseUrl("/api/admin/voice/calls"),
+    voiceCallStop: withBaseUrl((id) => `/api/admin/voice/calls/${id}/stop`),
+    voiceCallRecordings: withBaseUrl((id) => `/api/admin/voice/calls/${id}/recordings`),
+    voiceRecordingPlayback: withBaseUrl((id) => `/api/admin/voice/recordings/${id}/playback`),
+    voiceCallTranscript: withBaseUrl((id) => `/api/admin/voice/calls/${id}/transcript`),
+    voiceCallSuggestions: withBaseUrl((id) => `/api/admin/voice/calls/${id}/suggestions`),
+    voiceSuggestionDecision: withBaseUrl((id) => `/api/admin/voice/suggestions/${id}/decision`),
+    salesPipeline: withBaseUrl("/api/admin/sales-pipeline"),
   },
 };
 

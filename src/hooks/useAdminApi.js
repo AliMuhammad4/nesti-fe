@@ -602,6 +602,130 @@ export function useAdminCancelLeadCalendly() {
   });
 }
 
+export function useAdminSalesPipeline() {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "sales-pipeline"],
+    enabled: Boolean(token),
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.salesPipeline, token }),
+  });
+}
+
+export function useAdminVoiceCalls(targetType, targetId) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "voice-calls", targetType, targetId],
+    enabled: Boolean(token && targetType && targetId),
+    refetchInterval: (query) => {
+      const items = query.state.data?.items || [];
+      const live = items.some((item) => ["connecting", "ringing", "active"].includes(item.status));
+      return live ? 4000 : false;
+    },
+    queryFn: () =>
+      apiClient({
+        url: `${API_ENDPOINTS.admin.voiceCalls}?target_type=${targetType}&target_id=${targetId}`,
+        token,
+      }),
+  });
+}
+
+export function useAdminStartVoiceCall() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.voiceCalls,
+        method: "POST",
+        data,
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Voice call started");
+      queryClient.invalidateQueries({ queryKey: ["admin", "voice-calls"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "sales-pipeline"] });
+    },
+    onError: toastError,
+  });
+}
+
+export function useAdminStopVoiceCall() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.voiceCallStop(id),
+        method: "POST",
+        token,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "voice-calls"] }),
+    onError: toastError,
+  });
+}
+
+export function useAdminVoiceTranscript(callId, { live = false } = {}) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "voice-transcript", callId],
+    enabled: Boolean(token && callId),
+    refetchInterval: live ? 5000 : false,
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.voiceCallTranscript(callId), token }),
+  });
+}
+
+export function useAdminVoiceRecordings(callId) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "voice-recordings", callId],
+    enabled: Boolean(token && callId),
+    refetchInterval: (query) => {
+      const items = query.state.data?.items || [];
+      return items.some((item) => ["pending", "processing"].includes(item.ingest_status)) ? 5000 : false;
+    },
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.voiceCallRecordings(callId), token }),
+  });
+}
+
+export function useAdminVoiceSuggestions(callId) {
+  const token = useAdminToken();
+  return useQuery({
+    queryKey: ["admin", "voice-suggestions", callId],
+    enabled: Boolean(token && callId),
+    queryFn: () => apiClient({ url: API_ENDPOINTS.admin.voiceCallSuggestions(callId), token }),
+  });
+}
+
+export function useAdminVoicePlayback() {
+  const token = useAdminToken();
+  return useMutation({
+    mutationFn: ({ id }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.voiceRecordingPlayback(id),
+        token,
+      }),
+  });
+}
+
+export function useAdminDecideVoiceSuggestion() {
+  const token = useAdminToken();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision }) =>
+      apiClient({
+        url: API_ENDPOINTS.admin.voiceSuggestionDecision(id),
+        method: "POST",
+        data: { decision },
+        token,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "voice-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "lead"] });
+    },
+    onError: toastError,
+  });
+}
+
 export function useAdminProfessionalChatbotEmbeds(professionalId) {
   const token = useAdminToken();
   return useQuery({

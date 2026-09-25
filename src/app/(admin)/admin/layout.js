@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 
 /**
  * Most admin pages get standard inset padding.
- * Professional detail (/admin/professionals/[id]) is full-bleed so the
- * header, tabs, and tab panels can use the full workspace width.
+ * Professional and client detail pages are full-bleed so the
+ * header and panels can use the full workspace width.
  */
 export default function AdminSectionLayout({ children }) {
   const pathname = usePathname() || "";
-  const isProfessionalDetail = /^\/admin\/professionals\/[^/]+\/?$/.test(pathname);
+  const isProfessionalDetail = /^\/admin\/(professionals|clients)\/[^/]+\/?$/.test(pathname);
 
   return (
     <div

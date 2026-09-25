@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAdminOverview } from "@/hooks/useAdminApi";
+import { useAdminOverview, useAdminSalesPipeline } from "@/hooks/useAdminApi";
 import {
   AdminAreaChart,
   AdminBarChart,
@@ -15,10 +15,12 @@ import {
 } from "@/components/admin/AdminUi";
 import AdminTimedChart from "@/components/admin/AdminTimedChart";
 import AdminPendingVerificationsPanel from "@/components/admin/AdminPendingVerificationsPanel";
+import AdminPipelineBoard from "@/components/admin/AdminPipelineBoard";
 import WorkspaceLoader from "@/components/ui/WorkspaceLoader";
 
 export default function AdminOverviewPage() {
   const overviewQuery = useAdminOverview();
+  const pipelineQuery = useAdminSalesPipeline();
 
   if (overviewQuery.isLoading) {
     return <WorkspaceLoader />;
@@ -96,6 +98,21 @@ export default function AdminOverviewPage() {
       />
 
       <AdminKpiGrid items={kpiItems} />
+
+      <section className="space-y-3 rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">Subscription desk</h2>
+            <p className="text-xs text-slate-500">Unsubscribed professionals and clients from demo bookings and contact requests.</p>
+          </div>
+          <Link href="/admin/leads" className="text-xs font-semibold text-slate-700 underline">
+            Open the desk
+          </Link>
+        </div>
+        <AdminPipelineBoard
+          items={pipelineQuery.data?.items || []}
+        />
+      </section>
 
       <AdminPendingVerificationsPanel />
 

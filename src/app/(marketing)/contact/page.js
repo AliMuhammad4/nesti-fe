@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Handshake, Headphones, Mail, PhoneCall, ShieldCheck } from "lucide-react";
+import ContactRequestForm from "@/components/marketing/ContactRequestForm";
 
 export const metadata = {
   title: {
@@ -52,6 +53,7 @@ export default function ContactPage() {
           <div className="rounded-3xl border border-primary/15 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-7">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Start a conversation</p>
             <h2 className="mt-2 text-2xl font-bold text-text-heading">Choose what works for you.</h2>
+            <ContactRequestForm />
             <div className="mt-6 grid gap-3">
               <a href="mailto:ravinnaraveenthiran@nesti.ca" className="group flex items-center gap-3 rounded-2xl border border-border bg-background-light/30 p-4 transition hover:border-primary/30 hover:bg-primary/[0.04]">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Mail size={19} aria-hidden /></span>

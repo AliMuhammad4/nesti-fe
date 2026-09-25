@@ -55,6 +55,7 @@ import {
 import { inquiredPropertyFromLead } from "@/lib/inquiredPropertyUtils";
 import { API_ENDPOINTS, apiClient } from "@/lib/api";
 import { useAppSelector } from "@/store";
+import AdminVoiceAgentPanel from "@/components/admin/AdminVoiceAgentPanel";
 import { useAdminCanWrite } from "@/hooks/useAdminPermissions";
 import { ADMIN_PERMISSION } from "@/lib/adminPermissions";
 
@@ -594,6 +595,12 @@ export default function AdminLeadDetailPage() {
         />
       ) : null}
 
+      <AdminVoiceAgentPanel
+        targetType="lead"
+        targetId={id}
+        defaultPhone={lead?.inquirer?.phone || lead?.contact?.phone || ""}
+        canWrite={canWriteLeads}
+      />
       {activeTab === "admin" ? (
         <AdminLeadControlsPanel
           leadId={id}
